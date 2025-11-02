@@ -139,47 +139,74 @@ backend/src/
 
 ## Style Guide Integration
 
-**CRITICAL**: Always reference `STYLE-GUIDE.md` when creating UI components. The style guide defines the complete design system.
+**CRITICAL**: Always reference `STYLE-GUIDE.md` when creating UI components. The style guide provides design philosophy and usage examples. The complete implementation is in `frontend/src/styles/theme.css`.
 
 ### Key Style Guide Points
 
-1. **CSS Variables**: All colors, spacing, fonts use CSS custom properties from `styles/theme.css`
+**CRITICAL**: The complete style system is implemented in `frontend/src/styles/theme.css`. All custom properties, component classes, animations, and utilities are defined there.
+
+1. **CSS Custom Properties**: All design tokens available as CSS variables in `theme.css`:
+   - **Backgrounds**: `--bg-primary`, `--bg-secondary`, `--bg-tertiary`, `--bg-elevated`, `--bg-accent-light`, `--bg-accent-light-alt`
+   - **Text**: `--text-primary`, `--text-secondary`, `--text-tertiary`, `--text-inverse`
+   - **Accents**: `--accent-yellow`, `--accent-yellow-dark`, `--accent-blue`, `--accent-blue-dark`, `--accent-green`, `--accent-green-dark`, `--accent-purple`, `--accent-purple-dark`, `--accent-pink`, `--accent-orange`
+   - **Status**: `--success`, `--warning`, `--error`, `--info`
+   - **Borders**: `--border-primary`, `--border-secondary`, `--border-accent`, `--border-vibrant`, `--border-glow`
+   - **Interactive**: `--hover-overlay`, `--hover-border`, `--hover-bg`, `--focus-ring`, `--focus-border`, `--active-bg`, `--disabled-text`, `--disabled-bg`, `--disabled-border`
+   - **Typography**: `--font-primary`, `--font-mono`, `--text-xs` through `--text-6xl`, `--weight-light` through `--weight-extrabold`
+   - **Spacing**: `--space-1` through `--space-24`
+   - **Borders**: `--border-thin`, `--border-medium`, `--border-thick`, `--border-extra-thick`, `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`, `--radius-full`
+   - **Shadows**: `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-xl`, `--shadow-glow-yellow`, `--shadow-glow-blue`, `--shadow-glow-green`
+   - **Transitions**: `--transition-base`, `--transition-hover`, `--transition-active`
+   
    ```css
    background: var(--bg-secondary);
    color: var(--text-primary);
-   border: 3px solid var(--border-primary);
+   border: var(--border-thick) solid var(--border-primary);
    ```
 
-2. **Component Classes**: Use predefined classes from style guide:
-   - `.btn-primary`, `.btn-secondary`, `.btn-ghost`
-   - `.panel`, `.panel-elevated`, `.panel-accent`
-   - `.input`, `.textarea`
-   - `.tag-item`, `.tag-list`
-   - `.badge`, `.badge-primary`
+2. **Component Classes**: Use predefined classes from `theme.css`:
+   - **Buttons**: `.btn-primary`, `.btn-secondary`, `.btn-ghost` (all support `:disabled` state)
+   - **Panels**: `.panel`, `.panel-elevated`, `.panel-accent`, `.panel-header-light`
+   - **Inputs**: `.input`, `.textarea` (all support `:focus`, `:hover`, `:disabled` states)
+   - **Form Controls**: `.checkbox`, `.radio` (custom styled)
+   - **Tags**: `.tag-list`, `.tag-item`, `.tag-item.active`, `.tag-item.tag-blue`, `.tag-item.tag-green`, `.tag-item.tag-purple`, `.tag-item.tag-pink`
+   - **Badges**: `.badge`, `.badge-primary`, `.badge-success`, `.badge-warning`, `.badge-error`
+   - **Typography**: `.label`, `.tag`, `.lead`, `.text-sm`
 
-3. **Typography**: Use semantic HTML and style guide font variables:
-   ```css
-   font-size: var(--text-base);
-   font-weight: var(--weight-bold);
-   font-family: var(--font-primary);
-   ```
+3. **Layout Utilities**: From `theme.css`:
+   - **Containers**: `.container`, `.container-wide`, `.container-narrow`
+   - **Grid**: `.grid`, `.grid-2`, `.grid-3`, `.grid-4`
+   - **Flexbox**: `.flex`, `.flex-col`, `.items-center`, `.items-start`, `.items-end`, `.justify-center`, `.justify-between`, `.justify-start`, `.justify-end`, `.gap-1`, `.gap-2`, `.gap-3`, `.gap-4`, `.gap-6`, `.gap-8`
 
-4. **Responsive Design**: Mobile-first, breakpoints at 320px, 768px, 1024px
+4. **Responsive Design**: Mobile-first breakpoints defined in `theme.css`:
+   - **Base (Mobile)**: 320px+ - default styles
+   - **Tablet**: `@media (min-width: 768px)` - container padding increased, grid gaps increased
+   - **Desktop**: `@media (min-width: 1024px)` - container padding further increased
+   
    ```css
+   /* Use responsive utilities or custom media queries */
    @media (min-width: 768px) { /* tablet */ }
    @media (min-width: 1024px) { /* desktop */ }
    ```
 
-5. **Animations**: Use defined animations (subtle, purposeful):
+5. **Animations**: Keyframe animations and utility classes from `theme.css`:
+   - **Keyframes**: `@keyframes bounce-subtle`, `@keyframes pulse-glow`, `@keyframes slide-up`, `@keyframes fade-in`
+   - **Utility Classes**: `.bounce-subtle`, `.pulse-glow`, `.slide-up`, `.fade-in`
+   
    ```css
+   /* Use animation utility classes */
    animation: slide-up 0.3s ease-out;
    animation: fade-in 0.4s ease-out;
+   
+   /* Or use the utility classes directly */
+   <div className="slide-up">Content</div>
    ```
 
-6. **Accessibility**: 
-   - Always include focus states using `var(--focus-ring)`
-   - Use `prefers-reduced-motion` media query
-   - Ensure WCAG AA contrast ratios
+6. **Accessibility**: Built into `theme.css`:
+   - Focus states: `:focus-visible` automatically uses `var(--focus-ring)` with proper outline
+   - Reduced motion: `@media (prefers-reduced-motion: reduce)` disables animations
+   - All interactive elements support `:disabled` states
+   - WCAG AA contrast ratios maintained in color palette
 
 ### Using ThemeContext
 
@@ -655,7 +682,7 @@ const parent = await db('categories')
 
 1. **Create component directory** in `components/`
 2. **Follow naming**: PascalCase file names
-3. **Use style guide classes**: Reference `STYLE-GUIDE.md`
+3. **Use style guide classes**: Reference `theme.css` for all component classes, utilities, and animations
 4. **Add TypeScript interface** for props
 5. **Handle loading/error states**
 6. **Use Context hooks** for data
@@ -680,10 +707,10 @@ const parent = await db('categories')
 ### Adding a New Visualization
 
 1. **Create component** in `components/`
-2. **Use style guide** for colors, spacing, typography
-3. **Make responsive**: Mobile-first design
-4. **Handle loading states**
-5. **Add interactions**: Click handlers, filters
+2. **Use theme.css**: Import `styles/theme.css` and use component classes, CSS variables, and utilities
+3. **Make responsive**: Use mobile-first breakpoints (768px, 1024px) from `theme.css`
+4. **Handle loading states**: Use `.badge`, animation utilities (`.fade-in`, `.slide-up`)
+5. **Add interactions**: Click handlers, filters with hover/focus states from `theme.css`
 6. **Use Context** for data access
 
 ## Testing & Quality
@@ -837,37 +864,59 @@ catch (error) {
 
 When working on this project, always reference:
 
-1. **STYLE-GUIDE.md** - Complete design system, CSS variables, component classes
-2. **README.md** - User-facing documentation, setup instructions
-3. **This file (AGENTS.md)** - Implementation patterns and conventions
-4. **Implementation Plan** (`.cursor/plans/`) - Original architecture decisions
+1. **theme.css** - Complete design system implementation (all CSS variables, component classes, animations, utilities)
+2. **STYLE-GUIDE.md** - Design philosophy, usage examples, and reference to `theme.css`
+3. **README.md** - User-facing documentation, setup instructions
+4. **This file (AGENTS.md)** - Implementation patterns and conventions
+5. **Implementation Plan** (`.cursor/plans/`) - Original architecture decisions
 
 ## Quick Reference
 
-### CSS Variables (from STYLE-GUIDE.md)
+### CSS Variables (from theme.css)
+
+All custom properties are defined in `frontend/src/styles/theme.css`. Common ones:
 
 ```css
 /* Backgrounds */
 --bg-primary: #0a0a0a;
 --bg-secondary: #141414;
 --bg-tertiary: #1a1a1a;
+--bg-elevated: #222222;
 
 /* Text */
 --text-primary: #f0f0f0;
 --text-secondary: #d0d0d0;
+--text-tertiary: #b0b0b0;
+--text-inverse: #0a0a0a;
 
 /* Accents */
 --accent-yellow: #ffd43b;
 --accent-blue: #4fc3f7;
 --accent-green: #66bb6a;
+--accent-purple: #ab47bc;
+--accent-pink: #ec407a;
+--accent-orange: #ff9800;
 
 /* Borders */
 --border-primary: #3a3a3a;
+--border-secondary: #4a4a4a;
 --border-vibrant: #ffd43b;
+--border-thick: 3px;
+--radius-sm: 0.25rem;
+--radius-md: 0.5rem;
 
 /* Spacing */
+--space-1: 0.25rem;
+--space-2: 0.5rem;
 --space-4: 1rem;
 --space-6: 1.5rem;
+--space-8: 2rem;
+
+/* Interactive States */
+--focus-ring: rgba(255, 212, 59, 0.4);
+--hover-bg: rgba(255, 212, 59, 0.1);
+
+/* See theme.css for complete list */
 ```
 
 ### Common Patterns

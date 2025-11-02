@@ -3,6 +3,12 @@
 
 ---
 
+## ⚠️ Important Note
+
+**The complete style system implementation is in `frontend/src/styles/theme.css`**. This document provides design philosophy, usage examples, and references to the CSS file. All custom properties, component classes, animations, and utilities are defined in `theme.css`.
+
+---
+
 ## Design Philosophy
 
 This style guide captures the playful, caring, and high-contrast aesthetic of MotherDuck while adapting it for a dark mode environment. The design emphasizes:
@@ -16,816 +22,283 @@ This style guide captures the playful, caring, and high-contrast aesthetic of Mo
 
 ## Color Palette
 
-### Background Colors
-```css
-/* Primary Backgrounds */
---bg-primary: #0a0a0a;          /* Deep charcoal - main background */
---bg-secondary: #141414;        /* Slightly lighter for panels */
---bg-tertiary: #1a1a1a;         /* Even lighter for elevated panels */
---bg-elevated: #222222;         /* For floating elements */
+All colors are defined as CSS custom properties in `theme.css`:
 
-/* Light Background Accents (for small headers/badges) */
---bg-accent-light: #f5f5f5;     /* Light background for dark mode headers */
---bg-accent-light-alt: #e8e8e8; /* Alternative light accent */
-```
+### Background Colors
+- `--bg-primary`: Deep charcoal - main background
+- `--bg-secondary`: Slightly lighter for panels
+- `--bg-tertiary`: Even lighter for elevated panels
+- `--bg-elevated`: For floating elements
+- `--bg-accent-light`: Light background for dark mode headers
+- `--bg-accent-light-alt`: Alternative light accent
 
 ### Foreground Colors
-```css
-/* Text Colors */
---text-primary: #f0f0f0;        /* Primary text - high contrast */
---text-secondary: #d0d0d0;      /* Secondary text */
---text-tertiary: #b0b0b0;       /* Tertiary/muted text */
---text-inverse: #0a0a0a;        /* Text on light backgrounds */
+- `--text-primary`: Primary text - high contrast
+- `--text-secondary`: Secondary text
+- `--text-tertiary`: Tertiary/muted text
+- `--text-inverse`: Text on light backgrounds
 
-/* Accent Colors - Vibrant & Playful */
---accent-yellow: #ffd43b;       /* Bright, cheerful yellow */
---accent-yellow-dark: #ffa500;  /* Darker yellow variant */
---accent-blue: #4fc3f7;        /* Sky blue */
---accent-blue-dark: #29b6f6;    /* Deeper blue */
---accent-green: #66bb6a;       /* Fresh green */
---accent-green-dark: #43a047;   /* Deeper green */
---accent-purple: #ab47bc;      /* Playful purple */
---accent-purple-dark: #8e24aa;  /* Deeper purple */
---accent-pink: #ec407a;        /* Warm pink */
---accent-orange: #ff9800;       /* Vibrant orange */
+### Accent Colors - Vibrant & Playful
+- `--accent-yellow`: Bright, cheerful yellow (primary accent)
+- `--accent-yellow-dark`: Darker yellow variant
+- `--accent-blue`: Sky blue
+- `--accent-blue-dark`: Deeper blue
+- `--accent-green`: Fresh green
+- `--accent-green-dark`: Deeper green
+- `--accent-purple`: Playful purple
+- `--accent-purple-dark`: Deeper purple
+- `--accent-pink`: Warm pink
+- `--accent-orange`: Vibrant orange
 
-/* Status Colors */
---success: #66bb6a;             /* Green for success states */
---warning: #ffa726;             /* Orange for warnings */
---error: #ef5350;               /* Red for errors */
---info: #42a5f5;                /* Blue for information */
-```
+### Status Colors
+- `--success`: Green for success states
+- `--warning`: Orange for warnings
+- `--error`: Red for errors
+- `--info`: Blue for information
 
 ### Border Colors
-```css
-/* Borders - Bold & Defined */
---border-primary: #3a3a3a;      /* Primary border color */
---border-secondary: #4a4a4a;    /* Secondary border */
---border-accent: #6a6a6a;       /* Accent borders */
---border-vibrant: #ffd43b;      /* Bright yellow for highlights */
---border-glow: rgba(255, 212, 59, 0.3); /* Subtle glow effect */
-```
+- `--border-primary`: Primary border color
+- `--border-secondary`: Secondary border
+- `--border-accent`: Accent borders
+- `--border-vibrant`: Bright yellow for highlights
+- `--border-glow`: Subtle glow effect
 
 ### Interactive States
-```css
-/* Hover States */
---hover-overlay: rgba(255, 255, 255, 0.05);
---hover-border: #ffd43b;
---hover-bg: rgba(255, 212, 59, 0.1);
+- `--hover-overlay`: Hover overlay effect
+- `--hover-border`: Hover border color
+- `--hover-bg`: Hover background
+- `--focus-ring`: Focus ring color (accessibility)
+- `--focus-border`: Focus border color
+- `--active-bg`: Active state background
+- `--disabled-text`, `--disabled-bg`, `--disabled-border`: Disabled states
 
-/* Active/Focus States */
---focus-ring: rgba(255, 212, 59, 0.4);
---focus-border: #ffd43b;
---active-bg: rgba(255, 212, 59, 0.15);
-
-/* Disabled States */
---disabled-text: #666666;
---disabled-bg: #1a1a1a;
---disabled-border: #2a2a2a;
-```
+**Reference**: See `theme.css` for complete color definitions.
 
 ---
 
 ## Typography
 
-### Font Families
-```css
-/* Primary Font Stack */
---font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
-                'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 
-                'Helvetica Neue', sans-serif;
+### Font Families (from `theme.css`)
+- `--font-primary`: System font stack (sans-serif)
+- `--font-mono`: Monospace font stack (for code/technical content)
 
-/* Monospace Font (for code/technical content) */
---font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 
-             'Consolas', 'Roboto Mono', monospace;
-```
+### Font Sizes (from `theme.css`)
+- `--text-xs` through `--text-6xl`: Complete size scale
 
-### Font Sizes
-```css
-/* Scale - Responsive Typography */
---text-xs: 0.75rem;      /* 12px */
---text-sm: 0.875rem;     /* 14px */
---text-base: 1rem;       /* 16px */
---text-lg: 1.125rem;     /* 18px */
---text-xl: 1.25rem;      /* 20px */
---text-2xl: 1.5rem;      /* 24px */
---text-3xl: 1.875rem;    /* 30px */
---text-4xl: 2.25rem;     /* 36px */
---text-5xl: 3rem;        /* 48px */
---text-6xl: 3.75rem;     /* 60px */
-```
-
-### Font Weights
-```css
---weight-light: 300;
---weight-regular: 400;
---weight-medium: 500;
---weight-semibold: 600;
---weight-bold: 700;
---weight-extrabold: 800;
-```
+### Font Weights (from `theme.css`)
+- `--weight-light` through `--weight-extrabold`: Complete weight scale
 
 ### Typography Styles
 
-#### Headings
-```css
-/* H1 - Hero/Page Titles */
-h1 {
-  font-size: var(--text-5xl);
-  font-weight: var(--weight-extrabold);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
-  text-transform: uppercase;
-}
+All typography styles are implemented in `theme.css`:
 
-/* H2 - Section Titles */
-h2 {
-  font-size: var(--text-4xl);
-  font-weight: var(--weight-bold);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
-  text-transform: uppercase;
-}
+- **Headings** (`h1`-`h5`): Pre-styled with uppercase transformation where appropriate
+- **Body Text** (`p`, `.lead`, `small`, `.text-sm`): Pre-styled with appropriate line heights
+- **Labels** (`.label`): Small, bold, uppercase
+- **Tags** (`.tag`): Rounded, colorful, inline-block
 
-/* H3 - Subsection Titles */
-h3 {
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
-  line-height: 1.3;
-  color: var(--text-primary);
-  text-transform: uppercase;
-}
-
-/* H4 - Small Headers (often with light background) */
-h4 {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  line-height: 1.4;
-  color: var(--text-inverse); /* Dark text on light background */
-  background: var(--bg-accent-light);
-  padding: 0.5rem 1rem;
-  display: inline-block;
-  border: 2px solid var(--text-inverse);
-}
-
-/* H5 - Subheaders */
-h5 {
-  font-size: var(--text-base);
-  font-weight: var(--weight-semibold);
-  line-height: 1.5;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-```
-
-#### Body Text
-```css
-/* Paragraphs */
-p {
-  font-size: var(--text-base);
-  font-weight: var(--weight-regular);
-  line-height: 1.6;
-  color: var(--text-primary);
-}
-
-/* Lead Text (larger intro paragraphs) */
-.lead {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-regular);
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-/* Small Text */
-small, .text-sm {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-```
-
-#### Labels & Tags
-```css
-/* Labels - Small, Bold, Uppercase */
-.label {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-secondary);
-}
-
-/* Tags - Rounded, Colorful */
-.tag {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.25rem;
-  border: 2px solid currentColor;
-  display: inline-block;
-  background: transparent;
-}
-```
+**Reference**: See `theme.css` for complete typography styles.
 
 ---
 
 ## Components
 
+All component classes are implemented in `theme.css`. Use these predefined classes:
+
 ### Buttons
 
-#### Primary Button
-```css
-.btn-primary {
-  background: var(--accent-yellow);
-  color: var(--text-inverse);
-  border: 3px solid var(--text-inverse);
-  padding: 0.875rem 1.75rem;
-  font-size: var(--text-base);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 0 var(--text-inverse);
-}
+- **`.btn-primary`**: Primary action button with yellow background
+- **`.btn-secondary`**: Secondary button with transparent background and border
+- **`.btn-ghost`**: Ghost button with minimal styling
 
-.btn-primary:hover {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 var(--text-inverse);
-  background: var(--accent-yellow-dark);
-}
-
-.btn-primary:active {
-  transform: translateY(4px);
-  box-shadow: none;
-}
-
-.btn-primary:focus {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-```
-
-#### Secondary Button
-```css
-.btn-secondary {
-  background: transparent;
-  color: var(--text-primary);
-  border: 3px solid var(--border-primary);
-  padding: 0.875rem 1.75rem;
-  font-size: var(--text-base);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  border-color: var(--accent-yellow);
-  color: var(--accent-yellow);
-  background: var(--hover-bg);
-}
-
-.btn-secondary:focus {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-```
-
-#### Ghost Button
-```css
-.btn-ghost {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 2px solid transparent;
-  padding: 0.75rem 1.5rem;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-ghost:hover {
-  color: var(--text-primary);
-  border-bottom-color: var(--accent-yellow);
-}
-```
+All buttons support `:disabled`, `:hover`, `:focus`, and `:active` states.
 
 ### Panels & Cards
 
-#### Primary Panel
-```css
-.panel {
-  background: var(--bg-secondary);
-  border: 3px solid var(--border-primary);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.panel-elevated {
-  background: var(--bg-tertiary);
-  border-color: var(--border-secondary);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-.panel-accent {
-  border-color: var(--accent-yellow);
-  background: var(--bg-secondary);
-}
-```
-
-#### Light Header Panel (for small headers)
-```css
-.panel-header-light {
-  background: var(--bg-accent-light);
-  border: 3px solid var(--text-inverse);
-  border-radius: 0.25rem;
-  padding: 0.5rem 1rem;
-  display: inline-block;
-}
-
-.panel-header-light h4,
-.panel-header-light p {
-  color: var(--text-inverse);
-  margin: 0;
-}
-```
+- **`.panel`**: Base panel with secondary background
+- **`.panel-elevated`**: Elevated panel with tertiary background and stronger shadow
+- **`.panel-accent`**: Panel with yellow accent border
+- **`.panel-header-light`**: Light background header panel (for small headers)
 
 ### Input Fields
 
-#### Text Input
-```css
-.input {
-  background: var(--bg-primary);
-  border: 3px solid var(--border-primary);
-  border-radius: 0.25rem;
-  padding: 0.75rem 1rem;
-  font-size: var(--text-base);
-  color: var(--text-primary);
-  font-family: var(--font-primary);
-  transition: all 0.2s ease;
-  width: 100%;
-}
+- **`.input`**: Text input field with dark background and border
+- **`.textarea`**: Textarea with same styling, resizable vertically
 
-.input:focus {
-  outline: none;
-  border-color: var(--accent-yellow);
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
+Both support `:focus`, `:hover`, `:disabled`, and `::placeholder` states.
 
-.input:hover {
-  border-color: var(--border-secondary);
-}
+### Form Controls
 
-.input::placeholder {
-  color: var(--text-tertiary);
-}
-```
-
-#### Textarea
-```css
-.textarea {
-  background: var(--bg-primary);
-  border: 3px solid var(--border-primary);
-  border-radius: 0.25rem;
-  padding: 0.75rem 1rem;
-  font-size: var(--text-base);
-  color: var(--text-primary);
-  font-family: var(--font-primary);
-  min-height: 120px;
-  resize: vertical;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.textarea:focus {
-  outline: none;
-  border-color: var(--accent-yellow);
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-```
-
-### Checkboxes & Radio Buttons
-
-#### Checkbox
-```css
-.checkbox {
-  appearance: none;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 3px solid var(--border-primary);
-  border-radius: 0.25rem;
-  background: var(--bg-primary);
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.checkbox:hover {
-  border-color: var(--accent-yellow);
-}
-
-.checkbox:checked {
-  background: var(--accent-yellow);
-  border-color: var(--accent-yellow);
-}
-
-.checkbox:checked::after {
-  content: '✓';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--text-inverse);
-  font-weight: var(--weight-bold);
-  font-size: 1rem;
-}
-
-.checkbox:focus {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-```
-
-#### Radio Button
-```css
-.radio {
-  appearance: none;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 3px solid var(--border-primary);
-  border-radius: 50%;
-  background: var(--bg-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.radio:hover {
-  border-color: var(--accent-yellow);
-}
-
-.radio:checked {
-  border-color: var(--accent-yellow);
-  background: var(--accent-yellow);
-  box-shadow: inset 0 0 0 4px var(--bg-primary);
-}
-
-.radio:focus {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-```
+- **`.checkbox`**: Custom-styled checkbox with yellow accent when checked
+- **`.radio`**: Custom-styled radio button with yellow accent when selected
 
 ### Tag Lists
 
-#### Tag Container
-```css
-.tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.tag-item {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.375rem 0.875rem;
-  border: 2px solid var(--border-primary);
-  border-radius: 0.375rem;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  transition: all 0.2s ease;
-}
-
-.tag-item:hover {
-  border-color: var(--accent-yellow);
-  color: var(--accent-yellow);
-  background: var(--hover-bg);
-  transform: translateY(-1px);
-}
-
-.tag-item.active {
-  border-color: var(--accent-yellow);
-  background: var(--accent-yellow);
-  color: var(--text-inverse);
-  font-weight: var(--weight-bold);
-}
-
-/* Color Variants */
-.tag-item.tag-blue {
-  border-color: var(--accent-blue);
-  color: var(--accent-blue);
-}
-
-.tag-item.tag-green {
-  border-color: var(--accent-green);
-  color: var(--accent-green);
-}
-
-.tag-item.tag-purple {
-  border-color: var(--accent-purple);
-  color: var(--accent-purple);
-}
-
-.tag-item.tag-pink {
-  border-color: var(--accent-pink);
-  color: var(--accent-pink);
-}
-```
+- **`.tag-list`**: Container for tags (flex, wrap)
+- **`.tag-item`**: Individual tag item
+- **`.tag-item.active`**: Active tag state
+- **`.tag-item.tag-blue`**, **`.tag-item.tag-green`**, **`.tag-item.tag-purple`**, **`.tag-item.tag-pink`**: Color variants
 
 ### Badges
 
-#### Badge
-```css
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.625rem;
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border: 2px solid currentColor;
-  border-radius: 0.25rem;
-  background: transparent;
-}
+- **`.badge`**: Base badge style
+- **`.badge-primary`**: Yellow badge
+- **`.badge-success`**: Green badge
+- **`.badge-warning`**: Orange badge
+- **`.badge-error`**: Red badge
 
-.badge-primary {
-  color: var(--accent-yellow);
-  border-color: var(--accent-yellow);
-}
-
-.badge-success {
-  color: var(--success);
-  border-color: var(--success);
-}
-
-.badge-warning {
-  color: var(--warning);
-  border-color: var(--warning);
-}
-
-.badge-error {
-  color: var(--error);
-  border-color: var(--error);
-}
-```
-
----
-
-## Animations
-
-### Transitions
-```css
-/* Standard Transition */
---transition-base: all 0.2s ease;
-
-/* Hover Transitions */
---transition-hover: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
-/* Active Transitions */
---transition-active: all 0.1s ease;
-```
-
-### Keyframe Animations
-
-#### Subtle Bounce
-```css
-@keyframes bounce-subtle {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
-/* Usage */
-.bounce-subtle {
-  animation: bounce-subtle 2s ease-in-out infinite;
-}
-```
-
-#### Pulse Glow
-```css
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(255, 212, 59, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(255, 212, 59, 0);
-  }
-}
-
-/* Usage */
-.pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-```
-
-#### Slide In (from bottom)
-```css
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Usage */
-.slide-up {
-  animation: slide-up 0.3s ease-out;
-}
-```
-
-#### Fade In
-```css
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Usage */
-.fade-in {
-  animation: fade-in 0.4s ease-out;
-}
-```
-
----
-
-## Spacing System
-
-```css
-/* Spacing Scale */
---space-1: 0.25rem;   /* 4px */
---space-2: 0.5rem;    /* 8px */
---space-3: 0.75rem;   /* 12px */
---space-4: 1rem;      /* 16px */
---space-5: 1.25rem;   /* 20px */
---space-6: 1.5rem;    /* 24px */
---space-8: 2rem;      /* 32px */
---space-10: 2.5rem;   /* 40px */
---space-12: 3rem;     /* 48px */
---space-16: 4rem;     /* 64px */
---space-20: 5rem;     /* 80px */
---space-24: 6rem;     /* 96px */
-```
-
----
-
-## Borders & Outlines
-
-### Border Styles
-```css
-/* Border Widths */
---border-thin: 1px;
---border-medium: 2px;
---border-thick: 3px;
---border-extra-thick: 4px;
-
-/* Border Radius */
---radius-sm: 0.25rem;    /* 4px */
---radius-md: 0.5rem;     /* 8px */
---radius-lg: 0.75rem;    /* 12px */
---radius-xl: 1rem;       /* 16px */
---radius-full: 9999px;   /* Full circle/pill */
-```
-
-### Outline Styles
-```css
-/* Focus Outlines - Always visible for accessibility */
-:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-```
-
----
-
-## Shadows
-
-```css
-/* Elevation Shadows */
---shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
---shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
---shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
---shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
-
-/* Colored Glow Shadows */
---shadow-glow-yellow: 0 0 20px rgba(255, 212, 59, 0.3);
---shadow-glow-blue: 0 0 20px rgba(79, 195, 247, 0.3);
---shadow-glow-green: 0 0 20px rgba(102, 187, 106, 0.3);
-```
+**Reference**: See `theme.css` for complete component implementations.
 
 ---
 
 ## Layout Patterns
 
-### Container
-```css
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--space-4);
-}
+### Containers (from `theme.css`)
 
-.container-wide {
-  max-width: 1400px;
-}
+- **`.container`**: Max-width 1200px, centered
+- **`.container-wide`**: Max-width 1400px
+- **`.container-narrow`**: Max-width 800px
 
-.container-narrow {
-  max-width: 800px;
-}
-```
+### Grid System (from `theme.css`)
 
-### Grid System
-```css
-.grid {
-  display: grid;
-  gap: var(--space-6);
-}
+- **`.grid`**: Base grid with gap
+- **`.grid-2`**, **`.grid-3`**, **`.grid-4`**: Column variants
 
-.grid-2 {
-  grid-template-columns: repeat(2, 1fr);
-}
+### Flexbox Utilities (from `theme.css`)
 
-.grid-3 {
-  grid-template-columns: repeat(3, 1fr);
-}
+- **`.flex`**: Display flex
+- **`.flex-col`**: Flex column direction
+- **`.items-center`**, **`.items-start`**, **`.items-end`**: Alignment
+- **`.justify-center`**, **`.justify-between`**, **`.justify-start`**, **`.justify-end`**: Justification
+- **`.gap-1`**, **`.gap-2`**, **`.gap-3`**, **`.gap-4`**, **`.gap-6`**, **`.gap-8`**: Gap utilities
 
-.grid-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-```
-
-### Flexbox Utilities
-```css
-.flex {
-  display: flex;
-}
-
-.flex-col {
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.gap-2 {
-  gap: var(--space-2);
-}
-
-.gap-4 {
-  gap: var(--space-4);
-}
-```
+**Reference**: See `theme.css` for complete layout utilities.
 
 ---
 
-## Accessibility Guidelines
+## Animations
 
-### Color Contrast
-- All text must meet WCAG AA standards (4.5:1 for normal text, 3:1 for large text)
-- Interactive elements must have clear focus states
-- Never rely solely on color to convey information
+All animations are defined in `theme.css`:
+
+### Keyframe Animations
+- `@keyframes bounce-subtle`: Subtle bounce effect
+- `@keyframes pulse-glow`: Pulsing glow effect
+- `@keyframes slide-up`: Slide up from bottom
+- `@keyframes fade-in`: Fade in effect
+
+### Animation Utility Classes
+- **`.bounce-subtle`**: Apply subtle bounce animation
+- **`.pulse-glow`**: Apply pulsing glow animation
+- **`.slide-up`**: Apply slide-up animation (0.3s)
+- **`.fade-in`**: Apply fade-in animation (0.4s)
+
+### Transition Variables
+- `--transition-base`: Standard transition (0.2s ease)
+- `--transition-hover`: Hover transition (cubic-bezier)
+- `--transition-active`: Active transition (0.1s ease)
+
+**Reference**: See `theme.css` for complete animation definitions.
+
+---
+
+## Spacing System
+
+All spacing values are defined in `theme.css` as `--space-1` through `--space-24`:
+- `--space-1`: 0.25rem (4px)
+- `--space-2`: 0.5rem (8px)
+- `--space-4`: 1rem (16px)
+- `--space-6`: 1.5rem (24px)
+- `--space-8`: 2rem (32px)
+- ... and more
+
+**Reference**: See `theme.css` for complete spacing scale.
+
+---
+
+## Borders & Outlines
+
+All border styles are defined in `theme.css`:
+
+### Border Widths
+- `--border-thin`: 1px
+- `--border-medium`: 2px
+- `--border-thick`: 3px
+- `--border-extra-thick`: 4px
+
+### Border Radius
+- `--radius-sm`: 0.25rem (4px)
+- `--radius-md`: 0.5rem (8px)
+- `--radius-lg`: 0.75rem (12px)
+- `--radius-xl`: 1rem (16px)
+- `--radius-full`: 9999px (full circle/pill)
 
 ### Focus States
-- All interactive elements must have visible focus indicators
-- Use `:focus-visible` for keyboard navigation
-- Focus rings should use `var(--focus-ring)` color
+All interactive elements have accessible focus states using `:focus-visible` and `var(--focus-ring)`.
 
-### Screen Reader Support
-- Use semantic HTML elements
-- Provide ARIA labels where needed
-- Ensure logical heading hierarchy
+**Reference**: See `theme.css` for complete border definitions.
+
+---
+
+## Shadows
+
+All shadow values are defined in `theme.css`:
+
+### Elevation Shadows
+- `--shadow-sm`: Small shadow
+- `--shadow-md`: Medium shadow
+- `--shadow-lg`: Large shadow
+- `--shadow-xl`: Extra large shadow
+
+### Colored Glow Shadows
+- `--shadow-glow-yellow`: Yellow glow
+- `--shadow-glow-blue`: Blue glow
+- `--shadow-glow-green`: Green glow
+
+**Reference**: See `theme.css` for complete shadow definitions.
+
+---
+
+## Responsive Design
+
+Responsive breakpoints are defined in `theme.css`:
+
+### Breakpoints
+- **Mobile (Base)**: 320px+ - Default styles
+- **Tablet**: `@media (min-width: 768px)` - Container padding and grid gaps increased
+- **Desktop**: `@media (min-width: 1024px)` - Container padding further increased
+
+### Approach
+All components are **mobile-first**. Base styles target mobile, with enhancements at tablet and desktop breakpoints.
+
+**Reference**: See `theme.css` for complete responsive styles.
+
+---
+
+## Accessibility
+
+Accessibility features are built into `theme.css`:
+
+### Focus States
+- All interactive elements use `:focus-visible` with `var(--focus-ring)`
+- Proper outline offset and border radius
+
+### Reduced Motion
+- `@media (prefers-reduced-motion: reduce)` disables animations for users who prefer reduced motion
+
+### Color Contrast
+- All color combinations meet WCAG AA standards (4.5:1 for normal text, 3:1 for large text)
+
+### Disabled States
+- All interactive elements support `:disabled` state with appropriate styling
+
+**Reference**: See `theme.css` for complete accessibility implementations.
 
 ---
 
 ## Usage Examples
 
 ### Button Group
+
 ```html
 <div class="flex gap-4">
   <button class="btn-primary">Save Memory</button>
@@ -835,6 +308,7 @@ small, .text-sm {
 ```
 
 ### Panel with Light Header
+
 ```html
 <div class="panel">
   <div class="panel-header-light">
@@ -845,6 +319,7 @@ small, .text-sm {
 ```
 
 ### Tag List
+
 ```html
 <div class="tag-list">
   <span class="tag-item tag-blue">Work</span>
@@ -854,6 +329,7 @@ small, .text-sm {
 ```
 
 ### Input Group
+
 ```html
 <div class="flex flex-col gap-4">
   <label class="label">Memory Title</label>
@@ -862,34 +338,91 @@ small, .text-sm {
 </div>
 ```
 
+### Animated Content
+
+```html
+<!-- Using utility classes -->
+<div class="slide-up">Content that slides up</div>
+<div class="fade-in">Content that fades in</div>
+
+<!-- Or using CSS directly -->
+<div style="animation: slide-up 0.3s ease-out;">Content</div>
+```
+
+### Responsive Grid
+
+```html
+<div class="container">
+  <div class="grid grid-2">
+    <div class="panel">Item 1</div>
+    <div class="panel">Item 2</div>
+  </div>
+</div>
+```
+
 ---
 
 ## Implementation Notes
 
-1. **CSS Custom Properties**: All design tokens are available as CSS custom properties for easy theming and runtime updates.
+1. **CSS Custom Properties**: All design tokens are available as CSS custom properties in `theme.css` for easy theming and runtime updates.
 
-2. **Dark Mode First**: This style guide assumes dark mode as the default. If light mode is needed, invert the background and text colors while maintaining contrast ratios.
+2. **Dark Mode First**: This style guide assumes dark mode as the default. All colors are optimized for dark backgrounds with high contrast.
 
-3. **Animations**: Keep animations subtle and purposeful. Use `prefers-reduced-motion` media query to disable animations for users who prefer reduced motion:
-   ```css
-   @media (prefers-reduced-motion: reduce) {
-     * {
-       animation: none !important;
-       transition: none !important;
-     }
-   }
-   ```
+3. **Animations**: Keep animations subtle and purposeful. The `prefers-reduced-motion` media query in `theme.css` automatically disables animations for users who prefer reduced motion.
 
-4. **Responsive Design**: All components should be mobile-first and scale gracefully across breakpoints:
-   - Mobile: 320px - 768px
-   - Tablet: 768px - 1024px
-   - Desktop: 1024px+
+4. **Responsive Design**: All components are mobile-first and scale gracefully across breakpoints (320px → 768px → 1024px+).
 
 5. **Browser Support**: Target modern browsers that support CSS custom properties and Grid/Flexbox.
+
+6. **Import the Theme**: Always import `styles/theme.css` in your main application file:
+   ```typescript
+   import './styles/theme.css';
+   ```
+
+---
+
+## Quick Reference
+
+### Most Common CSS Variables
+
+```css
+/* Backgrounds */
+--bg-primary, --bg-secondary, --bg-tertiary
+
+/* Text */
+--text-primary, --text-secondary, --text-inverse
+
+/* Accents */
+--accent-yellow, --accent-blue, --accent-green
+
+/* Borders */
+--border-primary, --border-thick, --radius-md
+
+/* Spacing */
+--space-4, --space-6, --space-8
+
+/* Interactive */
+--focus-ring, --hover-bg
+```
+
+### Most Common Component Classes
+
+- `.btn-primary`, `.btn-secondary`, `.btn-ghost`
+- `.panel`, `.panel-elevated`, `.panel-accent`
+- `.input`, `.textarea`
+- `.tag-list`, `.tag-item`
+- `.badge`, `.badge-primary`
+
+### Most Common Utilities
+
+- `.flex`, `.flex-col`, `.gap-4`
+- `.container`, `.grid`, `.grid-2`
+- `.slide-up`, `.fade-in`
+
+**For complete reference, see `frontend/src/styles/theme.css`.**
 
 ---
 
 ## Inspiration Credits
 
 Design aesthetic inspired by [MotherDuck](https://motherduck.com)'s playful and caring visual identity, adapted for dark mode with vibrant, high-contrast colors and bold geometric shapes.
-
