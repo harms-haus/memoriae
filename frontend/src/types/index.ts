@@ -23,10 +23,27 @@ export interface Event {
   id: string
   seed_id: string
   event_type: string
-  patch_json: unknown[]
+  patch_json: Array<{
+    op: 'add' | 'remove' | 'replace'
+    path: string
+    value?: unknown
+  }>
   enabled: boolean
   created_at: string
   automation_id: string | null
+}
+
+export interface SeedState {
+  seed: string
+  timestamp: string
+  metadata: Record<string, unknown>
+  tags?: Array<{ id: string; name: string }>
+  categories?: Array<{ id: string; name: string; path: string }>
+}
+
+export interface SeedWithState extends Seed {
+  current_state?: SeedState
+  base_state?: SeedState
 }
 
 export interface Category {
