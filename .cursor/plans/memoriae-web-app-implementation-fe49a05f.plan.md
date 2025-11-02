@@ -294,8 +294,8 @@ memoriae/
 - [x] Initialize project structure: create backend and frontend directories, set up TypeScript configs, install dependencies (Express, React, PostgreSQL client, etc.)
 - [x] Create database schema and migrations: users, seeds, events, categories, tags, and all junction tables with proper indexes
 - [x] Implement OAuth authentication with Google and GitHub providers, JWT token management, session handling
-- [ ] Build basic seed CRUD API endpoints, seed creation/reading with base state structure
-- [ ] Implement timeline event system: JSON Patch storage, event application logic, enabled/disabled state tracking
+- [x] Build basic seed CRUD API endpoints, seed creation/reading with base state structure
+- [x] Implement timeline event system: JSON Patch storage, event application logic, enabled/disabled state tracking
 - [ ] Create function to compute current seed state from enabled events, handle JSON Patch application correctly
 - [ ] Build base automation framework with interface for process(), calculatePressure(), and handlePressure() methods
 - [ ] Create OpenRouter API client, handle user-provided API keys, model selection, request/response handling
