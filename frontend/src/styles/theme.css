@@ -1,2 +1,114 @@
-/* Style guide CSS variables will go here */
+/* Style guide CSS variables */
 
+:root {
+  /* Background Colors */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1a1a1a;
+  --bg-elevated: #222222;
+
+  /* Text Colors */
+  --text-primary: #f0f0f0;
+  --text-secondary: #d0d0d0;
+  --text-tertiary: #b0b0b0;
+  --text-inverse: #0a0a0a;
+
+  /* Accent Colors */
+  --accent-yellow: #ffd43b;
+  --accent-blue: #4fc3f7;
+  --accent-green: #66bb6a;
+  --accent-purple: #ab47bc;
+  --accent-pink: #ec407a;
+  --accent-orange: #ff9800;
+
+  /* Border Colors */
+  --border-primary: #3a3a3a;
+  --border-secondary: #4a4a4a;
+  --border-accent: #6a6a6a;
+  --border-vibrant: #ffd43b;
+  --border-glow: rgba(255, 212, 59, 0.3);
+
+  /* Interactive States */
+  --hover-overlay: rgba(255, 255, 255, 0.05);
+  --hover-border: #ffd43b;
+  --hover-bg: rgba(255, 212, 59, 0.1);
+  --focus-ring: rgba(255, 212, 59, 0.4);
+  --focus-border: #ffd43b;
+  --active-bg: rgba(255, 212, 59, 0.15);
+
+  /* Typography */
+  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+                  'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+                  'Helvetica Neue', sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code',
+               'Consolas', 'Roboto Mono', monospace;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+
+  /* Font Weights */
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus states for accessibility */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

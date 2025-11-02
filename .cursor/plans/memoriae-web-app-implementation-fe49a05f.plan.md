@@ -293,7 +293,7 @@ memoriae/
 
 - [x] Initialize project structure: create backend and frontend directories, set up TypeScript configs, install dependencies (Express, React, PostgreSQL client, etc.)
 - [x] Create database schema and migrations: users, seeds, events, categories, tags, and all junction tables with proper indexes
-- [ ] Implement OAuth authentication with Google and GitHub providers, JWT token management, session handling
+- [x] Implement OAuth authentication with Google and GitHub providers, JWT token management, session handling
 - [ ] Build basic seed CRUD API endpoints, seed creation/reading with base state structure
 - [ ] Implement timeline event system: JSON Patch storage, event application logic, enabled/disabled state tracking
 - [ ] Create function to compute current seed state from enabled events, handle JSON Patch application correctly
