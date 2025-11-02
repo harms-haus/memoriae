@@ -1,0 +1,38 @@
+.view-container {
+  padding: var(--space-6) var(--space-4);
+  padding-bottom: 180px; /* Space for editor (~108px) + navigation (72px) */
+  min-height: 100vh;
+}
+
+/* Settings view has different padding since editor is hidden */
+.view-container.settings-view {
+  padding-bottom: 72px; /* Just navigation height */
+}
+
+.settings-section {
+  margin-bottom: var(--space-8);
+  padding: var(--space-6);
+  background: var(--bg-secondary);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+
+.settings-section h3 {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-xl);
+}
+
+.settings-item {
+  margin-bottom: var(--space-4);
+}
+
+.settings-item .label {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.settings-item p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+

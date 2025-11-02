@@ -1,6 +1,7 @@
 // Entry point for the backend server
 import app from './app'
 import { config } from './config'
+import { db } from './db/connection'
 import { AutomationRegistry } from './services/automation/registry'
 import { TagAutomation } from './services/automation/tag'
 import { CategorizeAutomation } from './services/automation/categorize'
@@ -13,6 +14,56 @@ const PORT = config.port
  */
 async function initializeServices() {
   try {
+    // Test database connection first
+    console.log('Testing database connection...')
+    const dbConfig = {
+      host: process.env.DB_HOST || process.env.DATABASE_URL?.match(/@([^:]+):/)?.[1] || 'localhost',
+      port: process.env.DB_PORT || process.env.DATABASE_URL?.match(/:(\d+)\//)?.[1] || '5432',
+      database: process.env.DB_NAME || 'memoriae',
+      user: process.env.DB_USER || 'postgres',
+    }
+    console.log(`  Connecting to: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`)
+    
+    try {
+      await db.raw('SELECT 1')
+      console.log('✓ Database connection successful')
+    } catch (dbError: any) {
+      console.error('✗ Database connection failed:', dbError.message)
+      console.error('  Connection details:', dbConfig)
+      
+      if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ETIMEDOUT') {
+        console.error('  → Database server is not accessible. Check:')
+        console.error('    1. Database server is running and accessible')
+        console.error('    2. Network connectivity (firewall, VPN, AWS Security Group)')
+        console.error('    3. Correct host/port in .env')
+        console.error('    4. For AWS RDS: Security group allows your IP on port 5432')
+      } else if (dbError.code === '3D000') {
+        console.error('  → Database does not exist. Options:')
+        console.error('    1. Create the database: CREATE DATABASE memoriae;')
+        console.error('    2. Or update DB_NAME in .env to an existing database')
+        console.error('    3. Then run migrations: npm run migrate')
+      } else if (dbError.code === '28P01') {
+        console.error('  → Authentication failed. Check:')
+        console.error('    1. DB_USER and DB_PASSWORD in .env are correct')
+        console.error('    2. Database user has proper permissions')
+      } else if (dbError.message?.includes('timeout') || dbError.message?.includes('Timeout')) {
+        console.error('  → Connection timeout. Check:')
+        console.error('    1. Database server is running')
+        console.error('    2. Network connectivity (ping/telnet the host)')
+        console.error('    3. Firewall/security groups allow connections')
+        console.error('    4. Database credentials are correct')
+        console.error('    5. For AWS RDS: Database is publicly accessible')
+      }
+      
+      // Show actual connection config (without password)
+      if (process.env.DATABASE_URL) {
+        const safeUrl = process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@')
+        console.error('  DATABASE_URL:', safeUrl)
+      }
+      
+      throw dbError
+    }
+    
     console.log('Initializing automations...')
     
     // Create automation instances

@@ -1,0 +1,41 @@
+.seed-editor-wrapper {
+  position: fixed;
+  bottom: 72px; /* Height of bottom navigation */
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border-top: var(--border-thick) solid var(--border-primary);
+  padding: var(--space-4);
+  z-index: 999;
+}
+
+.seed-editor-input {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  resize: none;
+  min-height: 60px;
+  max-height: 200px;
+  transition: var(--transition-base);
+}
+
+.seed-editor-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.seed-editor-input:focus {
+  outline: none;
+  border-color: var(--border-vibrant);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.seed-editor-input:hover {
+  border-color: var(--border-secondary);
+}
+

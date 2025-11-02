@@ -1,5 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { BottomNavigation, type ViewType } from './components/BottomNavigation'
+import { SeedEditor } from './components/SeedEditor'
+import {
+  SeedsView,
+  TimelineView,
+  CategoriesView,
+  TagsView,
+  SettingsView,
+} from './components/views'
 import './styles/theme.css'
 
 function LoginPage() {
@@ -127,7 +136,8 @@ function LoginPage() {
 }
 
 function AppContent() {
-  const { authenticated, loading, user, logout } = useAuth()
+  const { authenticated, loading } = useAuth()
+  const [activeView, setActiveView] = useState<ViewType>('seeds')
 
   if (loading) {
     return (
@@ -148,57 +158,37 @@ function AppContent() {
     return <LoginPage />
   }
 
+  const renderView = () => {
+    switch (activeView) {
+      case 'seeds':
+        return <SeedsView />
+      case 'timeline':
+        return <TimelineView />
+      case 'categories':
+        return <CategoriesView />
+      case 'tags':
+        return <TagsView />
+      case 'settings':
+        return <SettingsView />
+      default:
+        return <SeedsView />
+    }
+  }
+
+  const showEditor = activeView !== 'settings'
+
   return (
     <div style={{
       minHeight: '100vh',
       background: 'var(--bg-primary)',
       color: 'var(--text-primary)',
-      padding: 'var(--space-6)',
+      paddingBottom: showEditor ? '180px' : '72px', // Space for editor + nav or just nav
     }}>
-      <header style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 'var(--space-8)',
-        paddingBottom: 'var(--space-4)',
-        borderBottom: '3px solid var(--border-primary)',
-      }}>
-        <h1 style={{
-          fontSize: 'var(--text-2xl)',
-          fontWeight: 'var(--weight-bold)',
-        }}>Memoriae</h1>
-        
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-4)',
-        }}>
-          <span style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--text-secondary)',
-          }}>
-            {user?.name} ({user?.email})
-          </span>
-          <button
-            onClick={logout}
-            style={{
-              padding: 'var(--space-2) var(--space-4)',
-              background: 'var(--bg-secondary)',
-              border: '3px solid var(--border-primary)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-            }}
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
-      <main>
-        <p>Welcome to Memoriae! Your authenticated app is ready.</p>
-      </main>
+      {renderView()}
+      
+      {showEditor && <SeedEditor />}
+      
+      <BottomNavigation activeView={activeView} onViewChange={setActiveView} />
     </div>
   )
 }

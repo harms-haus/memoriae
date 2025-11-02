@@ -107,7 +107,9 @@ class ApiClient {
     if (redirect) {
       params.set('redirect', redirect)
     }
-    return `${API_URL}/auth/google?${params.toString()}`
+    // Use relative path to go through Vite proxy (better for development)
+    // The proxy will forward to the backend which redirects to Google
+    return `/api/auth/google?${params.toString()}`
   }
 
   getGithubAuthUrl(redirect?: string): string {
@@ -115,7 +117,9 @@ class ApiClient {
     if (redirect) {
       params.set('redirect', redirect)
     }
-    return `${API_URL}/auth/github?${params.toString()}`
+    // Use relative path to go through Vite proxy (better for development)
+    // The proxy will forward to the backend which redirects to GitHub
+    return `/api/auth/github?${params.toString()}`
   }
 
   // Generic request methods
