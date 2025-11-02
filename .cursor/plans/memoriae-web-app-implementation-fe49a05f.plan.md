@@ -296,9 +296,9 @@ memoriae/
 - [x] Implement OAuth authentication with Google and GitHub providers, JWT token management, session handling
 - [x] Build basic seed CRUD API endpoints, seed creation/reading with base state structure
 - [x] Implement timeline event system: JSON Patch storage, event application logic, enabled/disabled state tracking
-- [ ] Create function to compute current seed state from enabled events, handle JSON Patch application correctly
-- [ ] Build base automation framework with interface for process(), calculatePressure(), and handlePressure() methods
-- [ ] Create OpenRouter API client, handle user-provided API keys, model selection, request/response handling
+- [x] Create function to compute current seed state from enabled events, handle JSON Patch application correctly
+- [x] Build base automation framework with interface for process(), calculatePressure(), and handlePressure() methods
+- [x] Create OpenRouter API client, handle user-provided API keys, model selection, request/response handling
 - [ ] Implement TagAutomation: calls OpenRouter to generate tags, creates ADD_TAG events, calculates pressure
 - [ ] Implement CategorizeAutomation: calls OpenRouter for category assignment, creates SET_CATEGORY events, handles hierarchy
 - [ ] Set up Bull/BullMQ queue system with Redis, job processors for automation execution, error handling
