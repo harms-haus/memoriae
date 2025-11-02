@@ -5,24 +5,32 @@
   right: 0;
   background: var(--bg-secondary);
   border-top: var(--border-thick) solid var(--border-primary);
-  padding: var(--space-4);
+  padding: 0;
   z-index: 999;
+  gap: var(--space-2);
 }
 
+.seed-editor-container {
+  width: 100%;
+  overflow: hidden; /* Clip toolbar animation */
+  position: relative;
+}
+
+/* Base textarea styles */
 .seed-editor-input {
   width: 100%;
-  background: var(--bg-tertiary);
-  border: var(--border-thick) solid var(--border-primary);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
+  background: transparent; /* No background - unified panel look */
+  border: none; /* No border - unified panel look */
+  border-radius: 0; /* No border radius */
+  padding: var(--space-2); /* Reduced padding for more text space */
   color: var(--text-primary);
   font-family: var(--font-primary);
   font-size: var(--text-base);
   line-height: 1.6;
   resize: none;
-  min-height: 60px;
-  max-height: 200px;
-  transition: var(--transition-base);
+  transition: height 1s ease-in-out, padding-top 1s ease-in-out, min-height 1s ease-in-out;
+  box-sizing: border-box;
+  /* Overflow handled per-stage */
 }
 
 .seed-editor-input::placeholder {
@@ -31,11 +39,291 @@
 
 .seed-editor-input:focus {
   outline: none;
-  border-color: var(--border-vibrant);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  /* No border to change color - unified panel */
 }
 
 .seed-editor-input:hover {
-  border-color: var(--border-secondary);
+  /* No border to change color - unified panel */
+}
+
+/* Stage-based styling - all in one component */
+
+/* Small stage textarea - NO SCROLLBAR, always show all content */
+.seed-editor-stage-small {
+  min-height: 60px;
+  /* No max-height - textarea grows to fit all content */
+  overflow-x: hidden;
+  overflow-y: hidden; /* No scrollbar - content always visible */
+  /* Smooth expansion animation */
+  transition: all 1s ease-in-out;
+  padding: var(--space-4);
+}
+
+/* Medium stage container */
+.seed-editor-container.seed-editor-stage-medium {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Clip toolbar animation */
+}
+
+/* Medium stage textarea - Auto-grows with content, NO SCROLLBAR */
+.seed-editor-stage-medium {
+  min-height: 300px; /* Minimum height - expands upward to this over 1000ms */
+  /* No max-height - textarea grows to fit ALL content */
+  overflow-x: hidden;
+  overflow-y: hidden; /* NO SCROLLBAR - content always visible */
+  /* Smooth animated expansion upward to 300px min-height over 1000ms */
+  transition: all 1s ease-in-out;
+  /* Ensure box-sizing accounts for padding */
+  box-sizing: border-box;
+  padding: var(--space-4);
+  padding-top: calc(var(--space-4) + 20px) !important; 
+}
+
+.seed-editor-toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-2);
+  align-items: center;
+  z-index: 1;
+  /* Slide down from underneath content - 1000ms ease-in-out, starts after textarea expansion */
+  animation: slide-down-toolbar 1s ease-in-out 1s both; /* 1s delay after textarea, then 1s animation */
+  opacity: 1;
+  background: transparent; /* No background - unified panel */
+  border: none; /* No border - unified panel */
+  padding-bottom: var(--space-2);
+  /* Ensure toolbar doesn't interfere with textarea focus */
+  pointer-events: none;
+  justify-content: flex-start; /* Align items to left, zen button will be on right */
+
+  transform: translateY(-100%); /* Start above content */
+}
+
+.seed-editor-toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg-tertiary);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition-base);
+  padding: 0;
+  /* Re-enable pointer events on buttons */
+  pointer-events: auto;
+}
+
+.seed-editor-toolbar-button:hover {
+  background: var(--hover-bg);
+  border-color: var(--hover-border);
+}
+
+.seed-editor-toolbar-button:focus {
+  outline: none;
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.seed-editor-toolbar-button:active {
+  background: var(--active-bg);
+}
+
+.seed-editor-zen-toggle-button {
+  margin-left: auto; /* Push to the right side of toolbar */
+}
+
+.seed-editor-zen-toggle-button:hover {
+  background: var(--bg-accent-light);
+  border-color: var(--accent-yellow);
+  color: var(--accent-yellow);
+}
+
+/* Zen mode - Fullscreen smooth expansion */
+.seed-editor-zen-mode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-primary);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  animation: expand-fullscreen 0.4s ease-out;
+  overflow: hidden;
+}
+
+@keyframes expand-fullscreen {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Zen mode UI container - toolbar and close button side-by-side */
+.seed-editor-zen-ui-container {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  transition: opacity 0.3s ease-out;
+}
+
+.seed-editor-zen-ui-container.visible {
+  opacity: 1;
+}
+
+.seed-editor-zen-ui-container.faded {
+  opacity: 0.2;
+}
+
+.seed-editor-zen-close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--bg-tertiary);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition-base);
+  padding: 0;
+}
+
+.seed-editor-zen-close-button:hover {
+  background: var(--hover-bg);
+  border-color: var(--hover-border);
+  opacity: 1 !important; /* Force full opacity on hover */
+}
+
+.seed-editor-zen-close-button:focus {
+  outline: none;
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* Zen mode toolbar - part of side-by-side container */
+.seed-editor-zen-toolbar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+
+.seed-editor-zen-toolbar-button {
+  width: 40px;
+  height: 40px;
+}
+
+.seed-editor-zen-toolbar-button:hover {
+  opacity: 1 !important; /* Force full opacity on hover */
+}
+
+/* Zen mode textarea - fullscreen with reduced padding (half on sides) */
+.seed-editor-zen-input {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  border: none;
+  /* Reduce left/right padding by half, keep top/bottom */
+  padding-top: var(--space-24); /* 96px top */
+  padding-bottom: var(--space-24); /* 96px bottom */
+  padding-left: calc(var(--space-24) / 2); /* 48px left (half) */
+  padding-right: calc(var(--space-24) / 2); /* 48px right (half) */
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: 1.2rem; /* 20% reduction from 1.5rem (24px) → 19.2px ≈ 1.2rem */
+  line-height: 1.8;
+  resize: none;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.seed-editor-zen-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.seed-editor-zen-input:focus {
+  outline: none;
+}
+
+/* Custom scrollbar styling for zen mode - subtle */
+.seed-editor-zen-input::-webkit-scrollbar {
+  width: 10px;
+}
+
+.seed-editor-zen-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.seed-editor-zen-input::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--radius-sm);
+}
+
+.seed-editor-zen-input::-webkit-scrollbar-thumb:hover {
+  background: var(--border-secondary);
+}
+
+/* Toolbar slide-down animation - slides down from underneath content (z-index) */
+@keyframes slide-down-toolbar {
+  from {
+    transform: translateY(-100%); /* Start above content */
+    opacity: 1; /* Fully opaque from the start */
+  }
+  to {
+    transform: translateY(0); /* End at normal position */
+    opacity: 1;
+  }
+}
+
+
+/* Save button and actions */
+.seed-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+  gap: var(--space-2);
+}
+
+.seed-editor-save-button {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
+  min-width: 80px;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .seed-editor-large-content {
+    width: 85%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .seed-editor-large-content {
+    width: 75%;
+  }
 }
 
