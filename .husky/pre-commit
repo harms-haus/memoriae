@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Load nvm if available (for npm/node via nvm)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Ensure npm is in PATH - add nvm's default node version path as fallback
+# This handles cases where nvm doesn't load properly in git hooks
+if [ -d "$HOME/.nvm/versions/node" ]; then
+  # Add the most recent node version (or use default if set)
+  DEFAULT_NODE=$(ls -t "$HOME/.nvm/versions/node" 2>/dev/null | head -1)
+  if [ -n "$DEFAULT_NODE" ] && [ -d "$HOME/.nvm/versions/node/$DEFAULT_NODE/bin" ]; then
+    export PATH="$HOME/.nvm/versions/node/$DEFAULT_NODE/bin:$PATH"
+  fi
+fi
+
+# Additional fallback paths
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+echo "Running type-check and tests..."
+
+echo "Backend checks..."
+cd backend && npm run type-check && npm run test:run && cd .. || exit 1
+
+echo "Frontend checks..."
+cd frontend && npm run type-check && npm run test:run && cd .. || exit 1
+
+echo "All checks passed!"
+
