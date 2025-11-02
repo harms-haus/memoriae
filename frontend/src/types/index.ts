@@ -12,11 +12,24 @@ export interface AuthStatus {
   user: User | null
 }
 
+export interface SeedState {
+  seed: string
+  timestamp: string
+  metadata: Record<string, unknown>
+  tags?: Array<{ id: string; name: string }>
+  categories?: Array<{ id: string; name: string; path: string }>
+}
+
 export interface Seed {
   id: string
   user_id: string
   seed_content: string
   created_at: string
+  currentState: SeedState
+}
+
+export interface CreateSeedDto {
+  content: string
 }
 
 export interface Event {
