@@ -1,8 +1,13 @@
 // Tests for base automation framework
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Seed, SeedState } from '../seeds'
 import type { OpenRouterClient } from '../openrouter/client'
 import { Automation, type AutomationContext, type CategoryChange } from './base'
+
+// Mock the queue service
+vi.mock('../queue/queue', () => ({
+  addAutomationJob: vi.fn().mockResolvedValue('job-id'),
+}))
 
 // Mock automation for testing
 class TestAutomation extends Automation {
@@ -118,10 +123,66 @@ describe('Automation base class', () => {
   })
 
   describe('handlePressure', () => {
-    it('should throw error by default (queue not implemented)', async () => {
+    it('should throw error if automation does not have an ID', async () => {
+      // Automation doesn't have an ID set
       await expect(
         automation.handlePressure(mockSeed, 75, mockContext)
-      ).rejects.toThrow('handlePressure() not implemented')
+      ).rejects.toThrow('Automation "test-automation" does not have an ID')
+    })
+
+    it('should add job to queue when pressure exceeds threshold', async () => {
+      const { addAutomationJob } = await import('../queue/queue')
+      
+      // Set automation ID
+      automation.id = 'auto-123'
+      
+      // Pressure above default threshold (50)
+      await automation.handlePressure(mockSeed, 75, mockContext)
+
+      expect(addAutomationJob).toHaveBeenCalledWith({
+        seedId: 'seed-123',
+        automationId: 'auto-123',
+        userId: 'user-123',
+        priority: 75,
+      })
+    })
+
+    it('should add job when called (handlePressure is only called when threshold is exceeded)', async () => {
+      const { addAutomationJob } = await import('../queue/queue')
+      vi.clearAllMocks()
+      
+      // Set automation ID
+      automation.id = 'auto-123'
+      
+      // handlePressure is called when pressure >= threshold, so it should always add a job
+      // Even if we pass a lower pressure, the method itself doesn't check threshold
+      // (that check happens before handlePressure is called)
+      await automation.handlePressure(mockSeed, 50, mockContext)
+
+      expect(addAutomationJob).toHaveBeenCalledWith({
+        seedId: 'seed-123',
+        automationId: 'auto-123',
+        userId: 'user-123',
+        priority: 50,
+      })
+    })
+
+    it('should use calculatePriority for job priority', async () => {
+      const { addAutomationJob } = await import('../queue/queue')
+      vi.clearAllMocks()
+      
+      // Set automation ID
+      automation.id = 'auto-123'
+      
+      // High pressure should be capped at 100 by calculatePriority
+      await automation.handlePressure(mockSeed, 150, mockContext)
+
+      expect(addAutomationJob).toHaveBeenCalledWith({
+        seedId: 'seed-123',
+        automationId: 'auto-123',
+        userId: 'user-123',
+        priority: 100, // calculatePriority caps at 100
+      })
     })
   })
 })

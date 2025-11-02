@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import authRoutes from './routes/auth'
 import eventsRoutes from './routes/events'
+import seedsRoutes from './routes/seeds'
 import { config } from './config'
 
 const app = express()
@@ -22,6 +23,7 @@ app.get('/health', (req: Request, res: Response) => {
 
 // API routes
 app.use('/api/auth', authRoutes)
+app.use('/api/seeds', seedsRoutes)
 app.use('/api', eventsRoutes)
 
 // Error handling middleware

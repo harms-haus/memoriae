@@ -299,9 +299,9 @@ memoriae/
 - [x] Create function to compute current seed state from enabled events, handle JSON Patch application correctly
 - [x] Build base automation framework with interface for process(), calculatePressure(), and handlePressure() methods
 - [x] Create OpenRouter API client, handle user-provided API keys, model selection, request/response handling
-- [ ] Implement TagAutomation: calls OpenRouter to generate tags, creates ADD_TAG events, calculates pressure
-- [ ] Implement CategorizeAutomation: calls OpenRouter for category assignment, creates SET_CATEGORY events, handles hierarchy
-- [ ] Set up Bull/BullMQ queue system with Redis, job processors for automation execution, error handling
+- [x] Implement TagAutomation: calls OpenRouter to generate tags, creates ADD_TAG events, calculates pressure
+- [x] Implement CategorizeAutomation: calls OpenRouter for category assignment, creates SET_CATEGORY events, handles hierarchy
+- [x] Set up Bull/BullMQ queue system with Redis, job processors for automation execution, error handling
 - [ ] Implement pressure points table and logic: track pressure per seed/automation, detect threshold crossing
 - [ ] Build category change detection: monitor renames, additions, removals, calculate and apply pressure to affected seeds
 - [ ] Create timer service that periodically evaluates pressure points, triggers re-evaluation queue jobs when thresholds reached

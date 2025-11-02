@@ -2,6 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { SeedsService } from '../services/seeds'
 import { authenticate } from '../middleware/auth'
+import { queueAutomationsForSeed } from '../services/queue'
 
 const router = Router()
 
@@ -64,6 +65,14 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     }
 
     const seed = await SeedsService.create(userId, { content })
+    
+    // Queue automation jobs for the new seed
+    // Fire and forget - don't wait for automations to complete
+    queueAutomationsForSeed(seed.id, userId).catch((error) => {
+      // Log error but don't fail the request
+      console.error('Failed to queue automations for seed:', error)
+    })
+    
     res.status(201).json(seed)
   } catch (error) {
     next(error)

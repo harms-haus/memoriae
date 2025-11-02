@@ -160,20 +160,18 @@ export abstract class Automation {
     context: AutomationContext
   ): Promise<void> {
     // Default implementation: add to queue for re-processing
-    // This will be implemented when queue system is built
-    // For now, this is a placeholder that can be overridden
+    if (!this.id) {
+      throw new Error(`Automation "${this.name}" does not have an ID`)
+    }
+
+    const { addAutomationJob } = await import('../queue/queue')
     
-    // In the future, this might look like:
-    // await AutomationQueue.add({
-    //   seedId: seed.id,
-    //   automationId: this.id!,
-    //   priority: this.calculatePriority(pressure),
-    // })
-    
-    throw new Error(
-      `handlePressure() not implemented for automation "${this.name}". ` +
-      'Override this method or ensure queue system is set up.'
-    )
+    await addAutomationJob({
+      seedId: seed.id,
+      automationId: this.id,
+      userId: context.userId,
+      priority: this.calculatePriority(pressure),
+    })
   }
 
   /**
