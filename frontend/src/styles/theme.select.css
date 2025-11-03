@@ -1,0 +1,74 @@
+/* 
+ * Theme Select - Select Dropdown Controls and Properties
+ * 
+ * Contains all select dropdown-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --select-bg: Select background color (default: --input-bg)
+ * - --select-border: Select border color (default: --input-border)
+ * - --select-border-radius: Select border radius (default: --input-border-radius)
+ * - --select-padding-x: Horizontal padding (default: --input-padding-x)
+ * - --select-padding-y: Vertical padding (default: --input-padding-y)
+ * - --select-color: Select text color (default: --input-color)
+ * - --select-font-size: Select font size (default: --input-font-size)
+ * - --select-font-family: Select font family (default: --input-font-family)
+ * - --select-border-hover: Select hover border color (default: --input-border-hover)
+ * - --select-border-focus: Select focus border color (default: --input-border-focus)
+ * - --select-focus-ring: Select focus ring color (default: --input-focus-ring)
+ */
+
+:root {
+  /* Select Properties */
+  --select-bg: var(--input-bg);
+  --select-border: var(--input-border);
+  --select-border-radius: var(--input-border-radius);
+  --select-padding-x: var(--input-padding-x);
+  --select-padding-y: var(--input-padding-y);
+  --select-color: var(--input-color);
+  --select-font-size: var(--input-font-size);
+  --select-font-family: var(--input-font-family);
+  --select-border-hover: var(--input-border-hover);
+  --select-border-focus: var(--input-border-focus);
+  --select-focus-ring: var(--input-focus-ring);
+}
+
+/* ========================================
+ * SELECT DROPDOWNS
+ * ======================================== */
+
+.select {
+  background: var(--select-bg);
+  border: var(--border-thick) solid var(--select-border);
+  border-radius: var(--select-border-radius);
+  padding: var(--select-padding-y) var(--select-padding-x);
+  font-size: var(--select-font-size);
+  color: var(--select-color);
+  font-family: var(--select-font-family);
+  transition: var(--transition-base);
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f0f0f0' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--select-border-focus);
+  box-shadow: 0 0 0 3px var(--select-focus-ring);
+}
+
+.select:hover {
+  border-color: var(--select-border-hover);
+}
+
+.select:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+

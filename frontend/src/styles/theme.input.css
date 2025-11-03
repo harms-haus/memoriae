@@ -1,0 +1,110 @@
+/* 
+ * Theme Input - Input/Textarea Controls and Properties
+ * 
+ * Contains all input and textarea-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --input-bg: Input background color (default: --bg-primary)
+ * - --input-border: Input border color (default: --border-primary)
+ * - --input-border-radius: Input border radius (default: --radius-sm)
+ * - --input-padding-x: Horizontal padding (default: 1rem)
+ * - --input-padding-y: Vertical padding (default: 0.75rem)
+ * - --input-color: Input text color (default: --text-primary)
+ * - --input-font-size: Input font size (default: --text-base)
+ * - --input-font-family: Input font family (default: --font-primary)
+ * - --input-border-hover: Input hover border color (default: --border-secondary)
+ * - --input-border-focus: Input focus border color (default: --accent-yellow)
+ * - --input-focus-ring: Input focus ring color (default: --focus-ring)
+ * - --input-placeholder-color: Placeholder text color (default: --text-tertiary)
+ * - --textarea-min-height: Textarea minimum height (default: 120px)
+ */
+
+:root {
+  /* Input Properties */
+  --input-bg: var(--bg-primary);
+  --input-border: var(--border-primary);
+  --input-border-radius: var(--radius-sm);
+  --input-padding-x: 1rem;
+  --input-padding-y: 0.75rem;
+  --input-color: var(--text-primary);
+  --input-font-size: var(--text-base);
+  --input-font-family: var(--font-primary);
+  --input-border-hover: var(--border-secondary);
+  --input-border-focus: var(--accent-yellow);
+  --input-focus-ring: var(--focus-ring);
+  --input-placeholder-color: var(--text-tertiary);
+  --textarea-min-height: 120px;
+}
+
+/* ========================================
+ * INPUT FIELDS
+ * ======================================== */
+
+.input {
+  background: var(--input-bg);
+  border: var(--border-thick) solid var(--input-border);
+  border-radius: var(--input-border-radius);
+  padding: var(--input-padding-y) var(--input-padding-x);
+  font-size: var(--input-font-size);
+  color: var(--input-color);
+  font-family: var(--input-font-family);
+  transition: var(--transition-base);
+  width: 100%;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+
+.input:hover {
+  border-color: var(--input-border-hover);
+}
+
+.input::placeholder {
+  color: var(--input-placeholder-color);
+}
+
+.input:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
+
+.textarea {
+  background: var(--input-bg);
+  border: var(--border-thick) solid var(--input-border);
+  border-radius: var(--input-border-radius);
+  padding: var(--input-padding-y) var(--input-padding-x);
+  font-size: var(--input-font-size);
+  color: var(--input-color);
+  font-family: var(--input-font-family);
+  min-height: var(--textarea-min-height);
+  resize: vertical;
+  transition: var(--transition-base);
+  width: 100%;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+
+.textarea:hover {
+  border-color: var(--input-border-hover);
+}
+
+.textarea::placeholder {
+  color: var(--input-placeholder-color);
+}
+
+.textarea:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
+

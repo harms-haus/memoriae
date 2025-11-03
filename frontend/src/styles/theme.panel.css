@@ -1,0 +1,74 @@
+/* 
+ * Theme Panel - Panel Controls and Properties
+ * 
+ * Contains all panel-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --panel-bg: Default panel background (default: --bg-secondary)
+ * - --panel-border: Default panel border color (default: --border-primary)
+ * - --panel-border-radius: Panel border radius (default: --radius-md)
+ * - --panel-padding: Panel padding (default: --space-6)
+ * - --panel-shadow: Panel shadow (default: --shadow-md)
+ * - --panel-elevated-bg: Elevated panel background (default: --bg-tertiary)
+ * - --panel-elevated-border: Elevated panel border (default: --border-secondary)
+ * - --panel-elevated-shadow: Elevated panel shadow (default: --shadow-lg)
+ * - --panel-accent-border: Accent panel border (default: --accent-yellow)
+ * - --panel-header-light-bg: Header light background (default: --bg-accent-light)
+ * - --panel-header-light-border: Header light border (default: --text-inverse)
+ */
+
+:root {
+  /* Panel Properties */
+  --panel-bg: var(--bg-secondary);
+  --panel-border: var(--border-primary);
+  --panel-border-radius: var(--radius-md);
+  --panel-padding: var(--space-6);
+  --panel-shadow: var(--shadow-md);
+  
+  --panel-elevated-bg: var(--bg-tertiary);
+  --panel-elevated-border: var(--border-secondary);
+  --panel-elevated-shadow: var(--shadow-lg);
+  
+  --panel-accent-border: var(--accent-yellow);
+  
+  --panel-header-light-bg: var(--bg-accent-light);
+  --panel-header-light-border: var(--text-inverse);
+}
+
+/* ========================================
+ * PANELS & CARDS
+ * ======================================== */
+
+.panel {
+  background: var(--panel-bg);
+  border: var(--border-thick) solid var(--panel-border);
+  border-radius: var(--panel-border-radius);
+  padding: var(--panel-padding);
+  box-shadow: var(--panel-shadow);
+}
+
+.panel-elevated {
+  background: var(--panel-elevated-bg);
+  border-color: var(--panel-elevated-border);
+  box-shadow: var(--panel-elevated-shadow);
+}
+
+.panel-accent {
+  border-color: var(--panel-accent-border);
+  background: var(--panel-bg);
+}
+
+.panel-header-light {
+  background: var(--panel-header-light-bg);
+  border: var(--border-thick) solid var(--panel-header-light-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  display: inline-block;
+}
+
+.panel-header-light h4,
+.panel-header-light p {
+  color: var(--text-inverse);
+  margin: 0;
+}
+

@@ -1,0 +1,62 @@
+/* 
+ * Theme Radio - Radio Button Controls and Properties
+ * 
+ * Contains all radio button-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --radio-size: Radio button size (default: 1.5rem)
+ * - --radio-bg: Radio button background (default: --bg-primary)
+ * - --radio-border: Radio button border color (default: --border-primary)
+ * - --radio-border-hover: Radio button hover border (default: --accent-yellow)
+ * - --radio-border-checked: Radio button checked border (default: --accent-yellow)
+ * - --radio-bg-checked: Radio button checked background (default: --accent-yellow)
+ * - --radio-inner-size: Inner circle size when checked (default: 4px)
+ */
+
+:root {
+  /* Radio Properties */
+  --radio-size: 1.5rem;
+  --radio-bg: var(--bg-primary);
+  --radio-border: var(--border-primary);
+  --radio-border-hover: var(--accent-yellow);
+  --radio-border-checked: var(--accent-yellow);
+  --radio-bg-checked: var(--accent-yellow);
+  --radio-inner-size: 4px;
+}
+
+/* ========================================
+ * RADIO BUTTONS
+ * ======================================== */
+
+.radio {
+  appearance: none;
+  width: var(--radio-size);
+  height: var(--radio-size);
+  border: var(--border-thick) solid var(--radio-border);
+  border-radius: var(--radius-full);
+  background: var(--radio-bg);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.radio:hover {
+  border-color: var(--radio-border-hover);
+}
+
+.radio:checked {
+  border-color: var(--radio-border-checked);
+  background: var(--radio-bg-checked);
+  box-shadow: inset 0 0 0 var(--radio-inner-size) var(--bg-primary);
+}
+
+.radio:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.radio:disabled {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
+

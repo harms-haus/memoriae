@@ -102,15 +102,15 @@ Each control file should include a comment block listing all customizable proper
 - [x] Extract spacing and sizes to theme.sizes.css (spacing system, border widths, border radii)
 - [x] Extract shared properties to theme.props.css (interactive states, transitions)
 - [x] Extract typography to theme.typography.css with all font styles and properties
-- [ ] Extract shadows to theme.shadows.css with elevation and glow shadow definitions
-- [ ] Extract animations to theme.animation.css with all keyframes and animation properties
-- [ ] Extract button controls to theme.button.css with all button variants and properties
-- [ ] Extract panel controls to theme.panel.css with panel variants and properties
-- [ ] Extract input/textarea controls to theme.input.css with all input properties and states
-- [ ] Extract select dropdown controls to theme.select.css with select properties
-- [ ] Extract checkbox controls to theme.checkbox.css with checkbox properties and states
-- [ ] Extract radio button controls to theme.radio.css with radio properties and states
-- [ ] Extract toggle switch controls to theme.toggle.css with all toggle properties (track, handle, states)
+- [x] Extract shadows to theme.shadows.css with elevation and glow shadow definitions
+- [x] Extract animations to theme.animation.css with all keyframes and animation properties
+- [x] Extract button controls to theme.button.css with all button variants and properties
+- [x] Extract panel controls to theme.panel.css with panel variants and properties
+- [x] Extract input/textarea controls to theme.input.css with all input properties and states
+- [x] Extract select dropdown controls to theme.select.css with select properties
+- [x] Extract checkbox controls to theme.checkbox.css with checkbox properties and states
+- [x] Extract radio button controls to theme.radio.css with radio properties and states
+- [x] Extract toggle switch controls to theme.toggle.css with all toggle properties (track, handle, states)
 - [ ] Extract slider/range controls to theme.slider.css with slider properties and webkit/moz pseudo-elements
 - [ ] Extract progress bar controls to theme.progress.css with progress properties and variants
 - [ ] Extract notification controls to theme.notification.css with notification variants and properties

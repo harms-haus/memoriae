@@ -1,0 +1,94 @@
+/* 
+ * Theme Toggle - Toggle Switch Controls and Properties
+ * 
+ * Contains all toggle switch-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --toggle-width: Toggle track width (default: 3rem)
+ * - --toggle-height: Toggle track height (default: 1.5rem)
+ * - --toggle-track-bg-unchecked: Track background when unchecked (default: --bg-secondary)
+ * - --toggle-track-bg-checked: Track background when checked (default: --accent-yellow)
+ * - --toggle-track-border: Track border color (default: --border-primary)
+ * - --toggle-track-border-radius: Track border radius (default: --radius-full)
+ * - --toggle-handle-size: Handle size (default: 1.25rem)
+ * - --toggle-handle-bg-unchecked: Handle background when unchecked (default: --bg-primary)
+ * - --toggle-handle-bg-checked: Handle background when checked (default: --text-inverse)
+ * - --toggle-handle-offset: Handle offset from edge (default: 0.125rem)
+ * - --toggle-transition: Toggle transition (default: --transition-base)
+ */
+
+:root {
+  /* Toggle Properties */
+  --toggle-width: 3rem;
+  --toggle-height: 1.5rem;
+  --toggle-track-bg-unchecked: var(--bg-secondary);
+  --toggle-track-bg-checked: var(--accent-yellow);
+  --toggle-track-border: var(--border-primary);
+  --toggle-track-border-radius: var(--radius-full);
+  --toggle-handle-size: 1.25rem;
+  --toggle-handle-bg-unchecked: var(--bg-primary);
+  --toggle-handle-bg-checked: var(--text-inverse);
+  --toggle-handle-offset: 0.125rem;
+  --toggle-transition: var(--transition-base);
+}
+
+/* ========================================
+ * TOGGLE SWITCHES
+ * ======================================== */
+
+.toggle {
+  appearance: none;
+  width: var(--toggle-width);
+  height: var(--toggle-height);
+  border: var(--border-thick) solid var(--toggle-track-border);
+  border-radius: var(--toggle-track-border-radius);
+  background: var(--toggle-track-bg-unchecked);
+  cursor: pointer;
+  position: relative;
+  transition: var(--toggle-transition);
+  flex-shrink: 0;
+}
+
+.toggle::before {
+  content: '';
+  position: absolute;
+  width: var(--toggle-handle-size);
+  height: var(--toggle-handle-size);
+  border-radius: var(--radius-full);
+  background: var(--toggle-handle-bg-unchecked);
+  top: 50%;
+  left: var(--toggle-handle-offset);
+  transform: translateY(-50%);
+  transition: var(--toggle-transition);
+}
+
+.toggle:hover {
+  border-color: var(--accent-yellow);
+}
+
+.toggle:checked {
+  background: var(--toggle-track-bg-checked);
+  border-color: var(--accent-yellow);
+}
+
+.toggle:checked::before {
+  left: calc(100% - var(--toggle-handle-size) - var(--toggle-handle-offset));
+  background: var(--toggle-handle-bg-checked);
+}
+
+.toggle:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.toggle:disabled {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.toggle:disabled::before {
+  background: var(--disabled-bg);
+}
+

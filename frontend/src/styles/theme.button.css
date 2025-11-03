@@ -1,0 +1,149 @@
+/* 
+ * Theme Button - Button Controls and Properties
+ * 
+ * Contains all button-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --button-primary-bg: Primary button background color (default: --accent-yellow)
+ * - --button-primary-bg-hover: Primary button hover background (default: --accent-yellow-dark)
+ * - --button-primary-color: Primary button text color (default: --text-inverse)
+ * - --button-primary-border: Primary button border color (default: --text-inverse)
+ * - --button-primary-padding-x: Horizontal padding (default: 1.75rem)
+ * - --button-primary-padding-y: Vertical padding (default: 0.875rem)
+ * - --button-primary-shadow-offset: Shadow offset for pressed effect (default: 4px)
+ * - --button-secondary-bg: Secondary button background (default: transparent)
+ * - --button-secondary-color: Secondary button text color (default: --text-primary)
+ * - --button-secondary-border: Secondary button border color (default: --border-primary)
+ * - --button-secondary-border-hover: Secondary button hover border (default: --accent-yellow)
+ * - --button-ghost-color: Ghost button text color (default: --text-secondary)
+ * - --button-ghost-color-hover: Ghost button hover text color (default: --text-primary)
+ * - --button-ghost-border-hover: Ghost button hover border (default: --accent-yellow)
+ * - --button-font-size: Button font size (default: --text-base)
+ * - --button-font-weight: Button font weight (default: --weight-bold)
+ * - --button-transition: Button transition (default: --transition-base)
+ */
+
+:root {
+  /* Button Properties */
+  --button-primary-bg: var(--accent-yellow);
+  --button-primary-bg-hover: var(--accent-yellow-dark);
+  --button-primary-color: var(--text-inverse);
+  --button-primary-border: var(--text-inverse);
+  --button-primary-padding-x: 1.75rem;
+  --button-primary-padding-y: 0.875rem;
+  --button-primary-shadow-offset: 4px;
+  
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--text-primary);
+  --button-secondary-border: var(--border-primary);
+  --button-secondary-border-hover: var(--accent-yellow);
+  
+  --button-ghost-color: var(--text-secondary);
+  --button-ghost-color-hover: var(--text-primary);
+  --button-ghost-border-hover: var(--accent-yellow);
+  
+  --button-font-size: var(--text-base);
+  --button-font-weight: var(--weight-bold);
+  --button-transition: var(--transition-base);
+}
+
+/* ========================================
+ * BUTTONS
+ * ======================================== */
+
+.btn-primary {
+  background: var(--button-primary-bg);
+  color: var(--button-primary-color);
+  border: var(--border-thick) solid var(--button-primary-border);
+  padding: var(--button-primary-padding-y) var(--button-primary-padding-x);
+  font-size: var(--button-font-size);
+  font-weight: var(--button-font-weight);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: var(--button-transition);
+  box-shadow: 0 var(--button-primary-shadow-offset) 0 var(--button-primary-border);
+}
+
+.btn-primary:hover {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--button-primary-border);
+  background: var(--button-primary-bg-hover);
+}
+
+.btn-primary:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.btn-primary:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: var(--button-secondary-bg);
+  color: var(--button-secondary-color);
+  border: var(--border-thick) solid var(--button-secondary-border);
+  padding: var(--button-primary-padding-y) var(--button-primary-padding-x);
+  font-size: var(--button-font-size);
+  font-weight: var(--button-font-weight);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: var(--button-transition);
+}
+
+.btn-secondary:hover {
+  border-color: var(--button-secondary-border-hover);
+  color: var(--accent-yellow);
+  background: var(--hover-bg);
+}
+
+.btn-secondary:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.btn-secondary:disabled {
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--button-ghost-color);
+  border: var(--border-medium) solid transparent;
+  padding: 0.75rem 1.5rem;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: var(--button-transition);
+}
+
+.btn-ghost:hover {
+  color: var(--button-ghost-color-hover);
+  border-bottom-color: var(--button-ghost-border-hover);
+}
+
+.btn-ghost:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.btn-ghost:disabled {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+

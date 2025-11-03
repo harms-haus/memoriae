@@ -1,0 +1,80 @@
+/* 
+ * Theme Checkbox - Checkbox Controls and Properties
+ * 
+ * Contains all checkbox-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --checkbox-size: Checkbox size (default: 1.5rem)
+ * - --checkbox-bg: Checkbox background (default: --bg-primary)
+ * - --checkbox-border: Checkbox border color (default: --border-primary)
+ * - --checkbox-border-radius: Checkbox border radius (default: --radius-sm)
+ * - --checkbox-border-hover: Checkbox hover border (default: --accent-yellow)
+ * - --checkbox-bg-checked: Checkbox checked background (default: --accent-yellow)
+ * - --checkbox-border-checked: Checkbox checked border (default: --accent-yellow)
+ * - --checkbox-checkmark-color: Checkmark color (default: --text-inverse)
+ * - --checkbox-checkmark-size: Checkmark font size (default: 1rem)
+ * - --checkbox-checkmark-weight: Checkmark font weight (default: --weight-bold)
+ */
+
+:root {
+  /* Checkbox Properties */
+  --checkbox-size: 1.5rem;
+  --checkbox-bg: var(--bg-primary);
+  --checkbox-border: var(--border-primary);
+  --checkbox-border-radius: var(--radius-sm);
+  --checkbox-border-hover: var(--accent-yellow);
+  --checkbox-bg-checked: var(--accent-yellow);
+  --checkbox-border-checked: var(--accent-yellow);
+  --checkbox-checkmark-color: var(--text-inverse);
+  --checkbox-checkmark-size: 1rem;
+  --checkbox-checkmark-weight: var(--weight-bold);
+}
+
+/* ========================================
+ * CHECKBOXES
+ * ======================================== */
+
+.checkbox {
+  appearance: none;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  border: var(--border-thick) solid var(--checkbox-border);
+  border-radius: var(--checkbox-border-radius);
+  background: var(--checkbox-bg);
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition-base);
+  flex-shrink: 0;
+}
+
+.checkbox:hover {
+  border-color: var(--checkbox-border-hover);
+}
+
+.checkbox:checked {
+  background: var(--checkbox-bg-checked);
+  border-color: var(--checkbox-border-checked);
+}
+
+.checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--checkbox-checkmark-color);
+  font-weight: var(--checkbox-checkmark-weight);
+  font-size: var(--checkbox-checkmark-size);
+}
+
+.checkbox:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.checkbox:disabled {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
+
