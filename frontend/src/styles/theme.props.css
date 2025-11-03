@@ -1,0 +1,32 @@
+/* 
+ * Theme Props - Shared Interactive Properties
+ * 
+ * Contains all shared interactive state and transition properties:
+ * - Interactive states (hover, focus, active, disabled)
+ * - Transitions
+ */
+
+:root {
+  /* ========================================
+   * INTERACTIVE STATES
+   * ======================================== */
+  
+  --hover-overlay: rgba(255, 255, 255, 0.05);
+  --hover-border: #ffd43b;
+  --hover-bg: rgba(255, 212, 59, 0.1);
+  --focus-ring: rgba(255, 212, 59, 0.4);
+  --focus-border: #ffd43b;
+  --active-bg: rgba(255, 212, 59, 0.15);
+  --disabled-text: #666666;
+  --disabled-bg: #1a1a1a;
+  --disabled-border: #2a2a2a;
+
+  /* ========================================
+   * TRANSITIONS
+   * ======================================== */
+  
+  --transition-base: all 0.2s ease;
+  --transition-hover: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-active: all 0.1s ease;
+}
+
