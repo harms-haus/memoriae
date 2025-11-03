@@ -41,3 +41,6 @@ export function BottomNavigation({ activeView, onViewChange }: BottomNavigationP
   )
 }
 
+
+
+

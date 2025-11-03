@@ -100,9 +100,9 @@ async function createTestAutomation(
   automation: Automation,
   automationId: string = uuidv4()
 ): Promise<string> {
-  automation.id = automationId
-
-  await db('automations')
+  // Use upsert pattern: insert or update on conflict by name
+  // This handles the unique constraint on name atomically
+  const result = await db('automations')
     .insert({
       id: automationId,
       name: automation.name,
@@ -111,14 +111,34 @@ async function createTestAutomation(
       enabled: automation.enabled,
       created_at: new Date(),
     })
-    .onConflict('id')
-    .merge()
+    .onConflict('name')
+    .merge({
+      description: automation.description,
+      handler_fn_name: automation.handlerFnName,
+      enabled: automation.enabled,
+    })
+    .returning('*')
+
+  // Get the actual ID from the database (may differ from automationId if conflict occurred)
+  const automationRow = result[0]
+  if (!automationRow) {
+    // Fallback: query by name to get the ID
+    const existing = await db('automations')
+      .where('name', automation.name)
+      .first()
+    if (!existing) {
+      throw new Error(`Failed to create or retrieve automation with name: ${automation.name}`)
+    }
+    automation.id = existing.id
+  } else {
+    automation.id = automationRow.id
+  }
 
   // Register automation
   const registry = AutomationRegistry.getInstance()
   await registry.register(automation)
 
-  return automationId
+  return automation.id!
 }
 
 // Clean up test data

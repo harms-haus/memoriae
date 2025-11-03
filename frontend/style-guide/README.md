@@ -52,6 +52,7 @@ The style guide showcases:
 - **Shadows**: Elevation and glow effects
 - **Animations**: Bounce, pulse, slide-up, fade-in
 - **Spacing & Borders**: Complete design tokens
+- **Iconography**: Lucide icons (same library as React components: `lucide-react`)
 
 ## 🔄 Using the Theme in Another Project
 
@@ -64,4 +65,14 @@ Quick start:
 3. Use theme classes and CSS variables
 
 All reusable components (buttons, panels, inputs, tabs, progress bars, etc.) are included in `theme.css`. The `index.css` file only contains showcase-specific layout styles.
+
+## 🎯 Iconography
+
+The style guide uses **Lucide icons** via CDN, which is the same icon library used in the React components (`lucide-react`). Icons are dynamically rendered using the Lucide JavaScript library, ensuring visual consistency between the style guide and the actual application.
+
+**Icons used in the project:**
+- `FileText`, `Clock`, `FolderTree`, `Tags`, `Settings` - Bottom navigation
+- `Bold`, `Italic`, `Link`, `X`, `Maximize` - Seed editor
+
+All icons are styled using the `.icon` class with size modifiers (`.icon-xs`, `.icon-sm`, `.icon-md`, etc.) and can be colored using theme color classes (`.icon-primary`, `.icon-success`, etc.).
 
