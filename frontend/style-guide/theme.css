@@ -1277,8 +1277,8 @@ small,
   position: absolute;
   top: var(--border-thick);
   left: var(--border-thick);
-  width: calc((3rem - var(--border-thick) * 2) / 2);
-  height: calc(1.5rem - var(--border-thick) * 2);
+  width: calc((3rem - var(--border-thick) * 4) / 2);
+  height: calc(1.5rem - var(--border-thick) * 4);
   border-radius: 0;
   background: var(--bg-primary);
   transition: var(--transition-base);
@@ -1310,7 +1310,7 @@ small,
 
 .toggle:checked::before {
   background: var(--accent-yellow);
-  left: calc(var(--border-thick) + (3rem - var(--border-thick) * 2) / 2);
+  left: calc(var(--border-thick) + (3rem - var(--border-thick) * 4) / 2);
 }
 
 .toggle:checked {
