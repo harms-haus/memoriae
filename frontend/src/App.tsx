@@ -8,6 +8,7 @@ import {
   CategoriesView,
   TagsView,
   SettingsView,
+  SeedDetailView,
 } from './components/views'
 import './styles/theme.css'
 
@@ -138,6 +139,7 @@ function LoginPage() {
 function AppContent() {
   const { authenticated, loading } = useAuth()
   const [activeView, setActiveView] = useState<ViewType>('seeds')
+  const [selectedSeedId, setSelectedSeedId] = useState<string | null>(null)
 
   if (loading) {
     return (
@@ -159,11 +161,21 @@ function AppContent() {
   }
 
   const renderView = () => {
+    // If a seed is selected, show detail view
+    if (selectedSeedId) {
+      return (
+        <SeedDetailView
+          seedId={selectedSeedId}
+          onBack={() => setSelectedSeedId(null)}
+        />
+      )
+    }
+
     switch (activeView) {
       case 'seeds':
-        return <SeedsView />
+        return <SeedsView onSeedSelect={setSelectedSeedId} />
       case 'timeline':
-        return <TimelineView />
+        return <TimelineView onSeedSelect={setSelectedSeedId} />
       case 'categories':
         return <CategoriesView />
       case 'tags':
@@ -171,7 +183,7 @@ function AppContent() {
       case 'settings':
         return <SettingsView />
       default:
-        return <SeedsView />
+        return <SeedsView onSeedSelect={setSelectedSeedId} />
     }
   }
 
@@ -179,12 +191,22 @@ function AppContent() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
       background: 'var(--bg-primary)',
       color: 'var(--text-primary)',
-      paddingBottom: showEditor ? '180px' : '72px', // Space for editor + nav or just nav
+      overflow: 'hidden',
     }}>
-      {renderView()}
+      <div style={{
+        flex: '1 1 auto',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        paddingBottom: showEditor ? '180px' : '72px', // Space for editor + nav or just nav
+      }}>
+        {renderView()}
+      </div>
       
       {showEditor && <SeedEditor />}
       

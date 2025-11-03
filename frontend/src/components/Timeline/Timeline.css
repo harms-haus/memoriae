@@ -1,0 +1,85 @@
+/* Custom Timeline Styles - Themed with style guide colors */
+
+.memoriae-timeline {
+  width: 100%;
+  height: 100%;
+  padding: var(--space-4);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Ensure timeline container scrolls, not individual items */
+.memoriae-timeline .rs-timeline {
+  overflow: visible;
+}
+
+/* Timeline items should not have scrollbars */
+.memoriae-timeline .rs-timeline-item {
+  overflow: visible;
+}
+
+.memoriae-timeline .rs-timeline-item-content {
+  overflow: visible;
+}
+
+/* Ensure the timeline ul doesn't have scrollbars */
+.memoriae-timeline .rs-timeline ul {
+  overflow: visible;
+}
+
+/* Timeline line/connector - style guide colors */
+.memoriae-timeline .rs-timeline-item-tail {
+  border-left-color: var(--border-primary);
+}
+
+/* Timeline dots - use accent yellow from style guide */
+.memoriae-timeline .rs-timeline-item-dot {
+  background: var(--accent-yellow);
+  border-color: var(--border-primary);
+}
+
+/* Timeline item time text */
+.memoriae-timeline .rs-timeline-item-time {
+  color: var(--text-secondary);
+}
+
+/* Timeline item content text */
+.memoriae-timeline .rs-timeline-item-content {
+  color: var(--text-primary);
+}
+
+/* Clickable items */
+.timeline-item-clickable {
+  cursor: pointer;
+  transition: background-color var(--transition-base);
+}
+
+.timeline-item-clickable:hover {
+  background: var(--hover-bg);
+}
+
+/* Disabled/toggled-off items */
+.timeline-item-disabled {
+  opacity: 0.5;
+}
+
+.timeline-item-disabled * {
+  text-decoration: line-through;
+}
+
+.timeline-item-disabled .rs-timeline-item-dot {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+}
+
+/* Focus state for keyboard navigation */
+.memoriae-timeline:focus {
+  outline: none;
+}
+
+.memoriae-timeline:focus-visible {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: var(--space-2);
+}
