@@ -27,6 +27,7 @@ import {
   ToastProvider,
   useToast,
   PointerPanel,
+  Timeline,
 } from '../../../../mother-theme/src';
 import {
   FileText,
@@ -381,6 +382,94 @@ function StyleGuideContent() {
             >
               <div style={{ fontSize: 'var(--text-sm)' }}>Large arrow (24px)</div>
             </PointerPanel>
+          </div>
+        </div>
+      </section>
+
+      {/* Timeline Section */}
+      <section id="timeline" className="showcase-section">
+        <h2>Timeline</h2>
+
+        <div className="panel">
+          <h3>Center Mode (Alternating)</h3>
+          <p className="text-sm">Timeline with panels alternating left and right, with optional tail content on opposite side.</p>
+          
+          <div style={{ marginTop: 'var(--space-6)', minHeight: '600px' }}>
+            <Timeline
+              items={[
+                { id: '1', position: 0 },
+                { id: '2', position: 33 },
+                { id: '3', position: 67 },
+                { id: '4', position: 100 },
+              ]}
+              mode="center"
+              renderPanel={(index, width) => (
+                <div style={{ padding: 'var(--space-2)' }}>
+                  <div style={{ fontWeight: 'var(--weight-bold)', marginBottom: 'var(--space-2)' }}>
+                    Item {index + 1}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                    Panel content for timeline item {index + 1}
+                  </div>
+                </div>
+              )}
+              renderOpposite={(index, width, panelSide) => (
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
+                  {new Date(2024, 0, index + 1).toLocaleDateString()}
+                </div>
+              )}
+              renderDot={(index, position, isTop, isBottom) => (
+                <div
+                  className="timeline-dot-default"
+                  style={{
+                    backgroundColor: index % 2 === 0 ? 'var(--accent-blue)' : 'var(--accent-purple)',
+                    borderColor: index % 2 === 0 ? 'var(--accent-blue-dark)' : 'var(--accent-purple-dark)',
+                  }}
+                />
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="panel">
+          <h3>Left Mode</h3>
+          <p className="text-sm">Timeline aligned to the left, all panels on the right side.</p>
+          
+          <div style={{ marginTop: 'var(--space-6)', minHeight: '400px' }}>
+            <Timeline
+              items={[
+                { id: '1', position: 0 },
+                { id: '2', position: 50 },
+                { id: '3', position: 100 },
+              ]}
+              mode="left"
+              renderPanel={(index, width) => (
+                <div style={{ padding: 'var(--space-2)' }}>
+                  <div style={{ fontWeight: 'var(--weight-bold)' }}>Left Mode Item {index + 1}</div>
+                </div>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="panel">
+          <h3>Right Mode</h3>
+          <p className="text-sm">Timeline aligned to the right, all panels on the left side.</p>
+          
+          <div style={{ marginTop: 'var(--space-6)', minHeight: '400px' }}>
+            <Timeline
+              items={[
+                { id: '1', position: 0 },
+                { id: '2', position: 50 },
+                { id: '3', position: 100 },
+              ]}
+              mode="right"
+              renderPanel={(index, width) => (
+                <div style={{ padding: 'var(--space-2)' }}>
+                  <div style={{ fontWeight: 'var(--weight-bold)' }}>Right Mode Item {index + 1}</div>
+                </div>
+              )}
+            />
           </div>
         </div>
       </section>
