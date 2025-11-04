@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Test outputs
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Screenshots (keep baseline in repo, ignore diffs)
+**/test-results/**/*.png
+!**/test-results/**/baseline/**/*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
