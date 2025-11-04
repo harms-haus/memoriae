@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Drawer, DrawerBody, DrawerItem } from './Drawer';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter, DrawerItem } from './Drawer';
 import { Settings } from 'lucide-react';
 
 // Mock createPortal
@@ -82,6 +82,26 @@ describe('Drawer', () => {
       );
 
       expect(screen.getByRole('dialog')).toHaveClass('drawer-right');
+    });
+
+    it('should apply top position class', () => {
+      render(
+        <Drawer open={true} onOpenChange={() => {}} position="top">
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.getByRole('dialog')).toHaveClass('drawer-top');
+    });
+
+    it('should apply bottom position class', () => {
+      render(
+        <Drawer open={true} onOpenChange={() => {}} position="bottom">
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.getByRole('dialog')).toHaveClass('drawer-bottom');
     });
 
     it('should apply wide size class', () => {
@@ -187,6 +207,192 @@ describe('Drawer', () => {
 
       await user.keyboard('{Escape}');
       expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('DrawerHeader', () => {
+    it('should render title and close button', () => {
+      const onClose = vi.fn();
+      render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerHeader title="Test Drawer" onClose={onClose} />
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.getByText('Test Drawer')).toBeInTheDocument();
+      expect(screen.getByLabelText('Close drawer')).toBeInTheDocument();
+    });
+
+    it('should render children prop', () => {
+      render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerHeader title="Test Drawer" onClose={() => {}}>
+            <button>Custom Action</button>
+          </DrawerHeader>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.getByText('Custom Action')).toBeInTheDocument();
+    });
+
+    it('should call onClose when close button is clicked', async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerHeader title="Test Drawer" onClose={onClose} />
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      await user.click(screen.getByLabelText('Close drawer'));
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it('should not show close button when showCloseButton is false', () => {
+      render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerHeader title="Test Drawer" showCloseButton={false} />
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.queryByLabelText('Close drawer')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('DrawerBody', () => {
+    it('should render body content', () => {
+      render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerBody>
+            <p>Body content</p>
+            <button>Action</button>
+          </DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.getByText('Body content')).toBeInTheDocument();
+      expect(screen.getByText('Action')).toBeInTheDocument();
+    });
+
+    it('should apply custom className', () => {
+      const { container } = render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerBody className="custom-body">
+            Content
+          </DrawerBody>
+        </Drawer>
+      );
+
+      const body = container.querySelector('.drawer-body');
+      expect(body).toHaveClass('custom-body');
+    });
+  });
+
+  describe('DrawerFooter', () => {
+    it('should render footer content', () => {
+      render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerBody>Content</DrawerBody>
+          <DrawerFooter>
+            <button>Cancel</button>
+            <button>Confirm</button>
+          </DrawerFooter>
+        </Drawer>
+      );
+
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      expect(screen.getByText('Confirm')).toBeInTheDocument();
+    });
+
+    it('should apply custom className', () => {
+      const { container } = render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerBody>Content</DrawerBody>
+          <DrawerFooter className="custom-footer">
+            <button>Action</button>
+          </DrawerFooter>
+        </Drawer>
+      );
+
+      const footer = container.querySelector('.drawer-footer');
+      expect(footer).toHaveClass('custom-footer');
+    });
+  });
+
+  describe('Animation States', () => {
+    it('should apply closing class during animation', async () => {
+      const { rerender } = render(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      const drawer = screen.getByRole('dialog');
+      expect(drawer).not.toHaveClass('drawer-closing');
+
+      rerender(
+        <Drawer open={false} onOpenChange={() => {}}>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      // Should have closing class during animation
+      await waitFor(() => {
+        const drawerAfterClose = document.querySelector('.drawer');
+        // The drawer should still be rendered with closing class
+        expect(drawerAfterClose).toBeInTheDocument();
+      }, { timeout: 100 });
+
+      // After animation completes, drawer should be removed
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      }, { timeout: 400 });
+    });
+
+    it('should not render when shouldRender is false', async () => {
+      const { rerender } = render(
+        <Drawer open={false} onOpenChange={() => {}}>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      rerender(
+        <Drawer open={true} onOpenChange={() => {}}>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      rerender(
+        <Drawer open={false} onOpenChange={() => {}}>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      // Wait for animation to complete
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      }, { timeout: 400 });
+    });
+  });
+
+  describe('Custom className', () => {
+    it('should apply custom className to drawer element', () => {
+      const { container } = render(
+        <Drawer open={true} onOpenChange={() => {}} className="custom-drawer">
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      const drawer = container.querySelector('.drawer');
+      expect(drawer).toHaveClass('custom-drawer');
     });
   });
 });

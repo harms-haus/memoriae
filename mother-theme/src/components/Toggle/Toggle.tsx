@@ -79,8 +79,7 @@ export function Toggle({
           id={labelId}
           htmlFor={toggleId}
           onClick={handleLabelClick}
-          className="label"
-          style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          className={`label ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
           {labelContent}
         </label>

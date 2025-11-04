@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Timeline } from './Timeline';
 import type { TimelineItem } from './Timeline';
 
@@ -343,6 +343,167 @@ describe('Timeline', () => {
 
       const timeline = container.querySelector('.timeline-mode-center');
       expect(timeline).toBeInTheDocument();
+    });
+  });
+
+  describe('Empty Items', () => {
+    it('should return null when items array is empty', () => {
+      const { container } = render(
+        <Timeline items={[]} mode="left" renderPanel={() => <div>Panel</div>} />
+      );
+
+      expect(container.firstChild).toBeNull();
+    });
+  });
+
+  describe('Custom Renderers', () => {
+    it('should use custom renderPanel function', () => {
+      const renderPanel = vi.fn((index) => <div>Custom Panel {index}</div>);
+      const items = createItems(2);
+      
+      render(
+        <Timeline items={items} mode="left" renderPanel={renderPanel} />
+      );
+
+      expect(renderPanel).toHaveBeenCalledTimes(2);
+      expect(renderPanel).toHaveBeenCalledWith(0, expect.any(Number));
+      expect(renderPanel).toHaveBeenCalledWith(1, expect.any(Number));
+      expect(screen.getByText('Custom Panel 0')).toBeInTheDocument();
+      expect(screen.getByText('Custom Panel 1')).toBeInTheDocument();
+    });
+
+    it('should use custom createPanel function', () => {
+      const createPanel = vi.fn((direction, pos, index, width) => (
+        <div>Custom Created Panel {index}</div>
+      ));
+      const items = createItems(2);
+      
+      render(
+        <Timeline items={items} mode="left" createPanel={createPanel} />
+      );
+
+      expect(createPanel).toHaveBeenCalled();
+      expect(screen.getByText('Custom Created Panel 0')).toBeInTheDocument();
+    });
+
+    it('should use custom renderDot function', () => {
+      const renderDot = vi.fn((index, position, isTop, isBottom) => (
+        <div className="custom-dot">Dot {index}</div>
+      ));
+      const items = createItems(3);
+      
+      const { container } = render(
+        <Timeline items={items} mode="left" renderPanel={() => <div>Panel</div>} renderDot={renderDot} />
+      );
+
+      expect(renderDot).toHaveBeenCalledTimes(3);
+      expect(renderDot).toHaveBeenCalledWith(0, expect.any(Number), true, false);
+      expect(renderDot).toHaveBeenCalledWith(1, expect.any(Number), false, false);
+      expect(renderDot).toHaveBeenCalledWith(2, expect.any(Number), false, true);
+      
+      const customDots = container.querySelectorAll('.custom-dot');
+      expect(customDots.length).toBe(3);
+    });
+  });
+
+  describe('renderOpposite', () => {
+    it('should only render opposite content in center mode', () => {
+      const renderOpposite = vi.fn((index, width, panelSide) => (
+        <div>Opposite {index} ({panelSide})</div>
+      ));
+      const items = createItems(2);
+      
+      // Center mode - should render
+      const { rerender } = render(
+        <Timeline
+          items={items}
+          mode="center"
+          renderPanel={() => <div>Panel</div>}
+          renderOpposite={renderOpposite}
+        />
+      );
+
+      expect(renderOpposite).toHaveBeenCalled();
+      // In center mode, both items should render opposite content
+      const oppositeElements = screen.getAllByText(/Opposite/);
+      expect(oppositeElements.length).toBeGreaterThan(0);
+
+      // Left mode - should not render
+      rerender(
+        <Timeline
+          items={items}
+          mode="left"
+          renderPanel={() => <div>Panel</div>}
+          renderOpposite={renderOpposite}
+        />
+      );
+
+      expect(screen.queryByText(/Opposite/)).not.toBeInTheDocument();
+    });
+
+    it('should receive correct panelSide parameter', () => {
+      const renderOpposite = vi.fn((index, width, panelSide) => (
+        <div>Side: {panelSide}</div>
+      ));
+      const items = createItems(3);
+      
+      render(
+        <Timeline
+          items={items}
+          mode="center"
+          renderPanel={() => <div>Panel</div>}
+          renderOpposite={renderOpposite}
+        />
+      );
+
+      // In center mode, panels alternate sides (even = right, odd = left)
+      expect(renderOpposite).toHaveBeenCalledWith(0, expect.any(Number), 'right');
+      expect(renderOpposite).toHaveBeenCalledWith(1, expect.any(Number), 'left');
+      expect(renderOpposite).toHaveBeenCalledWith(2, expect.any(Number), 'right');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle single item (no lines)', () => {
+      const items = createItems(1);
+      const { container } = render(
+        <Timeline items={items} mode="left" renderPanel={() => <div>Panel</div>} />
+      );
+
+      // Should not have top or bottom lines for single item
+      const topLine = container.querySelector('.timeline-line-top');
+      const bottomLine = container.querySelector('.timeline-line-bottom');
+      expect(topLine).not.toBeInTheDocument();
+      expect(bottomLine).not.toBeInTheDocument();
+    });
+
+    it('should handle very large position values', () => {
+      const items: TimelineItem[] = [
+        { id: '1', position: 0 },
+        { id: '2', position: 1000 },
+        { id: '3', position: 999999 },
+      ];
+      
+      const { container } = render(
+        <Timeline items={items} mode="left" renderPanel={() => <div>Panel</div>} />
+      );
+
+      const timelineItems = container.querySelectorAll('.timeline-item');
+      expect(timelineItems.length).toBe(3);
+    });
+
+    it('should handle negative position values', () => {
+      const items: TimelineItem[] = [
+        { id: '1', position: -10 },
+        { id: '2', position: 50 },
+      ];
+      
+      const { container } = render(
+        <Timeline items={items} mode="left" renderPanel={() => <div>Panel</div>} />
+      );
+
+      const timelineItems = container.querySelectorAll('.timeline-item');
+      expect(timelineItems.length).toBe(2);
     });
   });
 });

@@ -154,3 +154,20 @@
   cursor: not-allowed;
 }
 
+/* ========================================
+ * BUTTON ICON SPACING
+ * ======================================== */
+
+.button-icon-left,
+.button-icon-right {
+  display: inline-flex;
+}
+
+.button-icon-left.button-icon-spaced {
+  margin-right: var(--space-2);
+}
+
+.button-icon-right.button-icon-spaced {
+  margin-left: var(--space-2);
+}
+

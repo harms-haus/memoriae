@@ -308,7 +308,7 @@ describe('PointerPanel', () => {
 
     it('should handle undefined className', () => {
       const { container } = render(
-        <PointerPanel position="center-left" className={undefined}>
+        <PointerPanel position="center-left">
           Content
         </PointerPanel>
       );

@@ -1,0 +1,48 @@
+/* 
+ * Utility Classes
+ * Reusable utility classes for common styling patterns
+ */
+
+/* ========================================
+ * CURSOR UTILITIES
+ * ======================================== */
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+/* ========================================
+ * FLEX UTILITIES
+ * ======================================== */
+
+.flex-center {
+  display: flex;
+  align-items: center;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ========================================
+ * ANIMATION UTILITIES
+ * ======================================== */
+
+.animation-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+

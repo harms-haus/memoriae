@@ -153,6 +153,7 @@
   stroke-dasharray: 94.24;
   stroke-dashoffset: 94.24;
   animation: notification-timer-countdown 5s linear forwards;
+  transition: stroke-dashoffset 0.1s linear;
 }
 
 @keyframes notification-timer-countdown {

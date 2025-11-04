@@ -153,7 +153,8 @@ describe('Input', () => {
       const { container } = render(<Input icon={Search} />);
       
       const input = container.querySelector('.input') as HTMLElement;
-      expect(input.style.paddingLeft).toBeTruthy();
+      // When icon is present, input-with-icon class should be applied
+      expect(input.classList.contains('input-with-icon')).toBe(true);
     });
   });
 

@@ -269,6 +269,77 @@ jobs:
 2. **Check async handling** - Use `waitFor` for async updates
 3. **Check mocks** - Ensure mocks are properly reset
 
+## Style Prop Guidelines
+
+When creating or modifying components, follow these guidelines for using inline styles vs CSS classes:
+
+### When to Use CSS Classes
+
+Use CSS classes for:
+- **Reusable patterns** - Common styling patterns that appear in multiple places
+- **Static styles** - Styles that don't change based on props or state
+- **Theme values** - Use CSS variables (e.g., `var(--text-primary)`) instead of hardcoded values
+- **Layout utilities** - Flexbox, grid, spacing (use utility classes from `theme.utilities.css`)
+
+**Available Utility Classes:**
+- `.cursor-pointer` - Cursor pointer
+- `.cursor-not-allowed` - Cursor not-allowed
+- `.flex-center` - Display flex with align-items center
+- `.flex-between` - Display flex with justify-content space-between
+- `.animation-spin` - Spin animation
+
+**Example:**
+```typescript
+// ✅ Good - Use CSS classes
+<div className="flex-center">
+  <Icon />
+</div>
+
+// ❌ Bad - Inline styles for static values
+<div style={{ display: 'flex', alignItems: 'center' }}>
+  <Icon />
+</div>
+```
+
+### When to Use Inline Styles
+
+Use inline styles only for:
+- **Dynamic values** - Values calculated from props or state (e.g., `width: ${value}%`)
+- **CSS variables in inline styles** - When CSS variables are used for dynamic theming (acceptable)
+- **Unique positioning** - One-off positioning that doesn't warrant a CSS class
+- **Calculated properties** - Values derived from calculations (e.g., `strokeDashoffset`)
+
+**Example:**
+```typescript
+// ✅ Good - Dynamic value
+<div style={{ width: `${clampedValue}%` }} />
+
+// ✅ Good - CSS variable for dynamic theming
+<span style={{ color: 'var(--error)' }}>Error</span>
+
+// ❌ Bad - Static value that should be in CSS
+<div style={{ display: 'flex' }} />
+```
+
+### Consistency Rules
+
+1. **Spacing**: Use CSS variables (`var(--space-1)`, `var(--space-2)`, etc.) instead of hardcoded values
+2. **Colors**: Always use CSS variables (`var(--text-primary)`, `var(--error)`, etc.)
+3. **Typography**: Use CSS variables (`var(--text-sm)`, `var(--text-base)`, etc.)
+4. **Cursor**: Use utility classes (`.cursor-pointer`, `.cursor-not-allowed`)
+5. **Flexbox**: Use utility classes (`.flex-center`, `.flex-between`) or component-specific classes
+6. **Animations**: Use CSS classes (`.animation-spin`) for reusable animations
+
+### Refactoring Checklist
+
+When refactoring components to use CSS classes:
+1. Identify all inline styles
+2. Determine if they're dynamic (keep inline) or static (move to CSS)
+3. For static styles, check if utility classes exist
+4. If no utility class exists, add component-specific classes to appropriate CSS file
+5. Update component to use CSS classes
+6. Test visual appearance matches original
+
 ## Resources
 
 - [React Testing Library Docs](https://testing-library.com/react)

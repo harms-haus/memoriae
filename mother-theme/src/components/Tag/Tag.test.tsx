@@ -167,6 +167,93 @@ describe('Tag', () => {
     });
   });
 
+  describe('Variant Classes', () => {
+    it('should explicitly apply default variant (no variant class)', () => {
+      const { container } = render(<Tag variant="default">Test</Tag>);
+      
+      const tag = container.querySelector('.tag-item');
+      expect(tag).toHaveClass('tag-item');
+      expect(tag).not.toHaveClass('tag-blue');
+      expect(tag).not.toHaveClass('tag-green');
+      expect(tag).not.toHaveClass('tag-purple');
+      expect(tag).not.toHaveClass('tag-pink');
+    });
+
+    it('should explicitly apply blue variant class', () => {
+      const { container } = render(<Tag variant="blue">Test</Tag>);
+      
+      const tag = container.querySelector('.tag-item');
+      expect(tag).toHaveClass('tag-blue');
+    });
+
+    it('should explicitly apply green variant class', () => {
+      const { container } = render(<Tag variant="green">Test</Tag>);
+      
+      const tag = container.querySelector('.tag-item');
+      expect(tag).toHaveClass('tag-green');
+    });
+
+    it('should explicitly apply purple variant class', () => {
+      const { container } = render(<Tag variant="purple">Test</Tag>);
+      
+      const tag = container.querySelector('.tag-item');
+      expect(tag).toHaveClass('tag-purple');
+    });
+
+    it('should explicitly apply pink variant class', () => {
+      const { container } = render(<Tag variant="pink">Test</Tag>);
+      
+      const tag = container.querySelector('.tag-item');
+      expect(tag).toHaveClass('tag-pink');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle onClick without onRemove', async () => {
+      const user = createUserEvent();
+      const handleClick = vi.fn();
+      
+      render(<Tag onClick={handleClick}>Test</Tag>);
+      
+      const tag = screen.getByText('Test');
+      await user.click(tag);
+      
+      expect(handleClick).toHaveBeenCalledTimes(1);
+      expect(screen.queryByLabelText('Remove tag')).not.toBeInTheDocument();
+    });
+
+    it('should handle onRemove without onClick', async () => {
+      const user = createUserEvent();
+      const handleRemove = vi.fn();
+      
+      render(<Tag onRemove={handleRemove}>Test</Tag>);
+      
+      const removeButton = screen.getByLabelText('Remove tag');
+      await user.click(removeButton);
+      
+      expect(handleRemove).toHaveBeenCalledTimes(1);
+      // Should not have button role when no onClick
+      expect(screen.getByText('Test')).not.toHaveAttribute('role', 'button');
+    });
+
+    it('should handle both onClick and onRemove', async () => {
+      const user = createUserEvent();
+      const handleClick = vi.fn();
+      const handleRemove = vi.fn();
+      
+      render(<Tag onClick={handleClick} onRemove={handleRemove}>Test</Tag>);
+      
+      // Click tag
+      await user.click(screen.getByText('Test'));
+      expect(handleClick).toHaveBeenCalledTimes(1);
+      
+      // Click remove button
+      const removeButton = screen.getByLabelText('Remove tag');
+      await user.click(removeButton);
+      expect(handleRemove).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Accessibility', () => {
     it('should have role="button" when onClick is provided', () => {
       render(<Tag onClick={() => {}}>Test</Tag>);
@@ -186,14 +273,16 @@ describe('Tag', () => {
       const { container } = render(<Tag onClick={() => {}}>Test</Tag>);
       
       const tag = container.querySelector('.tag-item') as HTMLElement;
-      expect(tag.style.cursor).toBe('pointer');
+      // Should have cursor-pointer class when clickable
+      expect(tag.classList.contains('cursor-pointer')).toBe(true);
     });
 
     it('should have not-allowed cursor when disabled', () => {
       const { container } = render(<Tag disabled onClick={() => {}}>Test</Tag>);
       
       const tag = container.querySelector('.tag-item') as HTMLElement;
-      expect(tag.style.cursor).toBe('not-allowed');
+      // Should have cursor-not-allowed class when disabled
+      expect(tag.classList.contains('cursor-not-allowed')).toBe(true);
     });
   });
 });

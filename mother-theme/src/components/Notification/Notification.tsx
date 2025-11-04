@@ -138,9 +138,6 @@ export function Notification({
                 r="11"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
-                style={{
-                  transition: 'stroke-dashoffset 0.1s linear',
-                }}
               />
             </svg>
           </div>

@@ -78,8 +78,7 @@ export function Checkbox({
           id={labelId}
           htmlFor={checkboxId}
           onClick={handleLabelClick}
-          className="label"
-          style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          className={`label ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
           {labelContent}
         </label>

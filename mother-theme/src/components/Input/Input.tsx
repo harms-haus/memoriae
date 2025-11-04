@@ -56,15 +56,15 @@ export function Input({
           {label}
         </label>
       )}
-      <div className="input-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <div className="input-container flex-center">
         {Icon && (
-          <span className="input-icon" style={{ position: 'absolute', left: '0.75rem', zIndex: 1 }}>
+          <span className="input-icon">
             <Icon size={16} />
           </span>
         )}
         <input
           id={inputId}
-          className={classes}
+          className={`${classes} ${Icon ? 'input-with-icon' : ''}`}
           value={value}
           defaultValue={defaultValue}
           maxLength={maxLength}
@@ -72,14 +72,11 @@ export function Input({
           aria-labelledby={label ? labelId : undefined}
           aria-describedby={ariaDescribedBy || undefined}
           aria-invalid={error ? 'true' : undefined}
-          style={{
-            paddingLeft: Icon ? '2.5rem' : undefined,
-          }}
           {...props}
         />
       </div>
       {(helperText || error || showCharacterCount) && (
-        <div className="input-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+        <div className="input-footer flex-between">
           <div>
             {error && (
               <span id={errorId} className="input-error-text" style={{ color: 'var(--error)', fontSize: 'var(--text-sm)' }}>

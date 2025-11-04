@@ -108,3 +108,44 @@
   cursor: not-allowed;
 }
 
+/* ========================================
+ * INPUT WRAPPER & CONTAINER
+ * ======================================== */
+
+.input-container {
+  position: relative;
+}
+
+.input-container.flex-center {
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 0.75rem;
+  z-index: 1;
+}
+
+.input-with-icon {
+  padding-left: 2.5rem;
+}
+
+.input-footer {
+  margin-top: var(--space-1);
+}
+
+.input-footer.flex-between {
+  display: flex;
+  justify-content: space-between;
+}
+
+.textarea-footer {
+  margin-top: var(--space-1);
+}
+
+.textarea-footer.flex-between {
+  display: flex;
+  justify-content: space-between;
+}
+

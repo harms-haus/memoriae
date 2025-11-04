@@ -6,7 +6,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   icon?: LucideIcon;
   iconPosition?: 'left' | 'right';
   loading?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function Button({
@@ -14,7 +14,7 @@ export function Button({
   icon: Icon,
   iconPosition = 'left',
   loading = false,
-  children,
+  children = null,
   className = '',
   disabled,
   onClick,
@@ -36,7 +36,7 @@ export function Button({
 
   const renderIcon = () => {
     if (loading) {
-      return <Loader2 className="button-spinner" size={16} style={{ animation: 'spin 1s linear infinite' }} />;
+      return <Loader2 className="button-spinner animation-spin" size={16} />;
     }
     if (Icon) {
       return <Icon size={16} />;
@@ -45,6 +45,8 @@ export function Button({
   };
 
   const iconElement = renderIcon();
+  const hasChildren = Boolean(children);
+  const iconMarginClass = hasChildren ? 'button-icon-spaced' : '';
 
   return (
     <button
@@ -57,13 +59,13 @@ export function Button({
       {...props}
     >
       {iconElement && iconPosition === 'left' && (
-        <span style={{ marginRight: children ? '0.5rem' : '0', display: 'inline-flex', alignItems: 'center' }}>
+        <span className={`flex-center button-icon-left ${iconMarginClass}`}>
           {iconElement}
         </span>
       )}
       {children}
       {iconElement && iconPosition === 'right' && (
-        <span style={{ marginLeft: children ? '0.5rem' : '0', display: 'inline-flex', alignItems: 'center' }}>
+        <span className={`flex-center button-icon-right ${iconMarginClass}`}>
           {iconElement}
         </span>
       )}

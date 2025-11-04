@@ -168,8 +168,7 @@ export function Radio({ value, label, disabled = false, children, id: providedId
         <label
           id={labelId}
           htmlFor={radioId}
-          className="label"
-          style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          className={`label ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
           {labelContent}
         </label>

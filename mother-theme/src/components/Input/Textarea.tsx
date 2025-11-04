@@ -66,7 +66,7 @@ export function Textarea({
         {...props}
       />
       {(helperText || error || showCharacterCount) && (
-        <div className="textarea-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+        <div className="textarea-footer flex-between">
           <div>
             {error && (
               <span id={errorId} className="textarea-error-text" style={{ color: 'var(--error)', fontSize: 'var(--text-sm)' }}>

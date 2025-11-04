@@ -50,35 +50,30 @@ export function Tag({
     .join(' ');
 
   const tabIndex = onClick && !disabled ? 0 : undefined;
+  
+  const cursorClass = disabled 
+    ? 'cursor-not-allowed' 
+    : onClick 
+      ? 'cursor-pointer' 
+      : '';
 
   return (
     <div
-      className={classes}
+      className={`${classes} ${cursorClass}`}
       role={onClick ? 'button' : undefined}
       tabIndex={tabIndex}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       aria-disabled={disabled}
-      style={{ cursor: disabled ? 'not-allowed' : onClick ? 'pointer' : 'default' }}
     >
       {children}
       {onRemove && (
         <button
           type="button"
-          className="tag-remove"
+          className={`tag-remove flex-center ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           onClick={handleRemove}
           disabled={disabled}
           aria-label="Remove tag"
-          style={{
-            marginLeft: '0.5rem',
-            background: 'none',
-            border: 'none',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0',
-            color: 'inherit',
-          }}
         >
           <X size={14} />
         </button>

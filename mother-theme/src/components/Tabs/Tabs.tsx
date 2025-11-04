@@ -300,7 +300,7 @@ Tab.displayName = 'Tab';
 
 export interface TabPanelProps {
   value: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
 }
 
