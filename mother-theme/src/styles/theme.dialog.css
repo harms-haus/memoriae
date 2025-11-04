@@ -44,6 +44,7 @@
   justify-content: center;
   z-index: 1000;
   animation: dialog-fade-in var(--dialog-animation-duration) ease-out;
+  perspective: 1000px;
 }
 
 @keyframes dialog-fade-in {
@@ -72,11 +73,11 @@
 @keyframes dialog-slide-up {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(-30px) rotateX(15deg);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) rotateX(0deg);
   }
 }
 

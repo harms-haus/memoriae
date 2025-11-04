@@ -120,6 +120,14 @@
   flex-shrink: 0;
 }
 
+.notification-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
 .notification-timer {
   width: 24px;
   height: 24px;

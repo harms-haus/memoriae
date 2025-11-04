@@ -26,6 +26,7 @@ import {
   Notification,
   ToastProvider,
   useToast,
+  PointerPanel,
 } from '../../../../mother-theme/src';
 import {
   FileText,
@@ -301,6 +302,89 @@ function StyleGuideContent() {
         </div>
       </section>
 
+      {/* Pointer Panels Section */}
+      <section id="pointer-panels" className="showcase-section">
+        <h2>Pointer Panels</h2>
+
+        <div className="panel">
+          <h3>Pointing Panels</h3>
+          <p className="text-sm">Panels with arrow pointers that extend from the panel body. Positioned by the anchor point at the tip of the arrow. Perfect for timelines, tooltips, and popovers.</p>
+          
+          <div style={{ position: 'relative', minHeight: '400px', padding: 'var(--space-8)', marginTop: 'var(--space-6)' }}>
+            {/* Top-left */}
+            <PointerPanel
+              position="top-left"
+              style={{ left: '0', top: '0' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Top-left pointing left</div>
+            </PointerPanel>
+
+            {/* Top-right */}
+            <PointerPanel
+              position="top-right"
+              style={{ right: '0', top: '0' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Top-right pointing right</div>
+            </PointerPanel>
+
+            {/* Center-left */}
+            <PointerPanel
+              position="center-left"
+              style={{ left: '0', top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Center-left pointing left</div>
+            </PointerPanel>
+
+            {/* Center-right */}
+            <PointerPanel
+              position="center-right"
+              style={{ right: '0', top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Center-right pointing right</div>
+            </PointerPanel>
+
+            {/* Bottom-left */}
+            <PointerPanel
+              position="bottom-left"
+              style={{ left: '0', bottom: '0' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Bottom-left pointing left</div>
+            </PointerPanel>
+
+            {/* Bottom-right */}
+            <PointerPanel
+              position="bottom-right"
+              style={{ right: '0', bottom: '0' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Bottom-right pointing right</div>
+            </PointerPanel>
+          </div>
+        </div>
+
+        <div className="panel">
+          <h3>Customizable Arrow Size</h3>
+          <p className="text-sm">The arrow size can be customized using the arrowSize prop.</p>
+          
+          <div style={{ position: 'relative', minHeight: '200px', padding: 'var(--space-8)', marginTop: 'var(--space-6)' }}>
+            <PointerPanel
+              position="center-left"
+              arrowSize={12}
+              style={{ left: '0', top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Small arrow (12px)</div>
+            </PointerPanel>
+
+            <PointerPanel
+              position="center-right"
+              arrowSize={24}
+              style={{ right: '0', top: '50%', transform: 'translateY(-50%)' }}
+            >
+              <div style={{ fontSize: 'var(--text-sm)' }}>Large arrow (24px)</div>
+            </PointerPanel>
+          </div>
+        </div>
+      </section>
+
       {/* Buttons Section */}
       <section id="buttons" className="showcase-section">
         <h2>Buttons</h2>
@@ -487,20 +571,18 @@ function StyleGuideContent() {
             <Tab value="tab2">Tab 2</Tab>
             <Tab value="tab3">Tab 3</Tab>
             <Tab value="tab4" disabled>Tab 4 (Disabled)</Tab>
-            <div style={{ marginTop: 'var(--space-4)' }}>
-              <TabPanel value="tab1">
-                <p>Content for Tab 1. Click tabs to see the underline smoothly animate.</p>
-              </TabPanel>
-              <TabPanel value="tab2">
-                <p>Content for Tab 2. This demonstrates the tab switching functionality.</p>
-              </TabPanel>
-              <TabPanel value="tab3">
-                <p>Content for Tab 3. The tabs are fully keyboard accessible.</p>
-              </TabPanel>
-              <TabPanel value="tab4">
-                <p>This tab is disabled.</p>
-              </TabPanel>
-            </div>
+            <TabPanel value="tab1">
+              <p>Content for Tab 1. Click tabs to see the underline smoothly animate.</p>
+            </TabPanel>
+            <TabPanel value="tab2">
+              <p>Content for Tab 2. This demonstrates the tab switching functionality.</p>
+            </TabPanel>
+            <TabPanel value="tab3">
+              <p>Content for Tab 3. The tabs are fully keyboard accessible.</p>
+            </TabPanel>
+            <TabPanel value="tab4">
+              <p>This tab is disabled.</p>
+            </TabPanel>
           </Tabs>
         </div>
       </section>
@@ -864,8 +946,8 @@ function StyleGuideContent() {
         <h2>Animations</h2>
 
         <div className="panel">
-          <h3>Continuous Animations</h3>
-          <p className="text-sm">Gentle animations that repeat with 1 beat animation followed by 3 beats pause.</p>
+          <h3>Beat Animations</h3>
+          <p className="text-sm">Gentle animations that repeat with 1 beat animation (1000ms) followed by 3 beats pause (3000ms).</p>
           <div className="flex gap-4 flex-wrap">
             <div className="animation-demo shake">
               <div className="demo-box">Shake</div>
@@ -873,8 +955,28 @@ function StyleGuideContent() {
             <div className="animation-demo bounce-subtle">
               <div className="demo-box">Bounce</div>
             </div>
+            <div className="animation-demo grow">
+              <div className="demo-box">Grow</div>
+            </div>
+            <div className="animation-demo pulse-glow">
+              <div className="demo-box">Pulse Glow</div>
+            </div>
+          </div>
+
+          <h3>Continuous Animations</h3>
+          <p className="text-sm">Animations that repeat continuously without pause.</p>
+          <div className="flex gap-4 flex-wrap">
+            <div className="animation-demo shake-continuous">
+              <div className="demo-box">Shake</div>
+            </div>
+            <div className="animation-demo bounce-subtle-continuous">
+              <div className="demo-box">Bounce</div>
+            </div>
             <div className="animation-demo grow-continuous">
               <div className="demo-box">Grow</div>
+            </div>
+            <div className="animation-demo pulse-glow-continuous">
+              <div className="demo-box">Pulse Glow</div>
             </div>
           </div>
         </div>

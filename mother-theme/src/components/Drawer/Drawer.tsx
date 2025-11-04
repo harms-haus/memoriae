@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, MouseEvent } from 'react';
+import React, { useEffect, useRef, useState, MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, type LucideIcon } from 'lucide-react';
 
@@ -24,6 +24,23 @@ export function Drawer({
   const overlayRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(open);
+
+  // Handle opening/closing state
+  useEffect(() => {
+    if (open) {
+      setIsClosing(false);
+      setShouldRender(true);
+    } else if (shouldRender) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 300); // Match --drawer-animation-duration
+      return () => clearTimeout(timer);
+    }
+  }, [open, shouldRender]);
 
   // Body scroll lock
   useEffect(() => {
@@ -61,22 +78,23 @@ export function Drawer({
     }
   };
 
-  if (!open) return null;
+  if (!shouldRender) return null;
 
   const positionClass = `drawer-${position}`;
   const sizeClass = size === 'wide' ? 'drawer-wide' : '';
+  const closingClass = isClosing ? 'drawer-closing' : '';
 
   return createPortal(
     <>
       <div
         ref={overlayRef}
-        className="drawer-overlay"
+        className={`drawer-overlay ${closingClass}`}
         onClick={handleBackdropClick}
         aria-hidden="true"
       />
       <div
         ref={drawerRef}
-        className={`drawer ${positionClass} ${sizeClass} ${className || ''}`}
+        className={`drawer ${positionClass} ${sizeClass} ${closingClass} ${className || ''}`}
         role="dialog"
         aria-modal="true"
       >

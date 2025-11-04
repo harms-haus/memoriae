@@ -33,6 +33,9 @@
   border-radius: var(--progress-border-radius);
   overflow: hidden;
   position: relative;
+  box-sizing: border-box;
+  border: var(--border-thick) solid var(--border-primary);
+  padding: var(--space-1);
 }
 
 .progress-fill {
@@ -40,6 +43,7 @@
   background: var(--progress-fill-bg);
   border-radius: var(--progress-fill-border-radius);
   transition: width var(--progress-animation-duration) ease-out;
+  display: block;
 }
 
 /* Variant: Striped */

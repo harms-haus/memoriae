@@ -38,11 +38,32 @@
  * TABS
  * ======================================== */
 
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.tabs-container-top {
+  flex-direction: column-reverse;
+}
+
+.tabs-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .tabs {
   display: flex;
   border-bottom: var(--tabs-border);
   border-radius: var(--tabs-border-radius);
   gap: var(--space-2);
+  position: relative;
+}
+
+.tabs-container-top .tabs {
+  border-bottom: none;
+  border-top: var(--tabs-border);
 }
 
 .tab {
@@ -58,21 +79,25 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: var(--text-sm);
+  z-index: 1;
 }
 
 .tab:hover {
   color: var(--tab-color-hover);
-  background: var(--hover-bg);
 }
 
 .tab.active {
   color: var(--tab-color-active);
   font-weight: var(--tab-font-weight-active);
-  border-bottom: var(--tab-border-active);
-  background: var(--tab-bg-active);
+  background: transparent;
+  border-bottom: var(--border-medium) solid transparent;
 }
 
 .tab:focus {
+  outline: none;
+}
+
+.tab:focus-visible {
   outline: var(--border-thick) solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -81,6 +106,43 @@
   color: var(--disabled-text);
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Animated tab background */
+.tab-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--tab-bg-active);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+  pointer-events: none;
+  border-radius: var(--tabs-border-radius) var(--tabs-border-radius) 0 0;
+}
+
+/* Animated tab indicator */
+.tab-indicator {
+  position: absolute;
+  height: var(--border-thick);
+  background: var(--accent-yellow);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tab-indicator-bottom {
+  bottom: 0;
+  left: 0;
+}
+
+.tab-indicator-top {
+  top: 0;
+  left: 0;
+}
+
+.tabs-panels {
+  width: 100%;
 }
 
 .tab-panel {

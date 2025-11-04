@@ -26,5 +26,15 @@
   --shadow-glow-yellow: 0 0 20px rgba(255, 212, 59, 0.3);
   --shadow-glow-blue: 0 0 20px rgba(79, 195, 247, 0.3);
   --shadow-glow-green: 0 0 20px rgba(102, 187, 106, 0.3);
+
+  /* Glow Effects - More visible with higher opacity and larger spread */
+  --glow-white: 0 0 0px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.1);
+  --glow-yellow: 0 0 0px rgba(255, 212, 59, 0.6), 0 0 15px rgba(255, 212, 59, 0.2);
+  --glow-blue: 0 0 0px rgba(79, 195, 247, 0.6), 0 0 15px rgba(79, 195, 247, 0.2);
+  --glow-green: 0 0 0px rgba(102, 187, 106, 0.6), 0 0 15px rgba(102, 187, 106, 0.2);
+  --glow-purple: 0 0 0px rgba(171, 71, 188, 0.6), 0 0 15px rgba(171, 71, 188, 0.2);
+  --glow-pink: 0 0 0px rgba(236, 64, 122, 0.6), 0 0 15px rgba(236, 64, 122, 0.2);
+  --glow-orange: 0 0 0px rgba(255, 152, 0, 0.6), 0 0 15px rgba(255, 152, 0, 0.2);
+  --glow-red: 0 0 0px rgba(239, 83, 80, 0.6), 0 0 15px rgba(239, 83, 80, 0.2);
 }
 

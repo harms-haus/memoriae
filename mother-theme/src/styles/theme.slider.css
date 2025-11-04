@@ -4,29 +4,29 @@
  * Contains all slider/range input-related styles and customizable properties.
  * 
  * Customizable Properties:
- * - --slider-track-height: Slider track height (default: 0.5rem)
- * - --slider-track-bg: Slider track background (default: --bg-secondary)
+ * - --slider-track-height: Slider track height (default: calc(0.5rem - 2px))
+ * - --slider-track-bg: Slider track background (default: --border-primary)
  * - --slider-track-border-radius: Track border radius (default: --radius-full)
  * - --slider-fill-bg: Slider fill background (default: --accent-yellow)
  * - --slider-thumb-size: Slider thumb size (default: 1.25rem)
  * - --slider-thumb-bg: Slider thumb background (default: --accent-yellow)
- * - --slider-thumb-border: Slider thumb border (default: --border-thick solid --text-inverse)
+ * - --slider-thumb-border: Slider thumb border (default: --border-thick solid --bg-primary)
  * - --slider-thumb-border-radius: Thumb border radius (default: --radius-full)
- * - --slider-thumb-shadow: Thumb shadow (default: var(--shadow-md))
+ * - --slider-thumb-shadow: Thumb shadow (default: none)
  * - --slider-thumb-hover-scale: Thumb hover scale (default: 1.1)
  */
 
 :root {
   /* Slider Properties */
-  --slider-track-height: 0.5rem;
-  --slider-track-bg: var(--bg-secondary);
+  --slider-track-height: calc(0.5rem - 2px);
+  --slider-track-bg: var(--border-primary);
   --slider-track-border-radius: var(--radius-full);
   --slider-fill-bg: var(--accent-yellow);
   --slider-thumb-size: 1.25rem;
   --slider-thumb-bg: var(--accent-yellow);
-  --slider-thumb-border: var(--border-thick) solid var(--text-inverse);
+  --slider-thumb-border: var(--border-thick) solid var(--bg-secondary);
   --slider-thumb-border-radius: var(--radius-full);
-  --slider-thumb-shadow: var(--shadow-md);
+  --slider-thumb-shadow: none;
   --slider-thumb-hover-scale: 1.1;
 }
 
@@ -58,6 +58,7 @@ input[type="range"]::-webkit-slider-thumb {
   cursor: pointer;
   box-shadow: var(--slider-thumb-shadow);
   transition: var(--transition-base);
+  margin-top: calc((var(--slider-thumb-size) - var(--slider-track-height)) / -2);
 }
 
 .slider::-webkit-slider-thumb:hover,
@@ -110,5 +111,15 @@ input[type="range"]::-moz-range-track {
   height: var(--slider-track-height);
   background: var(--slider-track-bg);
   border-radius: var(--slider-track-border-radius);
+}
+
+/* ========================================
+ * SLIDER CONTAINER
+ * ======================================== */
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  position: relative;
 }
 

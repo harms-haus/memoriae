@@ -1,0 +1,190 @@
+/* 
+ * Pointer Panel - Arrow/pointer panels for tooltips, popovers, timelines
+ * 
+ * These panels have arrow pointers that extend from the panel body.
+ * Positioned by the anchor point at the tip of the arrow.
+ */
+
+:root {
+  --pointer-size: 16px;
+  --pointer-panel-bg: var(--panel-bg);
+  --pointer-panel-border: var(--panel-border);
+  --pointer-panel-border-radius: var(--radius-md);
+  --pointer-panel-padding: var(--panel-padding);
+  --pointer-panel-shadow: var(--panel-shadow);
+}
+
+.pointer-panel {
+  position: absolute;
+  background: var(--pointer-panel-bg);
+  border: var(--border-thick) solid var(--pointer-panel-border);
+  border-radius: var(--pointer-panel-border-radius);
+  padding: var(--pointer-panel-padding);
+  box-shadow: var(--pointer-panel-shadow);
+  min-width: 100px;
+  max-width: 400px;
+}
+
+/* Arrow pointer using border triangles */
+.pointer-panel::before {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 1;
+}
+
+.pointer-panel::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 2;
+}
+
+/* Top-left: Arrow pointing left from top-left corner */
+.pointer-panel-top-left {
+  transform-origin: top left;
+  border-top-left-radius: 0;
+}
+
+.pointer-panel-top-left::before {
+  top: 0;
+  left: calc(-1 * var(--pointer-size));
+  border-top: var(--pointer-size) solid transparent;
+  border-bottom: var(--pointer-size) solid transparent;
+  border-right: var(--pointer-size) solid var(--pointer-panel-border);
+  border-left: none;
+}
+
+.pointer-panel-top-left::after {
+  top: var(--border-thick);
+  left: calc(-1 * var(--pointer-size) + var(--border-thick));
+  border-top: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-bottom: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-right: calc(var(--pointer-size) - var(--border-thick)) solid var(--pointer-panel-bg);
+  border-left: none;
+}
+
+/* Top-right: Arrow pointing right from top-right corner */
+.pointer-panel-top-right {
+  transform-origin: top right;
+  border-top-right-radius: 0;
+}
+
+.pointer-panel-top-right::before {
+  top: 0;
+  right: calc(-1 * var(--pointer-size));
+  border-top: var(--pointer-size) solid transparent;
+  border-bottom: var(--pointer-size) solid transparent;
+  border-left: var(--pointer-size) solid var(--pointer-panel-border);
+  border-right: none;
+}
+
+.pointer-panel-top-right::after {
+  top: var(--border-thick);
+  right: calc(-1 * var(--pointer-size) + var(--border-thick));
+  border-top: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-bottom: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-left: calc(var(--pointer-size) - var(--border-thick)) solid var(--pointer-panel-bg);
+  border-right: none;
+}
+
+/* Center-left: Arrow pointing left from center-left edge */
+.pointer-panel-center-left {
+  transform-origin: center left;
+}
+
+.pointer-panel-center-left::before {
+  top: 50%;
+  left: calc(-1 * var(--pointer-size));
+  transform: translateY(-50%);
+  border-top: var(--pointer-size) solid transparent;
+  border-bottom: var(--pointer-size) solid transparent;
+  border-right: var(--pointer-size) solid var(--pointer-panel-border);
+  border-left: none;
+}
+
+.pointer-panel-center-left::after {
+  top: 50%;
+  left: calc(-1 * var(--pointer-size) + var(--border-thick));
+  transform: translateY(-50%);
+  border-top: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-bottom: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-right: calc(var(--pointer-size) - var(--border-thick)) solid var(--pointer-panel-bg);
+  border-left: none;
+}
+
+/* Center-right: Arrow pointing right from center-right edge */
+.pointer-panel-center-right {
+  transform-origin: center right;
+}
+
+.pointer-panel-center-right::before {
+  top: 50%;
+  right: calc(-1 * var(--pointer-size));
+  transform: translateY(-50%);
+  border-top: var(--pointer-size) solid transparent;
+  border-bottom: var(--pointer-size) solid transparent;
+  border-left: var(--pointer-size) solid var(--pointer-panel-border);
+  border-right: none;
+}
+
+.pointer-panel-center-right::after {
+  top: 50%;
+  right: calc(-1 * var(--pointer-size) + var(--border-thick));
+  transform: translateY(-50%);
+  border-top: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-bottom: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-left: calc(var(--pointer-size) - var(--border-thick)) solid var(--pointer-panel-bg);
+  border-right: none;
+}
+
+/* Bottom-left: Arrow pointing left from bottom-left corner */
+.pointer-panel-bottom-left {
+  transform-origin: bottom left;
+  border-bottom-left-radius: 0;
+}
+
+.pointer-panel-bottom-left::before {
+  bottom: 0;
+  left: calc(-1 * var(--pointer-size));
+  border-top: var(--pointer-size) solid transparent;
+  border-bottom: var(--pointer-size) solid transparent;
+  border-right: var(--pointer-size) solid var(--pointer-panel-border);
+  border-left: none;
+}
+
+.pointer-panel-bottom-left::after {
+  bottom: var(--border-thick);
+  left: calc(-1 * var(--pointer-size) + var(--border-thick));
+  border-top: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-bottom: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-right: calc(var(--pointer-size) - var(--border-thick)) solid var(--pointer-panel-bg);
+  border-left: none;
+}
+
+/* Bottom-right: Arrow pointing right from bottom-right corner */
+.pointer-panel-bottom-right {
+  transform-origin: bottom right;
+  border-bottom-right-radius: 0;
+}
+
+.pointer-panel-bottom-right::before {
+  bottom: 0;
+  right: calc(-1 * var(--pointer-size));
+  border-top: var(--pointer-size) solid transparent;
+  border-bottom: var(--pointer-size) solid transparent;
+  border-left: var(--pointer-size) solid var(--pointer-panel-border);
+  border-right: none;
+}
+
+.pointer-panel-bottom-right::after {
+  bottom: var(--border-thick);
+  right: calc(-1 * var(--pointer-size) + var(--border-thick));
+  border-top: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-bottom: calc(var(--pointer-size) - var(--border-thick)) solid transparent;
+  border-left: calc(var(--pointer-size) - var(--border-thick)) solid var(--pointer-panel-bg);
+  border-right: none;
+}
+

@@ -33,13 +33,10 @@
   --button-primary-border: var(--text-inverse);
   --button-primary-padding-x: 1.75rem;
   --button-primary-padding-y: 0.875rem;
-  --button-primary-shadow-offset: var(--shadow-md);
-  --button-primary-shadow-offset-hover: var(--shadow-lg);
   
-  /* Button shadows - default to general shadow rules but can be overridden */
-  --button-primary-shadow: var(--button-primary-shadow-offset) var(--button-primary-shadow-offset) 0 var(--button-primary-border);
-  /* Default hover shadow (2px offset from --shadow-sm) */
-  --button-primary-shadow-hover: var(--button-primary-shadow-offset-hover) var(--button-primary-shadow-offset-hover) 0 var(--button-primary-border);
+  /* Button shadows - use generic sharp-shadow pattern with button border color */
+  --button-primary-shadow: 4px 4px 0 var(--button-primary-border);
+  --button-primary-shadow-hover: 8px 8px 0 var(--button-primary-border);
   /* Active state has no shadow */
   --button-primary-shadow-active: none;
   
@@ -76,7 +73,7 @@
 }
 
 .btn-primary:hover {
-  transform: translateY(calc(var(--button-primary-shadow-offset-hover) - var(--button-primary-shadow-offset)));
+  transform: translateY(-4px);
   box-shadow: var(--button-primary-shadow-hover);
   background: var(--button-primary-bg-hover);
 }

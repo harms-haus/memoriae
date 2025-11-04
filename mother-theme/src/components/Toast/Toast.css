@@ -18,6 +18,12 @@
   left: var(--space-4);
 }
 
+.toast-container-top-middle {
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .toast-container-bottom-right {
   bottom: var(--space-4);
   right: var(--space-4);
@@ -39,11 +45,11 @@
 @keyframes toast-slide-out {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
   to {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateY(-100%);
   }
 }
 

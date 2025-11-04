@@ -113,37 +113,39 @@ export function Notification({
           </div>
         )}
       </div>
-      {duration > 0 && (
-        <div className="notification-timer">
-          <svg className="notification-timer-circle" viewBox="0 0 24 24">
-            <circle
-              className="notification-timer-circle-bg"
-              cx="12"
-              cy="12"
-              r="11"
-            />
-            <circle
-              className="notification-timer-circle-progress"
-              cx="12"
-              cy="12"
-              r="11"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              style={{
-                transition: 'stroke-dashoffset 0.1s linear',
-              }}
-            />
-          </svg>
-        </div>
-      )}
-      <button
-        type="button"
-        className="notification-close"
-        onClick={handleClose}
-        aria-label="Close notification"
-      >
-        <X size={18} />
-      </button>
+      <div className="notification-controls">
+        <button
+          type="button"
+          className="notification-close"
+          onClick={handleClose}
+          aria-label="Close notification"
+        >
+          <X size={18} />
+        </button>
+        {duration > 0 && (
+          <div className="notification-timer">
+            <svg className="notification-timer-circle" viewBox="0 0 24 24">
+              <circle
+                className="notification-timer-circle-bg"
+                cx="12"
+                cy="12"
+                r="11"
+              />
+              <circle
+                className="notification-timer-circle-progress"
+                cx="12"
+                cy="12"
+                r="11"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                style={{
+                  transition: 'stroke-dashoffset 0.1s linear',
+                }}
+              />
+            </svg>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

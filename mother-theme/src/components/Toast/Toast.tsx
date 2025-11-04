@@ -98,11 +98,11 @@ export interface ToastData {
 }
 
 export interface ToastProviderProps {
-  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+  position?: 'top-right' | 'top-left' | 'top-middle' | 'bottom-right' | 'bottom-left';
   children: React.ReactNode;
 }
 
-export function ToastProvider({ position = 'top-right', children }: ToastProviderProps) {
+export function ToastProvider({ position = 'top-middle', children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const addToast = useCallback((toast: Omit<ToastData, 'id'>) => {
@@ -117,6 +117,7 @@ export function ToastProvider({ position = 'top-right', children }: ToastProvide
   const positionClasses = {
     'top-right': 'toast-container-top-right',
     'top-left': 'toast-container-top-left',
+    'top-middle': 'toast-container-top-middle',
     'bottom-right': 'toast-container-bottom-right',
     'bottom-left': 'toast-container-bottom-left',
   };

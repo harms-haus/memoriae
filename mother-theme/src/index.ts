@@ -54,3 +54,6 @@ export type { ButtonProps } from './components/Button';
 export { Input, Textarea } from './components/Input';
 export type { InputProps, TextareaProps } from './components/Input';
 
+export { PointerPanel } from './components/PointerPanel';
+export type { PointerPanelProps, PointerPosition } from './components/PointerPanel';
+

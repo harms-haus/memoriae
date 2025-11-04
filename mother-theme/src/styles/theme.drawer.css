@@ -41,12 +41,25 @@
   animation: drawer-fade-in var(--drawer-animation-duration) ease-out;
 }
 
+.drawer-overlay.drawer-closing {
+  animation: drawer-fade-out var(--drawer-animation-duration) ease-out forwards;
+}
+
 @keyframes drawer-fade-in {
   from {
     opacity: 0;
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes drawer-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 
@@ -68,6 +81,10 @@
   animation: drawer-slide-left var(--drawer-animation-duration) ease-out;
 }
 
+.drawer-left.drawer-closing {
+  animation: drawer-slide-left-out var(--drawer-animation-duration) ease-out forwards;
+}
+
 @keyframes drawer-slide-left {
   from {
     transform: translateX(-100%);
@@ -77,10 +94,23 @@
   }
 }
 
+@keyframes drawer-slide-left-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
 .drawer-right {
   right: 0;
   width: var(--drawer-width);
   animation: drawer-slide-right var(--drawer-animation-duration) ease-out;
+}
+
+.drawer-right.drawer-closing {
+  animation: drawer-slide-right-out var(--drawer-animation-duration) ease-out forwards;
 }
 
 @keyframes drawer-slide-right {
@@ -92,12 +122,25 @@
   }
 }
 
+@keyframes drawer-slide-right-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 .drawer-top {
   top: 0;
   left: 0;
   right: 0;
   height: var(--drawer-width);
   animation: drawer-slide-top var(--drawer-animation-duration) ease-out;
+}
+
+.drawer-top.drawer-closing {
+  animation: drawer-slide-top-out var(--drawer-animation-duration) ease-out forwards;
 }
 
 @keyframes drawer-slide-top {
@@ -109,6 +152,15 @@
   }
 }
 
+@keyframes drawer-slide-top-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
 .drawer-bottom {
   bottom: 0;
   left: 0;
@@ -117,12 +169,25 @@
   animation: drawer-slide-bottom var(--drawer-animation-duration) ease-out;
 }
 
+.drawer-bottom.drawer-closing {
+  animation: drawer-slide-bottom-out var(--drawer-animation-duration) ease-out forwards;
+}
+
 @keyframes drawer-slide-bottom {
   from {
     transform: translateY(100%);
   }
   to {
     transform: translateY(0);
+  }
+}
+
+@keyframes drawer-slide-bottom-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
   }
 }
 

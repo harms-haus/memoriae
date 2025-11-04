@@ -18,13 +18,15 @@
   --animation-duration-pulse: 2s;
   --animation-duration-slide: 0.3s;
   --animation-duration-fade: 0.4s;
+  --animation-beat-duration: 1000ms;
+  --animation-beat-cycle: 4000ms; /* 1 beat (1000ms) + 3 pauses (3000ms) */
 }
 
 /* ========================================
  * ANIMATION KEYFRAMES
  * ======================================== */
 
-@keyframes bounce-subtle {
+@keyframes bounce-subtle-continuous {
   0%, 100% {
     transform: translateY(0);
   }
@@ -33,12 +35,36 @@
   }
 }
 
-@keyframes pulse-glow {
+@keyframes bounce-subtle {
+  0% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-4px);
+  }
+  50%, 100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow-continuous {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(255, 212, 59, 0.4);
   }
   50% {
     box-shadow: 0 0 0 8px rgba(255, 212, 59, 0);
+  }
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 212, 59, 0.4);
+  }
+  25% {
+    box-shadow: 0 0 0 8px rgba(255, 212, 59, 0);
+  }
+  50%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 212, 59, 0.4);
   }
 }
 
@@ -66,12 +92,20 @@
  * ANIMATION UTILITY CLASSES
  * ======================================== */
 
+.bounce-subtle-continuous {
+  animation: bounce-subtle-continuous var(--animation-duration-bounce) ease-in-out infinite;
+}
+
 .bounce-subtle {
-  animation: bounce-subtle var(--animation-duration-bounce) ease-in-out infinite;
+  animation: bounce-subtle var(--animation-beat-cycle) ease-in-out infinite;
+}
+
+.pulse-glow-continuous {
+  animation: pulse-glow-continuous var(--animation-duration-pulse) ease-in-out infinite;
 }
 
 .pulse-glow {
-  animation: pulse-glow var(--animation-duration-pulse) ease-in-out infinite;
+  animation: pulse-glow var(--animation-beat-cycle) ease-in-out infinite;
 }
 
 .slide-up {
@@ -83,23 +117,44 @@
 }
 
 /* Additional animation classes */
-.shake {
-  animation: shake 0.5s ease-in-out infinite;
+.shake-continuous {
+  animation: shake-continuous 0.5s ease-in-out infinite;
 }
 
-@keyframes shake {
+.shake {
+  animation: shake var(--animation-beat-cycle) ease-in-out infinite;
+}
+
+@keyframes shake-continuous {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  6.25% { transform: translateX(-4px); }
+  18.75% { transform: translateX(4px); }
+  25%, 100% { transform: translateX(0); }
 }
 
 .grow-continuous {
   animation: grow-continuous 2s ease-in-out infinite;
 }
 
+.grow {
+  animation: grow var(--animation-beat-cycle) ease-in-out infinite;
+}
+
 @keyframes grow-continuous {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
+}
+
+@keyframes grow {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.1); }
+  50%, 100% { transform: scale(1); }
 }
 
 .raise-hover {

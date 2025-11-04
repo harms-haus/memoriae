@@ -6,13 +6,13 @@
  * Customizable Properties:
  * - --toggle-width: Toggle track width (default: 2x --radio-size)
  * - --toggle-height: Toggle track height (default: --radio-size)
- * - --toggle-track-bg-unchecked: Track background when unchecked (default: --bg-secondary)
+ * - --toggle-track-bg-unchecked: Track background when unchecked (default: --text-inverse)
  * - --toggle-track-bg-checked: Track background when checked (default: --bg-primary)
  * - --toggle-track-border: Track border color (default: --border-primary)
  * - --toggle-track-border-radius: Track border radius (default: --radius-full)
  * - --toggle-handle-height: Handle height (default: calculated to match radio's inner check circle)
  * - --toggle-handle-width: Handle width (default: 1.5x handle height for better visibility)
- * - --toggle-handle-bg-unchecked: Handle background when unchecked (default: --text-inverse)
+ * - --toggle-handle-bg-unchecked: Handle background when unchecked (default: --bg-secondary)
  * - --toggle-handle-bg-checked: Handle background when checked (default: --accent-yellow)
  * - --toggle-handle-offset: Handle offset from edge (default: calculated to match radio padding)
  * - --toggle-transition: Toggle transition (default: --transition-base)
@@ -23,7 +23,7 @@
   /* Width is 2x radio size, height matches radio size */
   --toggle-width: calc(var(--radio-size) * 2);
   --toggle-height: var(--radio-size);
-  --toggle-track-bg-unchecked: var(--bg-secondary);
+  --toggle-track-bg-unchecked: var(--text-inverse);
   --toggle-track-bg-checked: var(--bg-primary);
   --toggle-track-border: var(--border-primary);
   --toggle-track-border-radius: var(--radius-full);
@@ -31,7 +31,7 @@
   --toggle-handle-height: calc(var(--radio-size) - var(--border-thick) * 2 - var(--radio-inner-size) * 2);
   /* Handle width is 1.5x the height (wider by 1/2) for better visibility */
   --toggle-handle-width: calc(var(--toggle-handle-height) * 1.5);
-  --toggle-handle-bg-unchecked: var(--text-inverse);
+  --toggle-handle-bg-unchecked: var(--bg-secondary);
   --toggle-handle-bg-checked: var(--accent-yellow);
   /* Handle offset creates same padding as radio: (radio-size - border*2 - handle-height) / 2 */
   --toggle-handle-offset: calc((var(--radio-size) - var(--border-thick) * 2 - var(--toggle-handle-height)) / 2);
