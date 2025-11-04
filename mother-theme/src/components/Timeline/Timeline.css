@@ -37,6 +37,33 @@
   margin-bottom: 0;
 }
 
+/* First item: don't extend upward, only extend downward to connect */
+.timeline-item:first-child .timeline-column {
+  height: calc(100% + var(--space-6));
+}
+
+/* Last item: don't extend downward, only extend upward to connect */
+.timeline-item:last-child .timeline-column {
+  height: calc(100% + var(--space-6));
+}
+
+/* Only one item: no extension needed */
+.timeline-item:only-child .timeline-column {
+  margin-top: 0;
+  margin-bottom: 0;
+  height: 100%;
+}
+
+/* First item: keep top line for alignment but make it nearly invisible */
+.timeline-item:first-child .timeline-line-top-invisible {
+  opacity: 0.001;
+}
+
+/* Last item: keep bottom line for alignment but make it nearly invisible */
+.timeline-item:last-child .timeline-line-bottom-invisible {
+  opacity: 0.001;
+}
+
 /* Left mode: timeline on left, panels on right */
 .timeline-mode-left .timeline-item {
   grid-template-columns: auto 1fr;
@@ -120,6 +147,11 @@
   position: relative;
   width: 40px;
   flex-shrink: 0;
+  /* Extend beyond item boundaries to connect lines between items */
+  margin-top: calc(-1 * var(--space-6));
+  margin-bottom: calc(-1 * var(--space-6));
+  /* Ensure column extends to connect lines */
+  height: calc(100% + 2 * var(--space-6));
 }
 
 .timeline-line {
@@ -129,14 +161,6 @@
   min-height: 20px;
 }
 
-.timeline-line-top {
-  margin-bottom: var(--space-2);
-}
-
-.timeline-line-bottom {
-  margin-top: var(--space-2);
-}
-
 .timeline-dot-container {
   display: flex;
   align-items: center;
@@ -144,6 +168,8 @@
   position: relative;
   z-index: 2;
   flex-shrink: 0;
+  /* Add vertical padding to create space around dot so lines don't touch it */
+  padding: var(--space-2) 0;
 }
 
 .timeline-dot-default {

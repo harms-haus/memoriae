@@ -147,11 +147,11 @@ export function Timeline({
 
             {/* Timeline column */}
             <div className="timeline-column">
-              {!isTop && <div className="timeline-line timeline-line-top" />}
+              <div className={`timeline-line timeline-line-top ${isTop ? 'timeline-line-top-invisible' : ''}`} />
               <div className="timeline-dot-container">
                 {renderDefaultDot(index, item.position)}
               </div>
-              {!isBottom && <div className="timeline-line timeline-line-bottom" />}
+              <div className={`timeline-line timeline-line-bottom ${isBottom ? 'timeline-line-bottom-invisible' : ''}`} />
             </div>
 
             {/* Tail column (center mode only) */}
