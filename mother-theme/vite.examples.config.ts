@@ -1,26 +1,20 @@
-/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
-// Vite config specifically for the style guide
 export default defineConfig({
-  plugins: [
-    react({
-      fastRefresh: true,
-    }),
-  ],
-  root: resolve(__dirname, 'style-guide'),
+  plugins: [react()],
+  root: resolve(__dirname, 'examples'),
   server: {
     port: 3001,
     host: true,
     strictPort: false,
   },
   build: {
-    outDir: resolve(__dirname, 'dist/style-guide'),
+    outDir: resolve(__dirname, 'dist/examples'),
     sourcemap: true,
     rollupOptions: {
-      input: resolve(__dirname, 'style-guide/index.html'),
+      input: resolve(__dirname, 'examples/index.html'),
     },
   },
   resolve: {

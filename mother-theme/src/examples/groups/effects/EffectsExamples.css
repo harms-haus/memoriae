@@ -1,0 +1,53 @@
+/* Effects Examples Styles */
+.examples-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.examples-header {
+  padding: var(--space-8) 0;
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.showcase-section {
+  margin-bottom: var(--space-12);
+}
+
+.showcase-section h2 {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-thick) solid var(--border-primary);
+}
+
+.showcase-section h3 {
+  margin-bottom: var(--space-4);
+}
+
+.showcase-section .panel {
+  margin-bottom: var(--space-6);
+}
+
+/* Animation Demonstrations */
+.animation-demo {
+  min-width: 150px;
+}
+
+.demo-box {
+  background: var(--bg-secondary);
+  border: var(--border-thick) solid var(--accent-yellow);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  text-align: center;
+  font-weight: var(--weight-bold);
+  color: var(--accent-yellow);
+}
+
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+  .examples-container {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+

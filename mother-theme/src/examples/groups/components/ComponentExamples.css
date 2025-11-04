@@ -1,0 +1,38 @@
+/* Component Examples Styles */
+.examples-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.examples-header {
+  padding: var(--space-8) 0;
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.showcase-section {
+  margin-bottom: var(--space-12);
+}
+
+.showcase-section h2 {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-thick) solid var(--border-primary);
+}
+
+.showcase-section h3 {
+  margin-bottom: var(--space-4);
+}
+
+.showcase-section .panel {
+  margin-bottom: var(--space-6);
+}
+
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+  .examples-container {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+

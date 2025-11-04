@@ -8,6 +8,8 @@
   "scripts": {
     "type-check": "tsc --noEmit",
     "build": "tsc",
+    "examples": "vite --config vite.examples.config.ts",
+    "examples:build": "vite build --config vite.examples.config.ts",
     "test": "vitest run --no-watch",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

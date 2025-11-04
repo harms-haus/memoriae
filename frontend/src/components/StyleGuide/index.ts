@@ -1,2 +1,0 @@
-export { StyleGuide } from './StyleGuide';
-
