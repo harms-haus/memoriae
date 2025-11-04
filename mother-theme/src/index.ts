@@ -41,3 +41,16 @@ export type { ProgressProps } from './components/Progress';
 export { Slider } from './components/Slider';
 export type { SliderProps } from './components/Slider';
 
+// Phase 3: Enhancement Components
+export { Tag } from './components/Tag';
+export type { TagProps } from './components/Tag';
+
+export { Badge } from './components/Badge';
+export type { BadgeProps } from './components/Badge';
+
+export { Button } from './components/Button';
+export type { ButtonProps } from './components/Button';
+
+export { Input, Textarea } from './components/Input';
+export type { InputProps, TextareaProps } from './components/Input';
+
