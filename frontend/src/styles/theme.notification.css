@@ -85,11 +85,6 @@
   font-size: var(--text-base);
 }
 
-.notification-message {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
 .notification-close {
   background: transparent;
   border: none;
@@ -103,5 +98,58 @@
 
 .notification-close:hover {
   color: var(--text-primary);
+}
+
+/* Notification additional parts */
+.notification-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+}
+
+.notification-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.notification-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.notification-timer {
+  width: 24px;
+  height: 24px;
+  position: relative;
+}
+
+.notification-timer-circle {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.notification-timer-circle-bg {
+  fill: none;
+  stroke: var(--border-primary);
+  stroke-width: 2;
+}
+
+.notification-timer-circle-progress {
+  fill: none;
+  stroke: var(--accent-yellow);
+  stroke-width: 2;
+  stroke-dasharray: 94.24;
+  stroke-dashoffset: 94.24;
+  animation: notification-timer-countdown 5s linear forwards;
+}
+
+@keyframes notification-timer-countdown {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 

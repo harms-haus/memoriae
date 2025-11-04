@@ -122,4 +122,4 @@ Each control file should include a comment block listing all customizable proper
 - [x] Extract badge controls to theme.badge.css with badge variants and properties
 - [x] Extract layout utilities to theme.layout.css (containers, grid, flexbox)
 - [x] Update main theme.css to import-only file with @import statements (colors, sizes, props first, then others)
-- [ ] Verify all controls maintain visual appearance, properties have defaults, and imports work correctly
+- [x] Verify all controls maintain visual appearance, properties have defaults, and imports work correctly

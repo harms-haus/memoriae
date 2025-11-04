@@ -84,6 +84,14 @@
   max-width: var(--dialog-max-width-wide);
 }
 
+.dialog-small {
+  max-width: 300px;
+}
+
+.dialog-large {
+  max-width: var(--dialog-max-width-wide);
+}
+
 .dialog-header {
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-4);

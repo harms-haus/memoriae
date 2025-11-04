@@ -1,0 +1,111 @@
+/* 
+ * Theme Icon - Icon Controls and Properties
+ * 
+ * Contains all icon-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --icon-stroke-width: Icon stroke width (default: 2)
+ * - --icon-xs-size: Extra small icon size (default: 12px)
+ * - --icon-sm-size: Small icon size (default: 16px)
+ * - --icon-md-size: Medium icon size (default: 24px)
+ * - --icon-lg-size: Large icon size (default: 32px)
+ * - --icon-xl-size: Extra large icon size (default: 40px)
+ * - --icon-2xl-size: 2XL icon size (default: 48px)
+ */
+
+:root {
+  /* Icon Properties */
+  --icon-stroke-width: 2;
+  --icon-xs-size: 12px;
+  --icon-sm-size: 16px;
+  --icon-md-size: 24px;
+  --icon-lg-size: 32px;
+  --icon-xl-size: 40px;
+  --icon-2xl-size: 48px;
+}
+
+/* ========================================
+ * ICONS
+ * ======================================== */
+
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  stroke-width: var(--icon-stroke-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+/* Icon Sizes */
+.icon-xs {
+  width: var(--icon-xs-size);
+  height: var(--icon-xs-size);
+}
+
+.icon-sm {
+  width: var(--icon-sm-size);
+  height: var(--icon-sm-size);
+}
+
+.icon-md {
+  width: var(--icon-md-size);
+  height: var(--icon-md-size);
+}
+
+.icon-lg {
+  width: var(--icon-lg-size);
+  height: var(--icon-lg-size);
+}
+
+.icon-xl {
+  width: var(--icon-xl-size);
+  height: var(--icon-xl-size);
+}
+
+.icon-2xl {
+  width: var(--icon-2xl-size);
+  height: var(--icon-2xl-size);
+}
+
+/* Icon Color Variants */
+.icon-primary {
+  color: var(--accent-yellow);
+}
+
+.icon-success {
+  color: var(--success);
+}
+
+.icon-warning {
+  color: var(--warning);
+}
+
+.icon-error {
+  color: var(--error);
+}
+
+.icon-info {
+  color: var(--info);
+}
+
+.icon-blue {
+  color: var(--accent-blue);
+}
+
+.icon-green {
+  color: var(--accent-green);
+}
+
+.icon-purple {
+  color: var(--accent-purple);
+}
+
+/* Icon with Text */
+.icon-text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Memoriae Style Guide Showcase</title>
-  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="../src/styles/theme.css">
   <link rel="stylesheet" href="index.css">
   <!-- Lucide Icons - same library used in React components (lucide-react) -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -436,26 +436,26 @@
         <div class="flex flex-col gap-4">
           <div>
             <label class="label">Progress 25%</label>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" style="width: 25%;"></div>
+            <div class="progress">
+              <div class="progress-fill" style="width: 25%;"></div>
             </div>
           </div>
           <div>
             <label class="label">Progress 50%</label>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" style="width: 50%;"></div>
+            <div class="progress">
+              <div class="progress-fill" style="width: 50%;"></div>
             </div>
           </div>
           <div>
             <label class="label">Progress 75%</label>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" style="width: 75%;"></div>
+            <div class="progress">
+              <div class="progress-fill" style="width: 75%;"></div>
             </div>
           </div>
           <div>
             <label class="label">Progress 100%</label>
-            <div class="progress-bar">
-              <div class="progress-bar-fill" style="width: 100%;"></div>
+            <div class="progress">
+              <div class="progress-fill" style="width: 100%;"></div>
             </div>
           </div>
         </div>
@@ -466,20 +466,20 @@
         <div class="flex flex-col gap-4">
           <div>
             <label class="label">Success (Green)</label>
-            <div class="progress-bar">
-              <div class="progress-bar-fill progress-success" style="width: 60%;"></div>
+            <div class="progress progress-success">
+              <div class="progress-fill" style="width: 60%;"></div>
             </div>
           </div>
           <div>
             <label class="label">Warning (Orange)</label>
-            <div class="progress-bar">
-              <div class="progress-bar-fill progress-warning" style="width: 40%;"></div>
+            <div class="progress progress-warning">
+              <div class="progress-fill" style="width: 40%;"></div>
             </div>
           </div>
           <div>
             <label class="label">Error (Red)</label>
-            <div class="progress-bar">
-              <div class="progress-bar-fill progress-error" style="width: 30%;"></div>
+            <div class="progress progress-error">
+              <div class="progress-fill" style="width: 30%;"></div>
             </div>
           </div>
         </div>
@@ -493,19 +493,19 @@
       <div class="panel">
         <h3>Tab Navigation</h3>
         <div class="tabs" data-active-index="0" id="demo-tabs">
-          <button class="tab-item active" data-tab-index="0" onclick="updateTab(0)">Tab 1</button>
-          <button class="tab-item" data-tab-index="1" onclick="updateTab(1)">Tab 2</button>
-          <button class="tab-item" data-tab-index="2" onclick="updateTab(2)">Tab 3</button>
-          <button class="tab-item" data-tab-index="3" onclick="updateTab(3)">Tab 4</button>
+          <button class="tab active" data-tab-index="0" onclick="updateTab(0)">Tab 1</button>
+          <button class="tab" data-tab-index="1" onclick="updateTab(1)">Tab 2</button>
+          <button class="tab" data-tab-index="2" onclick="updateTab(2)">Tab 3</button>
+          <button class="tab" data-tab-index="3" onclick="updateTab(3)">Tab 4</button>
         </div>
-        <div class="tab-content">
+        <div class="tab-panel">
           <p>Content for the active tab appears here. Click tabs to see the underline smoothly animate.</p>
         </div>
       </div>
       <script>
         function updateTab(index) {
           const tabs = document.getElementById('demo-tabs');
-          const items = tabs.querySelectorAll('.tab-item');
+          const items = tabs.querySelectorAll('.tab');
           const activeItem = items[index];
           
           // Update active classes
@@ -682,7 +682,7 @@
         <h3>Message Notifications (Informational)</h3>
         <p class="text-sm">Informational messages with auto-dismiss timer. Includes animated timer icon that counts down.</p>
         <div class="flex flex-col gap-4">
-          <div class="notification notification-message">
+          <div class="notification notification-info">
             <i data-lucide="info" class="notification-icon"></i>
             <div class="notification-content">
               <div class="notification-title">Information</div>
@@ -700,7 +700,7 @@
               </div>
             </div>
           </div>
-          <div class="notification notification-message">
+          <div class="notification notification-info">
             <i data-lucide="info" class="notification-icon"></i>
             <div class="notification-content">
               <div class="notification-title">Update Available</div>
@@ -1151,7 +1151,7 @@
           <div class="animation-demo shake">
             <div class="demo-box">Shake</div>
           </div>
-          <div class="animation-demo bounce">
+          <div class="animation-demo bounce-subtle">
             <div class="demo-box">Bounce</div>
           </div>
           <div class="animation-demo grow-continuous">
