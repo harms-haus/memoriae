@@ -10,7 +10,6 @@ import {
   SettingsView,
   SeedDetailView,
 } from './components/views'
-import './styles/theme.css'
 
 function LoginPage() {
   const { login } = useAuth()
