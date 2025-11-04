@@ -32,6 +32,7 @@ export function Drawer({
     if (open) {
       setIsClosing(false);
       setShouldRender(true);
+      return undefined;
     } else if (shouldRender) {
       setIsClosing(true);
       const timer = setTimeout(() => {
@@ -40,6 +41,7 @@ export function Drawer({
       }, 300); // Match --drawer-animation-duration
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [open, shouldRender]);
 
   // Body scroll lock

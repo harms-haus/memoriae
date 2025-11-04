@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules/**', 'dist/**', '**/*.ct.{ts,tsx}'],
+    exclude: ['node_modules/**', 'dist/**', '**/*.ct.{ts,tsx}', '**/*.visual.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
