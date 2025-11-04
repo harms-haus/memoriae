@@ -9,6 +9,12 @@
  * STYLE GUIDE LAYOUT
  * ======================================== */
 
+.style-guide-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
 .style-guide-header {
   padding: var(--space-8) 0;
   text-align: center;
@@ -128,7 +134,7 @@
 
 .spacing-demo-bar {
   background: var(--accent-yellow);
-  outline: 1px solid var(--text-inverse); /* Outline doesn't affect width, so visual matches spacing value exactly */
+  outline: 1px solid var(--text-inverse);
   outline-offset: 0;
   height: var(--space-4);
   min-width: var(--space-1);
@@ -205,13 +211,6 @@
 }
 
 /* ========================================
- * COMPONENT ALIASES & ADDITIONAL STYLES
- * ======================================== */
-
-/* (All reusable component styles have been migrated to theme.css modules) */
-
-
-/* ========================================
  * RESPONSIVE ADJUSTMENTS (Showcase Only)
  * ======================================== */
 
@@ -222,6 +221,10 @@
 
   .shadow-demo-grid {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+
+  .style-guide-container {
+    padding: var(--space-8) var(--space-6);
   }
 }
 

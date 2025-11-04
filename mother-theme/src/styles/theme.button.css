@@ -10,7 +10,9 @@
  * - --button-primary-border: Primary button border color (default: --text-inverse)
  * - --button-primary-padding-x: Horizontal padding (default: 1.75rem)
  * - --button-primary-padding-y: Vertical padding (default: 0.875rem)
- * - --button-primary-shadow-offset: Shadow offset for pressed effect (default: 4px)
+ * - --button-primary-shadow: Primary button shadow (default: constructed from --shadow-md)
+ * - --button-primary-shadow-hover: Primary button hover shadow (default: constructed from --shadow-sm)
+ * - --button-primary-shadow-active: Primary button active shadow (default: none)
  * - --button-secondary-bg: Secondary button background (default: transparent)
  * - --button-secondary-color: Secondary button text color (default: --text-primary)
  * - --button-secondary-border: Secondary button border color (default: --border-primary)
@@ -31,7 +33,15 @@
   --button-primary-border: var(--text-inverse);
   --button-primary-padding-x: 1.75rem;
   --button-primary-padding-y: 0.875rem;
-  --button-primary-shadow-offset: 4px;
+  --button-primary-shadow-offset: var(--shadow-md);
+  --button-primary-shadow-offset-hover: var(--shadow-lg);
+  
+  /* Button shadows - default to general shadow rules but can be overridden */
+  --button-primary-shadow: var(--button-primary-shadow-offset) var(--button-primary-shadow-offset) 0 var(--button-primary-border);
+  /* Default hover shadow (2px offset from --shadow-sm) */
+  --button-primary-shadow-hover: var(--button-primary-shadow-offset-hover) var(--button-primary-shadow-offset-hover) 0 var(--button-primary-border);
+  /* Active state has no shadow */
+  --button-primary-shadow-active: none;
   
   --button-secondary-bg: transparent;
   --button-secondary-color: var(--text-primary);
@@ -62,18 +72,18 @@
   letter-spacing: 0.05em;
   cursor: pointer;
   transition: var(--button-transition);
-  box-shadow: 0 var(--button-primary-shadow-offset) 0 var(--button-primary-border);
+  box-shadow: var(--button-primary-shadow);
 }
 
 .btn-primary:hover {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 var(--button-primary-border);
+  transform: translateY(calc(var(--button-primary-shadow-offset-hover) - var(--button-primary-shadow-offset)));
+  box-shadow: var(--button-primary-shadow-hover);
   background: var(--button-primary-bg-hover);
 }
 
 .btn-primary:active {
   transform: translateY(4px);
-  box-shadow: none;
+  box-shadow: var(--button-primary-shadow-active);
 }
 
 .btn-primary:focus {
@@ -86,7 +96,7 @@
   color: var(--disabled-text);
   border-color: var(--disabled-border);
   cursor: not-allowed;
-  box-shadow: none;
+  box-shadow: var(--button-primary-shadow-active);
 }
 
 .btn-secondary {

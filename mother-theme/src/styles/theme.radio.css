@@ -22,11 +22,37 @@
   --radio-border-checked: var(--accent-yellow);
   --radio-bg-checked: var(--accent-yellow);
   --radio-inner-size: 4px;
+  /* Spacing shared across form controls (checkbox, radio, toggle) */
+  --control-wrapper-spacing: var(--space-2);
 }
 
 /* ========================================
  * RADIO BUTTONS
  * ======================================== */
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--control-wrapper-spacing);
+  margin: 0;
+  padding: 0;
+}
+
+.radio-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--control-wrapper-spacing);
+  margin: 0;
+  padding: 0;
+}
+
+.radio-wrapper .label {
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
 
 .radio {
   appearance: none;
@@ -37,6 +63,8 @@
   background: var(--radio-bg);
   cursor: pointer;
   transition: var(--transition-base);
+  margin: 0;
+  vertical-align: middle;
 }
 
 .radio:hover {

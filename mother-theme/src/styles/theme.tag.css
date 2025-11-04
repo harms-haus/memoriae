@@ -27,7 +27,7 @@
   --tag-bg: var(--bg-secondary);
   --tag-color: var(--text-primary);
   --tag-border: var(--border-primary);
-  --tag-border-radius: 0.375rem;
+  --tag-border-radius: 0;
   --tag-padding-x: 0.875rem;
   --tag-padding-y: 0.375rem;
   --tag-font-size: var(--text-sm);

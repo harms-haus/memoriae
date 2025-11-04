@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useId, useRef, useState, KeyboardEvent } from 'react';
+import React, { createContext, useContext, useId, useRef, useState, useCallback, KeyboardEvent } from 'react';
 
 interface RadioGroupContextValue {
   value: string | undefined;
@@ -50,7 +50,7 @@ export function RadioGroup({
     onValueChange?.(newValue);
   };
 
-  const registerRadio = (radioValue: string, element: HTMLElement | null) => {
+  const registerRadio = useCallback((radioValue: string, element: HTMLElement | null) => {
     if (element) {
       setRadios((prev) => {
         const next = new Map(prev);
@@ -64,7 +64,7 @@ export function RadioGroup({
         return next;
       });
     }
-  };
+  }, []);
 
   const contextValue: RadioGroupContextValue = {
     value: currentValue,

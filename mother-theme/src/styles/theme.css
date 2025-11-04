@@ -56,7 +56,6 @@ body {
 :focus-visible {
   outline: var(--border-thick) solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
 }
 
 /* ========================================

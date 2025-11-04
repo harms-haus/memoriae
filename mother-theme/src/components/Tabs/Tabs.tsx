@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect, KeyboardEvent } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo, KeyboardEvent } from 'react';
 
 interface TabsContextValue {
   value: string;
@@ -33,14 +33,14 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
   const isControlled = controlledValue !== undefined;
   const currentValue = isControlled ? controlledValue : internalValue;
 
-  const handleValueChange = (newValue: string) => {
+  const handleValueChange = useCallback((newValue: string) => {
     if (!isControlled) {
       setInternalValue(newValue);
     }
     onValueChange?.(newValue);
-  };
+  }, [isControlled, onValueChange]);
 
-  const registerTab = (tabValue: string, element: HTMLElement | null) => {
+  const registerTab = useCallback((tabValue: string, element: HTMLElement | null) => {
     if (element) {
       setTabs((prev) => {
         const next = new Map(prev);
@@ -54,14 +54,14 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
         return next;
       });
     }
-  };
+  }, []);
 
-  const contextValue: TabsContextValue = {
+  const contextValue: TabsContextValue = useMemo(() => ({
     value: currentValue,
     onValueChange: handleValueChange,
     registerTab,
     tabs,
-  };
+  }), [currentValue, handleValueChange, registerTab, tabs]);
 
   return (
     <TabsContext.Provider value={contextValue}>

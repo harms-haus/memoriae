@@ -28,11 +28,29 @@
   --checkbox-checkmark-color: var(--text-inverse);
   --checkbox-checkmark-size: 1rem;
   --checkbox-checkmark-weight: var(--weight-bold);
+  /* Spacing shared across form controls (checkbox, radio, toggle) */
+  --control-wrapper-spacing: var(--space-2);
 }
 
 /* ========================================
  * CHECKBOXES
  * ======================================== */
+
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--control-wrapper-spacing);
+  margin: 0;
+  padding: 0;
+}
+
+.checkbox-wrapper .label {
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
 
 .checkbox {
   appearance: none;
@@ -45,6 +63,8 @@
   position: relative;
   transition: var(--transition-base);
   flex-shrink: 0;
+  margin: 0;
+  vertical-align: middle;
 }
 
 .checkbox:hover {

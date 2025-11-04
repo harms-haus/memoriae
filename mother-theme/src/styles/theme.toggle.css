@@ -4,37 +4,61 @@
  * Contains all toggle switch-related styles and customizable properties.
  * 
  * Customizable Properties:
- * - --toggle-width: Toggle track width (default: 3rem)
- * - --toggle-height: Toggle track height (default: 1.5rem)
+ * - --toggle-width: Toggle track width (default: 2x --radio-size)
+ * - --toggle-height: Toggle track height (default: --radio-size)
  * - --toggle-track-bg-unchecked: Track background when unchecked (default: --bg-secondary)
- * - --toggle-track-bg-checked: Track background when checked (default: --accent-yellow)
+ * - --toggle-track-bg-checked: Track background when checked (default: --bg-primary)
  * - --toggle-track-border: Track border color (default: --border-primary)
  * - --toggle-track-border-radius: Track border radius (default: --radius-full)
- * - --toggle-handle-size: Handle size (default: 1.25rem)
- * - --toggle-handle-bg-unchecked: Handle background when unchecked (default: --bg-primary)
- * - --toggle-handle-bg-checked: Handle background when checked (default: --text-inverse)
- * - --toggle-handle-offset: Handle offset from edge (default: 0.125rem)
+ * - --toggle-handle-height: Handle height (default: calculated to match radio's inner check circle)
+ * - --toggle-handle-width: Handle width (default: 1.5x handle height for better visibility)
+ * - --toggle-handle-bg-unchecked: Handle background when unchecked (default: --text-inverse)
+ * - --toggle-handle-bg-checked: Handle background when checked (default: --accent-yellow)
+ * - --toggle-handle-offset: Handle offset from edge (default: calculated to match radio padding)
  * - --toggle-transition: Toggle transition (default: --transition-base)
  */
 
 :root {
   /* Toggle Properties */
-  --toggle-width: 3rem;
-  --toggle-height: 1.5rem;
+  /* Width is 2x radio size, height matches radio size */
+  --toggle-width: calc(var(--radio-size) * 2);
+  --toggle-height: var(--radio-size);
   --toggle-track-bg-unchecked: var(--bg-secondary);
-  --toggle-track-bg-checked: var(--accent-yellow);
+  --toggle-track-bg-checked: var(--bg-primary);
   --toggle-track-border: var(--border-primary);
   --toggle-track-border-radius: var(--radius-full);
-  --toggle-handle-size: 1.25rem;
-  --toggle-handle-bg-unchecked: var(--bg-primary);
-  --toggle-handle-bg-checked: var(--text-inverse);
-  --toggle-handle-offset: 0.125rem;
+  /* Handle height matches radio's inner check: radio-size - (border * 2) - (inner-size * 2) */
+  --toggle-handle-height: calc(var(--radio-size) - var(--border-thick) * 2 - var(--radio-inner-size) * 2);
+  /* Handle width is 1.5x the height (wider by 1/2) for better visibility */
+  --toggle-handle-width: calc(var(--toggle-handle-height) * 1.5);
+  --toggle-handle-bg-unchecked: var(--text-inverse);
+  --toggle-handle-bg-checked: var(--accent-yellow);
+  /* Handle offset creates same padding as radio: (radio-size - border*2 - handle-height) / 2 */
+  --toggle-handle-offset: calc((var(--radio-size) - var(--border-thick) * 2 - var(--toggle-handle-height)) / 2);
   --toggle-transition: var(--transition-base);
+  /* Spacing shared across form controls (checkbox, radio, toggle) */
+  --control-wrapper-spacing: var(--space-2);
 }
 
 /* ========================================
  * TOGGLE SWITCHES
  * ======================================== */
+
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--control-wrapper-spacing);
+  margin: 0;
+  padding: 0;
+}
+
+.toggle-wrapper .label {
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
 
 .toggle {
   appearance: none;
@@ -47,13 +71,20 @@
   position: relative;
   transition: var(--toggle-transition);
   flex-shrink: 0;
+  margin: 0;
+  vertical-align: middle;
 }
 
 .toggle::before {
   content: '';
   position: absolute;
-  width: var(--toggle-handle-size);
-  height: var(--toggle-handle-size);
+  width: var(--toggle-handle-width);
+  height: var(--toggle-handle-height);
+  min-width: var(--toggle-handle-width);
+  min-height: var(--toggle-handle-height);
+  max-width: var(--toggle-handle-width);
+  max-height: var(--toggle-handle-height);
+  box-sizing: border-box;
   border-radius: var(--radius-full);
   background: var(--toggle-handle-bg-unchecked);
   top: 50%;
@@ -72,8 +103,23 @@
 }
 
 .toggle:checked::before {
-  left: calc(100% - var(--toggle-handle-size) - var(--toggle-handle-offset));
+  left: calc(100% - var(--toggle-handle-width) - var(--toggle-handle-offset));
   background: var(--toggle-handle-bg-checked);
+  width: var(--toggle-handle-width);
+  height: var(--toggle-handle-height);
+}
+
+/* Unchecked state: handle matches radio's unchecked state (no active color) */
+.toggle:not(:checked) {
+  background: var(--toggle-track-bg-unchecked);
+  border-color: var(--toggle-track-border);
+}
+
+.toggle:not(:checked)::before {
+  background: var(--toggle-handle-bg-unchecked);
+  width: var(--toggle-handle-width);
+  height: var(--toggle-handle-height);
+  left: var(--toggle-handle-offset);
 }
 
 .toggle:focus {
@@ -85,7 +131,6 @@
   background: var(--disabled-bg);
   border-color: var(--disabled-border);
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
 .toggle:disabled::before {
