@@ -1,0 +1,124 @@
+/* 
+ * Theme Toast - Toast Controls and Properties
+ * 
+ * Contains all toast-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --toast-bg: Toast background (default: --bg-elevated)
+ * - --toast-border: Toast border (default: --border-thick solid --border-primary)
+ * - --toast-border-radius: Toast border radius (default: --radius-md)
+ * - --toast-padding: Toast padding (default: var(--space-4))
+ * - --toast-shadow: Toast shadow (default: --shadow-xl)
+ * - --toast-min-width: Toast minimum width (default: 300px)
+ * - --toast-max-width: Toast maximum width (default: 400px)
+ * - --toast-success-bg: Success toast background (default: rgba(102, 187, 106, 0.1))
+ * - --toast-success-border: Success toast border (default: --success)
+ * - --toast-warning-bg: Warning toast background (default: rgba(255, 152, 0, 0.1))
+ * - --toast-warning-border: Warning toast border (default: --warning)
+ * - --toast-error-bg: Error toast background (default: rgba(244, 67, 54, 0.1))
+ * - --toast-error-border: Error toast border (default: --error)
+ * - --toast-info-bg: Info toast background (default: rgba(79, 195, 247, 0.1))
+ * - --toast-info-border: Info toast border (default: --info)
+ * - --toast-animation-duration: Toast animation duration (default: 0.3s)
+ */
+
+:root {
+  /* Toast Properties */
+  --toast-bg: var(--bg-elevated);
+  --toast-border: var(--border-thick) solid var(--border-primary);
+  --toast-border-radius: var(--radius-md);
+  --toast-padding: var(--space-4);
+  --toast-shadow: var(--shadow-xl);
+  --toast-min-width: 300px;
+  --toast-max-width: 400px;
+  --toast-success-bg: rgba(102, 187, 106, 0.1);
+  --toast-success-border: var(--success);
+  --toast-warning-bg: rgba(255, 152, 0, 0.1);
+  --toast-warning-border: var(--warning);
+  --toast-error-bg: rgba(244, 67, 54, 0.1);
+  --toast-error-border: var(--error);
+  --toast-info-bg: rgba(79, 195, 247, 0.1);
+  --toast-info-border: var(--info);
+  --toast-animation-duration: 0.3s;
+}
+
+/* ========================================
+ * TOASTS
+ * ======================================== */
+
+.toast {
+  background: var(--toast-bg);
+  border: var(--toast-border);
+  border-radius: var(--toast-border-radius);
+  padding: var(--toast-padding);
+  box-shadow: var(--toast-shadow);
+  min-width: var(--toast-min-width);
+  max-width: var(--toast-max-width);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  animation: toast-slide-in var(--toast-animation-duration) ease-out;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-success {
+  background: var(--toast-success-bg);
+  border-color: var(--toast-success-border);
+}
+
+.toast-warning {
+  background: var(--toast-warning-bg);
+  border-color: var(--toast-warning-border);
+}
+
+.toast-error {
+  background: var(--toast-error-bg);
+  border-color: var(--toast-error-border);
+}
+
+.toast-info {
+  background: var(--toast-info-bg);
+  border-color: var(--toast-info-border);
+}
+
+.toast-content {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.toast-title {
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-1);
+  font-size: var(--text-base);
+}
+
+.toast-message {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: var(--transition-base);
+}
+
+.toast-close:hover {
+  color: var(--text-primary);
+}
+

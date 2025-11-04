@@ -1,0 +1,166 @@
+/* 
+ * Theme Layout - Layout Utilities and Properties
+ * 
+ * Contains all layout-related utilities and customizable properties:
+ * - Container utilities (container, container-wide, container-narrow)
+ * - Grid utilities (grid, grid-2, grid-3, grid-4)
+ * - Flexbox utilities (flex, flex-col, items-*, justify-*, gap-*)
+ * 
+ * Customizable Properties:
+ * - --container-max-width: Default container max width (default: 1200px)
+ * - --container-wide-max-width: Wide container max width (default: 1400px)
+ * - --container-narrow-max-width: Narrow container max width (default: 800px)
+ * - --container-padding: Container horizontal padding (default: --space-4)
+ * - --container-padding-tablet: Container padding on tablet (default: --space-6)
+ * - --container-padding-desktop: Container padding on desktop (default: --space-8)
+ * - --grid-gap: Default grid gap (default: --space-6)
+ * - --grid-gap-tablet: Grid gap on tablet (default: --space-8)
+ * - --grid-gap-desktop: Grid gap on desktop (default: --space-10)
+ */
+
+:root {
+  /* Container Properties */
+  --container-max-width: 1200px;
+  --container-wide-max-width: 1400px;
+  --container-narrow-max-width: 800px;
+  --container-padding: var(--space-4);
+  --container-padding-tablet: var(--space-6);
+  --container-padding-desktop: var(--space-8);
+  
+  /* Grid Properties */
+  --grid-gap: var(--space-6);
+  --grid-gap-tablet: var(--space-8);
+  --grid-gap-desktop: var(--space-10);
+}
+
+/* ========================================
+ * LAYOUT PATTERNS
+ * ======================================== */
+
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
+}
+
+.container-wide {
+  max-width: var(--container-wide-max-width);
+}
+
+.container-narrow {
+  max-width: var(--container-narrow-max-width);
+}
+
+.grid {
+  display: grid;
+  gap: var(--grid-gap);
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* ========================================
+ * FLEXBOX UTILITIES
+ * ======================================== */
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-start {
+  justify-content: flex-start;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.gap-1 {
+  gap: var(--space-1);
+}
+
+.gap-2 {
+  gap: var(--space-2);
+}
+
+.gap-3 {
+  gap: var(--space-3);
+}
+
+.gap-4 {
+  gap: var(--space-4);
+}
+
+.gap-6 {
+  gap: var(--space-6);
+}
+
+.gap-8 {
+  gap: var(--space-8);
+}
+
+/* ========================================
+ * RESPONSIVE DESIGN
+ * ======================================== */
+
+/* Mobile-first: Base styles are for mobile (320px+) */
+
+/* Tablet: 768px+ */
+@media (min-width: 768px) {
+  .container {
+    padding: 0 var(--container-padding-tablet);
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    gap: var(--grid-gap-tablet);
+  }
+}
+
+/* Desktop: 1024px+ */
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 var(--container-padding-desktop);
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    gap: var(--grid-gap-desktop);
+  }
+}
+

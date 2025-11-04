@@ -1,0 +1,130 @@
+/* 
+ * Theme Dialog - Dialog/Modal Controls and Properties
+ * 
+ * Contains all dialog/modal-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --dialog-overlay-bg: Dialog overlay background (default: rgba(0, 0, 0, 0.7))
+ * - --dialog-bg: Dialog background (default: --bg-elevated)
+ * - --dialog-border: Dialog border (default: --border-thick solid --border-primary)
+ * - --dialog-border-radius: Dialog border radius (default: --radius-md)
+ * - --dialog-padding: Dialog padding (default: var(--space-6))
+ * - --dialog-shadow: Dialog shadow (default: --shadow-xl)
+ * - --dialog-max-width: Dialog max width (default: 500px)
+ * - --dialog-max-width-wide: Wide dialog max width (default: 800px)
+ * - --dialog-animation-duration: Dialog animation duration (default: 0.3s)
+ */
+
+:root {
+  /* Dialog Properties */
+  --dialog-overlay-bg: rgba(0, 0, 0, 0.7);
+  --dialog-bg: var(--bg-elevated);
+  --dialog-border: var(--border-thick) solid var(--border-primary);
+  --dialog-border-radius: var(--radius-md);
+  --dialog-padding: var(--space-6);
+  --dialog-shadow: var(--shadow-xl);
+  --dialog-max-width: 500px;
+  --dialog-max-width-wide: 800px;
+  --dialog-animation-duration: 0.3s;
+}
+
+/* ========================================
+ * DIALOGS/MODALS
+ * ======================================== */
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--dialog-overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: dialog-fade-in var(--dialog-animation-duration) ease-out;
+}
+
+@keyframes dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialog {
+  background: var(--dialog-bg);
+  border: var(--dialog-border);
+  border-radius: var(--dialog-border-radius);
+  padding: var(--dialog-padding);
+  box-shadow: var(--dialog-shadow);
+  max-width: var(--dialog-max-width);
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: dialog-slide-up var(--dialog-animation-duration) ease-out;
+  position: relative;
+}
+
+@keyframes dialog-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dialog-wide {
+  max-width: var(--dialog-max-width-wide);
+}
+
+.dialog-header {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-medium) solid var(--border-primary);
+}
+
+.dialog-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.dialog-body {
+  margin-bottom: var(--space-4);
+  color: var(--text-secondary);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: var(--border-medium) solid var(--border-primary);
+}
+
+.dialog-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+  font-size: var(--text-xl);
+  line-height: 1;
+  transition: var(--transition-base);
+}
+
+.dialog-close:hover {
+  color: var(--text-primary);
+}
+

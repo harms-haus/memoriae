@@ -1,0 +1,173 @@
+/* 
+ * Theme Drawer - Drawer/Sidebar Controls and Properties
+ * 
+ * Contains all drawer/sidebar-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --drawer-overlay-bg: Drawer overlay background (default: rgba(0, 0, 0, 0.7))
+ * - --drawer-bg: Drawer background (default: --bg-elevated)
+ * - --drawer-border: Drawer border (default: --border-thick solid --border-primary)
+ * - --drawer-width: Drawer width (default: 300px)
+ * - --drawer-width-wide: Wide drawer width (default: 400px)
+ * - --drawer-shadow: Drawer shadow (default: --shadow-xl)
+ * - --drawer-padding: Drawer padding (default: var(--space-6))
+ * - --drawer-animation-duration: Drawer animation duration (default: 0.3s)
+ */
+
+:root {
+  /* Drawer Properties */
+  --drawer-overlay-bg: rgba(0, 0, 0, 0.7);
+  --drawer-bg: var(--bg-elevated);
+  --drawer-border: var(--border-thick) solid var(--border-primary);
+  --drawer-width: 300px;
+  --drawer-width-wide: 400px;
+  --drawer-shadow: var(--shadow-xl);
+  --drawer-padding: var(--space-6);
+  --drawer-animation-duration: 0.3s;
+}
+
+/* ========================================
+ * DRAWERS/SIDEBARS
+ * ======================================== */
+
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--drawer-overlay-bg);
+  z-index: 1000;
+  animation: drawer-fade-in var(--drawer-animation-duration) ease-out;
+}
+
+@keyframes drawer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  background: var(--drawer-bg);
+  border: var(--drawer-border);
+  box-shadow: var(--drawer-shadow);
+  padding: var(--drawer-padding);
+  overflow-y: auto;
+  z-index: 1001;
+}
+
+.drawer-left {
+  left: 0;
+  width: var(--drawer-width);
+  animation: drawer-slide-left var(--drawer-animation-duration) ease-out;
+}
+
+@keyframes drawer-slide-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-right {
+  right: 0;
+  width: var(--drawer-width);
+  animation: drawer-slide-right var(--drawer-animation-duration) ease-out;
+}
+
+@keyframes drawer-slide-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--drawer-width);
+  animation: drawer-slide-top var(--drawer-animation-duration) ease-out;
+}
+
+@keyframes drawer-slide-top {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.drawer-bottom {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--drawer-width);
+  animation: drawer-slide-bottom var(--drawer-animation-duration) ease-out;
+}
+
+@keyframes drawer-slide-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.drawer-wide {
+  width: var(--drawer-width-wide);
+}
+
+.drawer-header {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-medium) solid var(--border-primary);
+}
+
+.drawer-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.drawer-body {
+  color: var(--text-secondary);
+}
+
+.drawer-footer {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--border-medium) solid var(--border-primary);
+}
+
+.drawer-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+  font-size: var(--text-xl);
+  line-height: 1;
+  transition: var(--transition-base);
+}
+
+.drawer-close:hover {
+  color: var(--text-primary);
+}
+

@@ -1,0 +1,114 @@
+/* 
+ * Theme Slider - Slider/Range Controls and Properties
+ * 
+ * Contains all slider/range input-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --slider-track-height: Slider track height (default: 0.5rem)
+ * - --slider-track-bg: Slider track background (default: --bg-secondary)
+ * - --slider-track-border-radius: Track border radius (default: --radius-full)
+ * - --slider-fill-bg: Slider fill background (default: --accent-yellow)
+ * - --slider-thumb-size: Slider thumb size (default: 1.25rem)
+ * - --slider-thumb-bg: Slider thumb background (default: --accent-yellow)
+ * - --slider-thumb-border: Slider thumb border (default: --border-thick solid --text-inverse)
+ * - --slider-thumb-border-radius: Thumb border radius (default: --radius-full)
+ * - --slider-thumb-shadow: Thumb shadow (default: var(--shadow-md))
+ * - --slider-thumb-hover-scale: Thumb hover scale (default: 1.1)
+ */
+
+:root {
+  /* Slider Properties */
+  --slider-track-height: 0.5rem;
+  --slider-track-bg: var(--bg-secondary);
+  --slider-track-border-radius: var(--radius-full);
+  --slider-fill-bg: var(--accent-yellow);
+  --slider-thumb-size: 1.25rem;
+  --slider-thumb-bg: var(--accent-yellow);
+  --slider-thumb-border: var(--border-thick) solid var(--text-inverse);
+  --slider-thumb-border-radius: var(--radius-full);
+  --slider-thumb-shadow: var(--shadow-md);
+  --slider-thumb-hover-scale: 1.1;
+}
+
+/* ========================================
+ * SLIDER/RANGE INPUTS
+ * ======================================== */
+
+.slider,
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: var(--slider-track-height);
+  background: var(--slider-track-bg);
+  border-radius: var(--slider-track-border-radius);
+  outline: none;
+  transition: var(--transition-base);
+}
+
+.slider::-webkit-slider-thumb,
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--slider-thumb-size);
+  height: var(--slider-thumb-size);
+  background: var(--slider-thumb-bg);
+  border: var(--slider-thumb-border);
+  border-radius: var(--slider-thumb-border-radius);
+  cursor: pointer;
+  box-shadow: var(--slider-thumb-shadow);
+  transition: var(--transition-base);
+}
+
+.slider::-webkit-slider-thumb:hover,
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(var(--slider-thumb-hover-scale));
+}
+
+.slider::-moz-range-thumb,
+input[type="range"]::-moz-range-thumb {
+  width: var(--slider-thumb-size);
+  height: var(--slider-thumb-size);
+  background: var(--slider-thumb-bg);
+  border: var(--slider-thumb-border);
+  border-radius: var(--slider-thumb-border-radius);
+  cursor: pointer;
+  box-shadow: var(--slider-thumb-shadow);
+  transition: var(--transition-base);
+}
+
+.slider::-moz-range-thumb:hover,
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(var(--slider-thumb-hover-scale));
+}
+
+.slider:focus,
+input[type="range"]:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.slider:disabled,
+input[type="range"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Fill progress (webkit) */
+.slider::-webkit-slider-runnable-track,
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: var(--slider-track-height);
+  background: var(--slider-track-bg);
+  border-radius: var(--slider-track-border-radius);
+}
+
+/* Fill progress (firefox) */
+.slider::-moz-range-track,
+input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: var(--slider-track-height);
+  background: var(--slider-track-bg);
+  border-radius: var(--slider-track-border-radius);
+}
+

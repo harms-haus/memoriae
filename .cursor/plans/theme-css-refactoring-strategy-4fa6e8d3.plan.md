@@ -111,15 +111,15 @@ Each control file should include a comment block listing all customizable proper
 - [x] Extract checkbox controls to theme.checkbox.css with checkbox properties and states
 - [x] Extract radio button controls to theme.radio.css with radio properties and states
 - [x] Extract toggle switch controls to theme.toggle.css with all toggle properties (track, handle, states)
-- [ ] Extract slider/range controls to theme.slider.css with slider properties and webkit/moz pseudo-elements
-- [ ] Extract progress bar controls to theme.progress.css with progress properties and variants
-- [ ] Extract notification controls to theme.notification.css with notification variants and properties
-- [ ] Extract toast controls to theme.toast.css with toast variants and properties
-- [ ] Extract dialog/modal controls to theme.dialog.css with dialog properties and animations
-- [ ] Extract drawer/sidebar controls to theme.drawer.css with drawer variants and properties
-- [ ] Extract tabs controls to theme.tabs.css with tabs properties and active states
-- [ ] Extract tag controls to theme.tag.css with tag variants and properties
-- [ ] Extract badge controls to theme.badge.css with badge variants and properties
-- [ ] Extract layout utilities to theme.layout.css (containers, grid, flexbox)
-- [ ] Update main theme.css to import-only file with @import statements (colors, sizes, props first, then others)
+- [x] Extract slider/range controls to theme.slider.css with slider properties and webkit/moz pseudo-elements
+- [x] Extract progress bar controls to theme.progress.css with progress properties and variants
+- [x] Extract notification controls to theme.notification.css with notification variants and properties
+- [x] Extract toast controls to theme.toast.css with toast variants and properties
+- [x] Extract dialog/modal controls to theme.dialog.css with dialog properties and animations
+- [x] Extract drawer/sidebar controls to theme.drawer.css with drawer variants and properties
+- [x] Extract tabs controls to theme.tabs.css with tabs properties and active states
+- [x] Extract tag controls to theme.tag.css with tag variants and properties
+- [x] Extract badge controls to theme.badge.css with badge variants and properties
+- [x] Extract layout utilities to theme.layout.css (containers, grid, flexbox)
+- [x] Update main theme.css to import-only file with @import statements (colors, sizes, props first, then others)
 - [ ] Verify all controls maintain visual appearance, properties have defaults, and imports work correctly

@@ -1,0 +1,94 @@
+/* 
+ * Theme Tabs - Tabs Controls and Properties
+ * 
+ * Contains all tabs-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --tabs-border: Tabs container border (default: --border-medium solid --border-primary)
+ * - --tabs-border-radius: Tabs container border radius (default: --radius-sm)
+ * - --tab-padding-x: Tab horizontal padding (default: var(--space-4))
+ * - --tab-padding-y: Tab vertical padding (default: var(--space-2))
+ * - --tab-color: Tab text color (default: --text-secondary)
+ * - --tab-color-hover: Tab hover text color (default: --text-primary)
+ * - --tab-color-active: Active tab text color (default: --text-primary)
+ * - --tab-bg-active: Active tab background (default: --bg-tertiary)
+ * - --tab-border-active: Active tab border (default: --border-thick solid --accent-yellow)
+ * - --tab-font-weight: Tab font weight (default: --weight-medium)
+ * - --tab-font-weight-active: Active tab font weight (default: --weight-bold)
+ * - --tab-transition: Tab transition (default: --transition-base)
+ */
+
+:root {
+  /* Tabs Properties */
+  --tabs-border: var(--border-medium) solid var(--border-primary);
+  --tabs-border-radius: var(--radius-sm);
+  --tab-padding-x: var(--space-4);
+  --tab-padding-y: var(--space-2);
+  --tab-color: var(--text-secondary);
+  --tab-color-hover: var(--text-primary);
+  --tab-color-active: var(--text-primary);
+  --tab-bg-active: var(--bg-tertiary);
+  --tab-border-active: var(--border-thick) solid var(--accent-yellow);
+  --tab-font-weight: var(--weight-medium);
+  --tab-font-weight-active: var(--weight-bold);
+  --tab-transition: var(--transition-base);
+}
+
+/* ========================================
+ * TABS
+ * ======================================== */
+
+.tabs {
+  display: flex;
+  border-bottom: var(--tabs-border);
+  border-radius: var(--tabs-border-radius);
+  gap: var(--space-2);
+}
+
+.tab {
+  padding: var(--tab-padding-y) var(--tab-padding-x);
+  color: var(--tab-color);
+  font-weight: var(--tab-font-weight);
+  cursor: pointer;
+  transition: var(--tab-transition);
+  border: none;
+  background: transparent;
+  border-bottom: var(--border-medium) solid transparent;
+  position: relative;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: var(--text-sm);
+}
+
+.tab:hover {
+  color: var(--tab-color-hover);
+  background: var(--hover-bg);
+}
+
+.tab.active {
+  color: var(--tab-color-active);
+  font-weight: var(--tab-font-weight-active);
+  border-bottom: var(--tab-border-active);
+  background: var(--tab-bg-active);
+}
+
+.tab:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tab:disabled {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tab-panel {
+  padding: var(--space-6);
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+

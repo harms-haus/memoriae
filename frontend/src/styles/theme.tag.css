@@ -1,0 +1,102 @@
+/* 
+ * Theme Tag - Tag Controls and Properties
+ * 
+ * Contains all tag-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --tag-bg: Tag background color (default: --bg-secondary)
+ * - --tag-color: Tag text color (default: --text-primary)
+ * - --tag-border: Tag border color (default: --border-primary)
+ * - --tag-border-radius: Tag border radius (default: 0.375rem)
+ * - --tag-padding-x: Horizontal padding (default: 0.875rem)
+ * - --tag-padding-y: Vertical padding (default: 0.375rem)
+ * - --tag-font-size: Tag font size (default: --text-sm)
+ * - --tag-font-weight: Tag font weight (default: --weight-medium)
+ * - --tag-border-hover: Tag hover border color (default: --accent-yellow)
+ * - --tag-color-hover: Tag hover text color (default: --accent-yellow)
+ * - --tag-bg-hover: Tag hover background (default: --hover-bg)
+ * - --tag-border-active: Active tag border color (default: --accent-yellow)
+ * - --tag-bg-active: Active tag background (default: --accent-yellow)
+ * - --tag-color-active: Active tag text color (default: --text-inverse)
+ * - --tag-font-weight-active: Active tag font weight (default: --weight-bold)
+ * - --tag-list-gap: Gap between tags in list (default: --space-2)
+ */
+
+:root {
+  /* Tag Properties */
+  --tag-bg: var(--bg-secondary);
+  --tag-color: var(--text-primary);
+  --tag-border: var(--border-primary);
+  --tag-border-radius: 0.375rem;
+  --tag-padding-x: 0.875rem;
+  --tag-padding-y: 0.375rem;
+  --tag-font-size: var(--text-sm);
+  --tag-font-weight: var(--weight-medium);
+  --tag-border-hover: var(--accent-yellow);
+  --tag-color-hover: var(--accent-yellow);
+  --tag-bg-hover: var(--hover-bg);
+  --tag-border-active: var(--accent-yellow);
+  --tag-bg-active: var(--accent-yellow);
+  --tag-color-active: var(--text-inverse);
+  --tag-font-weight-active: var(--weight-bold);
+  --tag-list-gap: var(--space-2);
+}
+
+/* ========================================
+ * TAG LISTS
+ * ======================================== */
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tag-list-gap);
+}
+
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--tag-padding-y) var(--tag-padding-x);
+  border: var(--border-medium) solid var(--tag-border);
+  border-radius: var(--tag-border-radius);
+  background: var(--tag-bg);
+  color: var(--tag-color);
+  font-size: var(--tag-font-size);
+  font-weight: var(--tag-font-weight);
+  transition: var(--transition-base);
+}
+
+.tag-item:hover {
+  border-color: var(--tag-border-hover);
+  color: var(--tag-color-hover);
+  background: var(--tag-bg-hover);
+  transform: translateY(-1px);
+}
+
+.tag-item.active {
+  border-color: var(--tag-border-active);
+  background: var(--tag-bg-active);
+  color: var(--tag-color-active);
+  font-weight: var(--tag-font-weight-active);
+}
+
+/* Color Variants */
+.tag-item.tag-blue {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.tag-item.tag-green {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.tag-item.tag-purple {
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
+.tag-item.tag-pink {
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
+}
+

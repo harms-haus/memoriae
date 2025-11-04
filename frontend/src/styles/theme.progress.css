@@ -1,0 +1,104 @@
+/* 
+ * Theme Progress - Progress Bar Controls and Properties
+ * 
+ * Contains all progress bar-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --progress-height: Progress bar height (default: 1rem)
+ * - --progress-bg: Progress bar background (default: --bg-secondary)
+ * - --progress-border-radius: Progress border radius (default: --radius-full)
+ * - --progress-fill-bg: Progress fill background (default: --accent-yellow)
+ * - --progress-fill-border-radius: Fill border radius (default: --radius-full)
+ * - --progress-animation-duration: Progress animation duration (default: 0.3s)
+ */
+
+:root {
+  /* Progress Properties */
+  --progress-height: 1rem;
+  --progress-bg: var(--bg-secondary);
+  --progress-border-radius: var(--radius-full);
+  --progress-fill-bg: var(--accent-yellow);
+  --progress-fill-border-radius: var(--radius-full);
+  --progress-animation-duration: 0.3s;
+}
+
+/* ========================================
+ * PROGRESS BARS
+ * ======================================== */
+
+.progress {
+  width: 100%;
+  height: var(--progress-height);
+  background: var(--progress-bg);
+  border-radius: var(--progress-border-radius);
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--progress-fill-bg);
+  border-radius: var(--progress-fill-border-radius);
+  transition: width var(--progress-animation-duration) ease-out;
+}
+
+/* Variant: Striped */
+.progress-striped .progress-fill {
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 1rem 1rem;
+  animation: progress-stripes 1s linear infinite;
+}
+
+@keyframes progress-stripes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 1rem 0;
+  }
+}
+
+/* Variant: Animated */
+.progress-animated .progress-fill {
+  animation: progress-pulse 2s ease-in-out infinite;
+}
+
+@keyframes progress-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Color Variants */
+.progress-primary .progress-fill {
+  background: var(--accent-yellow);
+}
+
+.progress-success .progress-fill {
+  background: var(--success);
+}
+
+.progress-warning .progress-fill {
+  background: var(--warning);
+}
+
+.progress-error .progress-fill {
+  background: var(--error);
+}
+
+.progress-info .progress-fill {
+  background: var(--info);
+}
+

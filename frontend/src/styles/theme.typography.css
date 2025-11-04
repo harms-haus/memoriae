@@ -132,3 +132,18 @@ small,
   background: transparent;
 }
 
+/* ========================================
+ * RESPONSIVE TYPOGRAPHY
+ * ======================================== */
+
+/* Tablet: 768px+ */
+@media (min-width: 768px) {
+  h1 {
+    font-size: var(--text-6xl);
+  }
+
+  h2 {
+    font-size: var(--text-5xl);
+  }
+}
+

@@ -18,6 +18,16 @@
 @import './theme.checkbox.css';
 @import './theme.radio.css';
 @import './theme.toggle.css';
+@import './theme.slider.css';
+@import './theme.progress.css';
+@import './theme.notification.css';
+@import './theme.toast.css';
+@import './theme.dialog.css';
+@import './theme.drawer.css';
+@import './theme.tabs.css';
+@import './theme.tag.css';
+@import './theme.badge.css';
+@import './theme.layout.css';
 
 /* ========================================
  * BASE STYLES
@@ -39,200 +49,6 @@ body {
 
 
 /* ========================================
- * TAG LISTS
- * ======================================== */
-
-.tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.tag-item {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.375rem 0.875rem;
-  border: var(--border-medium) solid var(--border-primary);
-  border-radius: 0.375rem;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  transition: var(--transition-base);
-}
-
-.tag-item:hover {
-  border-color: var(--accent-yellow);
-  color: var(--accent-yellow);
-  background: var(--hover-bg);
-  transform: translateY(-1px);
-}
-
-.tag-item.active {
-  border-color: var(--accent-yellow);
-  background: var(--accent-yellow);
-  color: var(--text-inverse);
-  font-weight: var(--weight-bold);
-}
-
-/* Color Variants */
-.tag-item.tag-blue {
-  border-color: var(--accent-blue);
-  color: var(--accent-blue);
-}
-
-.tag-item.tag-green {
-  border-color: var(--accent-green);
-  color: var(--accent-green);
-}
-
-.tag-item.tag-purple {
-  border-color: var(--accent-purple);
-  color: var(--accent-purple);
-}
-
-.tag-item.tag-pink {
-  border-color: var(--accent-pink);
-  color: var(--accent-pink);
-}
-
-/* ========================================
- * BADGES
- * ======================================== */
-
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.625rem;
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border: var(--border-medium) solid currentColor;
-  border-radius: var(--radius-sm);
-  background: transparent;
-}
-
-.badge-primary {
-  color: var(--accent-yellow);
-  border-color: var(--accent-yellow);
-}
-
-.badge-success {
-  color: var(--success);
-  border-color: var(--success);
-}
-
-.badge-warning {
-  color: var(--warning);
-  border-color: var(--warning);
-}
-
-.badge-error {
-  color: var(--error);
-  border-color: var(--error);
-}
-
-/* ========================================
- * LAYOUT PATTERNS
- * ======================================== */
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--space-4);
-}
-
-.container-wide {
-  max-width: 1400px;
-}
-
-.container-narrow {
-  max-width: 800px;
-}
-
-.grid {
-  display: grid;
-  gap: var(--space-6);
-}
-
-.grid-2 {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.grid-3 {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.grid-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-/* ========================================
- * FLEXBOX UTILITIES
- * ======================================== */
-
-.flex {
-  display: flex;
-}
-
-.flex-col {
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.items-start {
-  align-items: flex-start;
-}
-
-.items-end {
-  align-items: flex-end;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.justify-start {
-  justify-content: flex-start;
-}
-
-.justify-end {
-  justify-content: flex-end;
-}
-
-.gap-1 {
-  gap: var(--space-1);
-}
-
-.gap-2 {
-  gap: var(--space-2);
-}
-
-.gap-3 {
-  gap: var(--space-3);
-}
-
-.gap-4 {
-  gap: var(--space-4);
-}
-
-.gap-6 {
-  gap: var(--space-6);
-}
-
-.gap-8 {
-  gap: var(--space-8);
-}
-
-
-/* ========================================
  * FOCUS STATES (Accessibility)
  * ======================================== */
 
@@ -240,46 +56,6 @@ body {
   outline: var(--border-thick) solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
-}
-
-/* ========================================
- * RESPONSIVE DESIGN
- * ======================================== */
-
-/* Mobile-first: Base styles are for mobile (320px+) */
-
-/* Tablet: 768px+ */
-@media (min-width: 768px) {
-  .container {
-    padding: 0 var(--space-6);
-  }
-
-  h1 {
-    font-size: var(--text-6xl);
-  }
-
-  h2 {
-    font-size: var(--text-5xl);
-  }
-
-  .grid-2,
-  .grid-3,
-  .grid-4 {
-    gap: var(--space-8);
-  }
-}
-
-/* Desktop: 1024px+ */
-@media (min-width: 1024px) {
-  .container {
-    padding: 0 var(--space-8);
-  }
-
-  .grid-2,
-  .grid-3,
-  .grid-4 {
-    gap: var(--space-10);
-  }
 }
 
 /* ========================================

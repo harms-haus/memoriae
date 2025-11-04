@@ -1,0 +1,107 @@
+/* 
+ * Theme Notification - Notification Controls and Properties
+ * 
+ * Contains all notification-related styles and customizable properties.
+ * 
+ * Customizable Properties:
+ * - --notification-bg: Notification background (default: --bg-elevated)
+ * - --notification-border: Notification border (default: --border-thick solid --border-primary)
+ * - --notification-border-radius: Notification border radius (default: --radius-md)
+ * - --notification-padding: Notification padding (default: var(--space-4))
+ * - --notification-shadow: Notification shadow (default: --shadow-lg)
+ * - --notification-max-width: Notification max width (default: 400px)
+ * - --notification-success-bg: Success notification background (default: rgba(102, 187, 106, 0.1))
+ * - --notification-success-border: Success notification border (default: --success)
+ * - --notification-warning-bg: Warning notification background (default: rgba(255, 152, 0, 0.1))
+ * - --notification-warning-border: Warning notification border (default: --warning)
+ * - --notification-error-bg: Error notification background (default: rgba(244, 67, 54, 0.1))
+ * - --notification-error-border: Error notification border (default: --error)
+ * - --notification-info-bg: Info notification background (default: rgba(79, 195, 247, 0.1))
+ * - --notification-info-border: Info notification border (default: --info)
+ */
+
+:root {
+  /* Notification Properties */
+  --notification-bg: var(--bg-elevated);
+  --notification-border: var(--border-thick) solid var(--border-primary);
+  --notification-border-radius: var(--radius-md);
+  --notification-padding: var(--space-4);
+  --notification-shadow: var(--shadow-lg);
+  --notification-max-width: 400px;
+  --notification-success-bg: rgba(102, 187, 106, 0.1);
+  --notification-success-border: var(--success);
+  --notification-warning-bg: rgba(255, 152, 0, 0.1);
+  --notification-warning-border: var(--warning);
+  --notification-error-bg: rgba(244, 67, 54, 0.1);
+  --notification-error-border: var(--error);
+  --notification-info-bg: rgba(79, 195, 247, 0.1);
+  --notification-info-border: var(--info);
+}
+
+/* ========================================
+ * NOTIFICATIONS
+ * ======================================== */
+
+.notification {
+  background: var(--notification-bg);
+  border: var(--notification-border);
+  border-radius: var(--notification-border-radius);
+  padding: var(--notification-padding);
+  box-shadow: var(--notification-shadow);
+  max-width: var(--notification-max-width);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.notification-success {
+  background: var(--notification-success-bg);
+  border-color: var(--notification-success-border);
+}
+
+.notification-warning {
+  background: var(--notification-warning-bg);
+  border-color: var(--notification-warning-border);
+}
+
+.notification-error {
+  background: var(--notification-error-bg);
+  border-color: var(--notification-error-border);
+}
+
+.notification-info {
+  background: var(--notification-info-bg);
+  border-color: var(--notification-info-border);
+}
+
+.notification-content {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.notification-title {
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-1);
+  font-size: var(--text-base);
+}
+
+.notification-message {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.notification-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: var(--transition-base);
+}
+
+.notification-close:hover {
+  color: var(--text-primary);
+}
+
