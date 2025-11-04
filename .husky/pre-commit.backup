@@ -32,28 +32,6 @@ export CI=true
 # Prevent npm from trying to update or check for updates
 export npm_config_loglevel=error
 
-# Run command with timeout protection
-run_with_timeout() {
-  local timeout_seconds="$1"
-  local operation_name="$2"
-  shift 2
-  
-  echo "${BLUE}Running '$operation_name'...${NC}"
-  timeout "$timeout_seconds" "$@"
-  local exit_code=$?
-  
-  if [ $exit_code -eq 124 ]; then
-    echo "${RED}❌ ERROR: '$operation_name' timed out after ${timeout_seconds} seconds${NC}"
-    return 124
-  elif [ $exit_code -ne 0 ]; then
-    echo "${RED}❌ ERROR: '$operation_name' failed with exit code $exit_code${NC}"
-    return $exit_code
-  else
-    echo "${GREEN}✅ SUCCESS: '$operation_name' completed${NC}"
-    return 0
-  fi
-}
-
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
@@ -152,7 +130,7 @@ if [ "$MOTHER_CHANGED" = true ]; then
     echo "${YELLOW}⏭️  Skipping mother-theme tests (only non-code files changed)${NC}"
   else
     echo "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo "${BLUE}🧪 Testing mother-theme${NC}"
+    echo "${BLUE}🧪 Testing mother-theme (files changed)${NC}"
     echo "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     if [ -d "mother-theme" ]; then
@@ -163,11 +141,14 @@ if [ "$MOTHER_CHANGED" = true ]; then
       if [ ! -d "node_modules" ]; then
         echo "${YELLOW}⚠️  node_modules not found in mother-theme${NC}"
         echo "${YELLOW}   Installing dependencies...${NC}"
-        # TIMEOUT: 5 minutes for npm install
-        if ! run_with_timeout 300 "npm install for mother-theme" npm install --silent --no-audit --no-fund; then
+        INSTALL_START=$(date +%s)
+        if ! npm install --silent --no-audit --no-fund 2>&1; then
           echo "${RED}❌ Failed to install dependencies${NC}"
           cd .. || exit 1
           TESTS_FAILED=1
+        else
+          INSTALL_TIME=$(get_elapsed $INSTALL_START)
+          echo "${GREEN}✅ Dependencies installed (${INSTALL_TIME}s)${NC}"
         fi
       fi
       
@@ -176,20 +157,20 @@ if [ "$MOTHER_CHANGED" = true ]; then
         # Only run type-check if TypeScript files changed
         if [ "$MOTHER_NEEDS_TYPECHECK" = true ]; then
           echo "Running type-check (TypeScript files changed)..."
-          # TIMEOUT: 2 minutes for type-check
-          if ! run_with_timeout 120 "type-check for mother-theme" npm run type-check 2>&1; then
-            TESTS_FAILED=1
-          fi
+          TYPECHECK_START=$(date +%s)
+          npm run type-check 2>&1 || TESTS_FAILED=1
+          TYPECHECK_TIME=$(get_elapsed $TYPECHECK_START)
+          echo "Type-check completed in ${TYPECHECK_TIME}s"
         else
           echo "${YELLOW}⏭️  Skipping type-check (no TypeScript files changed)${NC}"
         fi
         
         if [ $TESTS_FAILED -eq 0 ]; then
           echo "Running unit tests..."
-          # TIMEOUT: 3 minutes for tests
-          if ! run_with_timeout 180 "tests for mother-theme" npm test 2>&1; then
-            TESTS_FAILED=1
-          fi
+          TEST_START=$(date +%s)
+          npm test 2>&1 || TESTS_FAILED=1
+          TEST_TIME=$(get_elapsed $TEST_START)
+          echo "Tests completed in ${TEST_TIME}s"
         fi
       fi
       
@@ -215,7 +196,7 @@ if [ "$BACKEND_CHANGED" = true ]; then
     echo "${YELLOW}⏭️  Skipping backend tests (only non-code files changed)${NC}"
   else
     echo "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo "${BLUE}🧪 Testing backend${NC}"
+    echo "${BLUE}🧪 Testing backend (files changed)${NC}"
     echo "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     if [ -d "backend" ]; then
@@ -226,11 +207,14 @@ if [ "$BACKEND_CHANGED" = true ]; then
       if [ ! -d "node_modules" ]; then
         echo "${YELLOW}⚠️  node_modules not found in backend${NC}"
         echo "${YELLOW}   Installing dependencies...${NC}"
-        # TIMEOUT: 5 minutes for npm install
-        if ! run_with_timeout 300 "npm install for backend" npm install --silent --no-audit --no-fund; then
+        INSTALL_START=$(date +%s)
+        if ! npm install --silent --no-audit --no-fund 2>&1; then
           echo "${RED}❌ Failed to install dependencies${NC}"
           cd .. || exit 1
           TESTS_FAILED=1
+        else
+          INSTALL_TIME=$(get_elapsed $INSTALL_START)
+          echo "${GREEN}✅ Dependencies installed (${INSTALL_TIME}s)${NC}"
         fi
       fi
       
@@ -239,20 +223,20 @@ if [ "$BACKEND_CHANGED" = true ]; then
         # Only run type-check if TypeScript files changed
         if [ "$BACKEND_NEEDS_TYPECHECK" = true ]; then
           echo "Running type-check (TypeScript files changed)..."
-          # TIMEOUT: 2 minutes for type-check
-          if ! run_with_timeout 120 "type-check for backend" npm run type-check 2>&1; then
-            TESTS_FAILED=1
-          fi
+          TYPECHECK_START=$(date +%s)
+          npm run type-check 2>&1 || TESTS_FAILED=1
+          TYPECHECK_TIME=$(get_elapsed $TYPECHECK_START)
+          echo "Type-check completed in ${TYPECHECK_TIME}s"
         else
           echo "${YELLOW}⏭️  Skipping type-check (no TypeScript files changed)${NC}"
         fi
         
         if [ $TESTS_FAILED -eq 0 ]; then
           echo "Running unit tests..."
-          # TIMEOUT: 3 minutes for tests
-          if ! run_with_timeout 180 "tests for backend" npm run test:unit 2>&1; then
-            TESTS_FAILED=1
-          fi
+          TEST_START=$(date +%s)
+          npm run test:unit 2>&1 || TESTS_FAILED=1
+          TEST_TIME=$(get_elapsed $TEST_START)
+          echo "Tests completed in ${TEST_TIME}s"
         fi
       fi
       
@@ -278,7 +262,7 @@ if [ "$FRONTEND_CHANGED" = true ]; then
     echo "${YELLOW}⏭️  Skipping frontend tests (only non-code files changed)${NC}"
   else
     echo "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo "${BLUE}🧪 Testing frontend${NC}"
+    echo "${BLUE}🧪 Testing frontend (files changed)${NC}"
     echo "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     if [ -d "frontend" ]; then
@@ -289,11 +273,14 @@ if [ "$FRONTEND_CHANGED" = true ]; then
       if [ ! -d "node_modules" ]; then
         echo "${YELLOW}⚠️  node_modules not found in frontend${NC}"
         echo "${YELLOW}   Installing dependencies...${NC}"
-        # TIMEOUT: 5 minutes for npm install
-        if ! run_with_timeout 300 "npm install for frontend" npm install --silent --no-audit --no-fund; then
+        INSTALL_START=$(date +%s)
+        if ! npm install --silent --no-audit --no-fund 2>&1; then
           echo "${RED}❌ Failed to install dependencies${NC}"
           cd .. || exit 1
           TESTS_FAILED=1
+        else
+          INSTALL_TIME=$(get_elapsed $INSTALL_START)
+          echo "${GREEN}✅ Dependencies installed (${INSTALL_TIME}s)${NC}"
         fi
       fi
       
@@ -302,20 +289,20 @@ if [ "$FRONTEND_CHANGED" = true ]; then
         # Only run type-check if TypeScript files changed
         if [ "$FRONTEND_NEEDS_TYPECHECK" = true ]; then
           echo "Running type-check (TypeScript files changed)..."
-          # TIMEOUT: 2 minutes for type-check
-          if ! run_with_timeout 120 "type-check for frontend" npm run type-check 2>&1; then
-            TESTS_FAILED=1
-          fi
+          TYPECHECK_START=$(date +%s)
+          npm run type-check 2>&1 || TESTS_FAILED=1
+          TYPECHECK_TIME=$(get_elapsed $TYPECHECK_START)
+          echo "Type-check completed in ${TYPECHECK_TIME}s"
         else
           echo "${YELLOW}⏭️  Skipping type-check (no TypeScript files changed)${NC}"
         fi
         
         if [ $TESTS_FAILED -eq 0 ]; then
           echo "Running unit tests..."
-          # TIMEOUT: 3 minutes for tests
-          if ! run_with_timeout 180 "tests for frontend" npm run test:unit 2>&1; then
-            TESTS_FAILED=1
-          fi
+          TEST_START=$(date +%s)
+          npm run test:unit 2>&1 || TESTS_FAILED=1
+          TEST_TIME=$(get_elapsed $TEST_START)
+          echo "Tests completed in ${TEST_TIME}s"
         fi
       fi
       
