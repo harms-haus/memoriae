@@ -22,5 +22,9 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  // Enable proper routing for SPA - all routes should serve index.html
+  preview: {
+    port: 3001,
+  },
 });
 

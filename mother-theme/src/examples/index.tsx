@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import '../styles/theme.css';
 import { ToastProvider } from '../components';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { ExamplesHub } from './ExamplesHub';
 import './index.css';
 import { FoundationExamples } from './groups/foundation/FoundationExamples';
@@ -10,92 +10,43 @@ import { LayoutExamples } from './groups/layout/LayoutExamples';
 import { EffectsExamples } from './groups/effects/EffectsExamples';
 import { Catalogue } from './bots/Catalogue';
 
-export type ExamplesRoute = 
-  | '/'
-  | '/foundation'
-  | '/components'
-  | '/overlays'
-  | '/layout'
-  | '/effects'
-  | '/bots';
+function BackButton() {
+  const location = useLocation();
+  
+  if (location.pathname === '/') {
+    return null;
+  }
+  
+  return (
+    <Link to="/" className="back-button" style={{ marginBottom: 'var(--space-4)', display: 'inline-block' }}>
+      ← Back to Hub
+    </Link>
+  );
+}
+
+function ExamplesRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<ExamplesHub />} />
+      <Route path="/foundation" element={<FoundationExamples />} />
+      <Route path="/components" element={<ComponentExamples />} />
+      <Route path="/overlays" element={<OverlayExamples />} />
+      <Route path="/layout" element={<LayoutExamples />} />
+      <Route path="/effects" element={<EffectsExamples />} />
+      <Route path="/bots" element={<Catalogue />} />
+    </Routes>
+  );
+}
 
 export function Examples() {
-  const [route, setRoute] = useState<ExamplesRoute>('/');
-
-  const navigate = (path: string) => {
-    setRoute(path as ExamplesRoute);
-  };
-
-  const goBack = () => {
-    setRoute('/');
-  };
-
-  const renderContent = () => {
-    switch (route) {
-      case '/foundation':
-        return (
-          <>
-            <button className="back-button" onClick={goBack} style={{ marginBottom: 'var(--space-4)' }}>
-              ← Back to Hub
-            </button>
-            <FoundationExamples />
-          </>
-        );
-      case '/components':
-        return (
-          <>
-            <button className="back-button" onClick={goBack} style={{ marginBottom: 'var(--space-4)' }}>
-              ← Back to Hub
-            </button>
-            <ComponentExamples />
-          </>
-        );
-      case '/overlays':
-        return (
-          <>
-            <button className="back-button" onClick={goBack} style={{ marginBottom: 'var(--space-4)' }}>
-              ← Back to Hub
-            </button>
-            <OverlayExamples />
-          </>
-        );
-      case '/layout':
-        return (
-          <>
-            <button className="back-button" onClick={goBack} style={{ marginBottom: 'var(--space-4)' }}>
-              ← Back to Hub
-            </button>
-            <LayoutExamples />
-          </>
-        );
-      case '/effects':
-        return (
-          <>
-            <button className="back-button" onClick={goBack} style={{ marginBottom: 'var(--space-4)' }}>
-              ← Back to Hub
-            </button>
-            <EffectsExamples />
-          </>
-        );
-      case '/bots':
-        return (
-          <>
-            <button className="back-button" onClick={goBack} style={{ marginBottom: 'var(--space-4)' }}>
-              ← Back to Hub
-            </button>
-            <Catalogue />
-          </>
-        );
-      default:
-        return <ExamplesHub onNavigate={navigate} />;
-    }
-  };
-
   return (
     <ToastProvider>
-      <div className="examples-app">
-        {renderContent()}
-      </div>
+      <BrowserRouter>
+        <div className="examples-app">
+          <BackButton />
+          <ExamplesRoutes />
+        </div>
+      </BrowserRouter>
     </ToastProvider>
   );
 }
@@ -108,4 +59,3 @@ export { OverlayExamples } from './groups/overlays/OverlayExamples';
 export { LayoutExamples } from './groups/layout/LayoutExamples';
 export { EffectsExamples } from './groups/effects/EffectsExamples';
 export { Catalogue } from './bots/Catalogue';
-

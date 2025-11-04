@@ -15,6 +15,8 @@
   cursor: pointer;
   transition: var(--transition-base);
   font-family: var(--font-primary);
+  text-decoration: none;
+  display: inline-block;
 }
 
 .back-button:hover {

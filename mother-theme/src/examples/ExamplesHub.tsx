@@ -1,5 +1,6 @@
 import '../styles/theme.css';
 import { Button } from '../components';
+import { Link } from 'react-router-dom';
 import './ExamplesHub.css';
 
 interface NavigationCard {
@@ -48,11 +49,7 @@ const navigationCards: NavigationCard[] = [
   },
 ];
 
-interface ExamplesHubProps {
-  onNavigate: (path: string) => void;
-}
-
-export function ExamplesHub({ onNavigate }: ExamplesHubProps) {
+export function ExamplesHub() {
   return (
     <div className="examples-hub">
       <header className="examples-hub-header">
@@ -68,9 +65,11 @@ export function ExamplesHub({ onNavigate }: ExamplesHubProps) {
               <p className="text-sm">{card.description}</p>
             </div>
             <div className="examples-hub-card-actions">
-              <Button variant="primary" onClick={() => onNavigate(card.path)}>
-                View Examples
-              </Button>
+              <Link to={card.path}>
+                <Button variant="primary">
+                  View Examples
+                </Button>
+              </Link>
             </div>
           </div>
         ))}
