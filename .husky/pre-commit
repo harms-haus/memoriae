@@ -18,13 +18,13 @@ fi
 # Additional fallback paths
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-echo "Running type-check and tests..."
+echo "Running type-check and unit tests..."
 
 echo "Backend checks..."
-cd backend && npm run type-check && npm run test:run && cd .. || exit 1
+cd backend && npm run type-check && npm run test:unit && cd .. || exit 1
 
 echo "Frontend checks..."
-cd frontend && npm run type-check && npm run test:run && cd .. || exit 1
+cd frontend && npm run type-check && npm run test:unit && cd .. || exit 1
 
 echo "All checks passed!"
 

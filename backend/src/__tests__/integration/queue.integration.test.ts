@@ -5,9 +5,9 @@ import express from 'express'
 import seedsRoutes from '../../routes/seeds'
 import { authenticate } from '../../middleware/auth'
 import { generateTestToken } from '../../test-helpers'
-import { SeedsService } from '../seeds'
-import { queueAutomationsForSeed } from './queue'
-import { AutomationRegistry } from '../automation/registry'
+import { SeedsService } from '../../services/seeds'
+import { queueAutomationsForSeed } from '../../services/queue/queue'
+import { AutomationRegistry } from '../../services/automation/registry'
 
 // Mock BullMQ to prevent Redis connections
 vi.mock('bullmq', () => {
@@ -41,7 +41,7 @@ vi.mock('../../db/connection', () => ({
 }))
 
 // Mock services
-vi.mock('../seeds', () => ({
+vi.mock('../../services/seeds', () => ({
   SeedsService: {
     create: vi.fn(),
     getById: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock('../seeds', () => ({
   },
 }))
 
-vi.mock('./queue', () => ({
+vi.mock('../../services/queue/queue', () => ({
   queueAutomationsForSeed: vi.fn().mockResolvedValue(['job-1', 'job-2']),
   addAutomationJob: vi.fn().mockResolvedValue('job-id'),
   automationQueue: {
@@ -57,7 +57,7 @@ vi.mock('./queue', () => ({
   },
 }))
 
-vi.mock('../automation/registry', () => ({
+vi.mock('../../services/automation/registry', () => ({
   AutomationRegistry: {
     getInstance: vi.fn(() => ({
       getEnabled: vi.fn(() => []),
@@ -140,8 +140,8 @@ describe('Queue Integration', () => {
 // Test automation handlePressure integration
 describe('Automation handlePressure Integration', () => {
   it('should add job to queue when handlePressure is called', async () => {
-    const { Automation } = await import('../automation/base')
-    const { addAutomationJob } = await import('./queue')
+    const { Automation } = await import('../../services/automation/base')
+    const { addAutomationJob } = await import('../../services/queue/queue')
 
     // Create a test automation
     class TestAutomation extends Automation {

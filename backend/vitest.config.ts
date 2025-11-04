@@ -4,7 +4,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'src/**/*.integration.test.ts'],
+    exclude: ['node_modules/**', 'dist/**'],
     setupFiles: ['src/test-setup.ts'],
     coverage: {
       provider: 'v8',
@@ -15,6 +16,7 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.spec.ts',
         '**/index.ts',
+        'src/__tests__/integration/**',
       ],
     },
   },

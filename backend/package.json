@@ -13,6 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:run": "vitest run",
+    "test:unit": "vitest run --exclude 'src/__tests__/integration/**'",
+    "test:integration": "vitest run src/__tests__/integration/",
     "test:coverage": "vitest run --coverage",
     "pre-commit": "npm run type-check && npm run test:run",
     "migrate": "NODE_OPTIONS='-r ts-node/register' knex migrate:latest --knexfile src/db/knexfile.ts",

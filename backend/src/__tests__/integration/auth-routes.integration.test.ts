@@ -1,13 +1,13 @@
-// Auth routes tests
+// Auth routes integration tests
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import request from 'supertest'
 import express from 'express'
-import authRoutes from './auth'
-import { authenticate } from '../middleware/auth'
-import { generateTestToken } from '../test-helpers'
+import authRoutes from '../../routes/auth'
+import { authenticate } from '../../middleware/auth'
+import { generateTestToken } from '../../test-helpers'
 
 // Mock auth service
-vi.mock('../services/auth', () => ({
+vi.mock('../../services/auth', () => ({
   findOrCreateUser: vi.fn(),
   generateToken: vi.fn((user) => `mock-token-${user.id}`),
 }))
