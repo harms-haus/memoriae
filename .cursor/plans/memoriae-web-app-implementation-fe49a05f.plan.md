@@ -307,7 +307,7 @@ memoriae/
 - [ ] Create timer service that periodically evaluates pressure points, triggers re-evaluation queue jobs when thresholds reached
 - [x] Convert style guide to CSS file with all custom properties, component classes, animations, responsive utilities
 - [x] Build dynamic 3-stage seed editor: small (plain textarea), medium (markdown toolbar), large (full-screen zen mode)
-- [ ] Create seed list component with filtering, sorting, responsive layout following style guide
+- [x] Create seed list component with filtering, sorting, responsive layout following style guide
 - [ ] Build seed detail view with timeline visualization, event toggle controls, current state display
 - [ ] Implement hierarchical category browser component with expand/collapse, seed filtering by category
 - [ ] Create tag cloud visualization with frequency-based sizing, color coding, click-to-filter functionality
