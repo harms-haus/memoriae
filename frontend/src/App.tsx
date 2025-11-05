@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { BottomNavigation, type ViewType } from './components/BottomNavigation'
+import { Tabs, Tab, TabPanel } from '../../mother-theme/src/components/Tabs'
+import { Button } from '../../mother-theme/src/components/Button'
+import { Panel } from '../../mother-theme/src/components/Panel'
 import { SeedEditor } from './components/SeedEditor'
 import {
   SeedsView,
@@ -10,6 +12,15 @@ import {
   SettingsView,
   SeedDetailView,
 } from './components/views'
+import { 
+  FileText, 
+  Clock, 
+  FolderTree, 
+  Tags, 
+  Settings 
+} from 'lucide-react'
+
+export type ViewType = 'seeds' | 'timeline' | 'categories' | 'tags' | 'settings'
 
 function LoginPage() {
   const { login } = useAuth()
@@ -32,11 +43,7 @@ function LoginPage() {
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
+    <div className="flex flex-col items-center justify-center" style={{
       minHeight: '100vh',
       padding: 'var(--space-6)',
       background: 'var(--bg-primary)',
@@ -48,14 +55,7 @@ function LoginPage() {
         marginBottom: 'var(--space-8)',
       }}>Memoriae</h1>
       
-      <div style={{
-        background: 'var(--bg-secondary)',
-        border: '3px solid var(--border-primary)',
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-8)',
-        maxWidth: '400px',
-        width: '100%',
-      }}>
+      <Panel className="max-w-[400px] w-full">
         <h2 style={{
           fontSize: 'var(--text-lg)',
           fontWeight: 'var(--weight-semibold)',
@@ -63,74 +63,21 @@ function LoginPage() {
         }}>Sign in to continue</h2>
         
         {error && (
-          <div style={{
-            padding: 'var(--space-4)',
-            marginBottom: 'var(--space-6)',
-            background: 'var(--bg-tertiary)',
-            border: '3px solid var(--border-primary)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-          }}>
+          <Panel variant="elevated" className="mb-6">
             {error}
-          </div>
+          </Panel>
         )}
 
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-4)',
-        }}>
-          <button
-            onClick={() => handleLogin('google')}
-            style={{
-              padding: 'var(--space-4) var(--space-6)',
-              background: 'var(--bg-tertiary)',
-              border: '3px solid var(--border-primary)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              fontSize: 'var(--text-base)',
-              fontWeight: 'var(--weight-medium)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-vibrant)'
-              e.currentTarget.style.background = 'var(--bg-secondary)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-primary)'
-              e.currentTarget.style.background = 'var(--bg-tertiary)'
-            }}
-          >
+        <div className="flex flex-col gap-4">
+          <Button variant="secondary" onClick={() => handleLogin('google')}>
             Sign in with Google
-          </button>
+          </Button>
           
-          <button
-            onClick={() => handleLogin('github')}
-            style={{
-              padding: 'var(--space-4) var(--space-6)',
-              background: 'var(--bg-tertiary)',
-              border: '3px solid var(--border-primary)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              fontSize: 'var(--text-base)',
-              fontWeight: 'var(--weight-medium)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-vibrant)'
-              e.currentTarget.style.background = 'var(--bg-secondary)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-primary)'
-              e.currentTarget.style.background = 'var(--bg-tertiary)'
-            }}
-          >
+          <Button variant="secondary" onClick={() => handleLogin('github')}>
             Sign in with GitHub
-          </button>
+          </Button>
         </div>
-      </div>
+      </Panel>
     </div>
   )
 }
@@ -142,10 +89,7 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+      <div className="flex items-center justify-center" style={{
         minHeight: '100vh',
         background: 'var(--bg-primary)',
         color: 'var(--text-primary)',
@@ -159,34 +103,35 @@ function AppContent() {
     return <LoginPage />
   }
 
-  const renderView = () => {
-    // If a seed is selected, show detail view
-    if (selectedSeedId) {
-      return (
-        <SeedDetailView
-          seedId={selectedSeedId}
-          onBack={() => setSelectedSeedId(null)}
-        />
-      )
-    }
-
-    switch (activeView) {
-      case 'seeds':
-        return <SeedsView onSeedSelect={setSelectedSeedId} />
-      case 'timeline':
-        return <TimelineView onSeedSelect={setSelectedSeedId} />
-      case 'categories':
-        return <CategoriesView />
-      case 'tags':
-        return <TagsView />
-      case 'settings':
-        return <SettingsView />
-      default:
-        return <SeedsView onSeedSelect={setSelectedSeedId} />
-    }
-  }
-
   const showEditor = activeView !== 'settings'
+
+  // If a seed is selected, show detail view (outside tabs)
+  if (selectedSeedId) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          paddingBottom: showEditor ? '180px' : '72px',
+        }}>
+          <SeedDetailView
+            seedId={selectedSeedId}
+            onBack={() => setSelectedSeedId(null)}
+          />
+        </div>
+        {showEditor && <SeedEditor />}
+      </div>
+    )
+  }
 
   return (
     <div style={{
@@ -202,14 +147,71 @@ function AppContent() {
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        paddingBottom: showEditor ? '180px' : '72px', // Space for editor + nav or just nav
+        position: 'relative',
       }}>
-        {renderView()}
+        <div style={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          paddingBottom: showEditor ? '180px' : '72px',
+        }}>
+          <Tabs 
+            orientation="top" 
+            value={activeView} 
+            onValueChange={(value) => setActiveView(value as ViewType)}
+            className="flex-1 flex flex-col min-h-0"
+          >
+          <TabPanel value="seeds">
+            <SeedsView onSeedSelect={setSelectedSeedId} />
+          </TabPanel>
+          <TabPanel value="timeline">
+            <TimelineView onSeedSelect={setSelectedSeedId} />
+          </TabPanel>
+          <TabPanel value="categories">
+            <CategoriesView />
+          </TabPanel>
+          <TabPanel value="tags">
+            <TagsView />
+          </TabPanel>
+          <TabPanel value="settings">
+            <SettingsView />
+          </TabPanel>
+
+          <Tab value="seeds">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+              <FileText size={24} />
+              <span style={{ fontSize: 'var(--text-xs)' }}>Seeds</span>
+            </div>
+          </Tab>
+          <Tab value="timeline">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+              <Clock size={24} />
+              <span style={{ fontSize: 'var(--text-xs)' }}>Timeline</span>
+            </div>
+          </Tab>
+          <Tab value="categories">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+              <FolderTree size={24} />
+              <span style={{ fontSize: 'var(--text-xs)' }}>Categories</span>
+            </div>
+          </Tab>
+          <Tab value="tags">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+              <Tags size={24} />
+              <span style={{ fontSize: 'var(--text-xs)' }}>Tags</span>
+            </div>
+          </Tab>
+          <Tab value="settings">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+              <Settings size={24} />
+              <span style={{ fontSize: 'var(--text-xs)' }}>Settings</span>
+            </div>
+          </Tab>
+        </Tabs>
+        </div>
       </div>
       
       {showEditor && <SeedEditor />}
-      
-      <BottomNavigation activeView={activeView} onViewChange={setActiveView} />
     </div>
   )
 }

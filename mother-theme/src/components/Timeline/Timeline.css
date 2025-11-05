@@ -209,3 +209,119 @@
   justify-content: flex-end;
 }
 
+/* ========================================
+ * COMPATIBILITY MODE (RSuite-style API)
+ * ======================================== */
+
+.timeline-compat {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  padding: var(--space-4);
+}
+
+.timeline-item-compat {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  margin-bottom: var(--space-6);
+  min-height: 60px;
+}
+
+.timeline-item-compat:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-item-compat-left {
+  flex-direction: row;
+}
+
+.timeline-item-compat-right {
+  flex-direction: row;
+}
+
+.timeline-column-compat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+  width: 40px;
+  flex-shrink: 0;
+  margin-right: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.timeline-line-compat {
+  width: var(--timeline-line-width);
+  background: var(--timeline-line-color);
+  flex: 1;
+  min-height: 20px;
+}
+
+.timeline-line-top-compat {
+  opacity: 1;
+}
+
+.timeline-line-top-invisible {
+  opacity: 0.001;
+}
+
+.timeline-line-bottom-compat {
+  opacity: 1;
+}
+
+.timeline-dot-container-compat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  padding: var(--space-2) 0;
+}
+
+.timeline-content-compat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.timeline-time-compat {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.timeline-item-clickable {
+  cursor: pointer;
+  transition: background-color var(--transition-base);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.timeline-item-clickable:hover {
+  background: var(--hover-bg);
+}
+
+.timeline-item-disabled {
+  opacity: 0.5;
+}
+
+.timeline-item-disabled * {
+  text-decoration: line-through;
+}
+
+/* Center mode: alternate left/right */
+.timeline-compat-center .timeline-item-compat:nth-child(even) {
+  flex-direction: row-reverse;
+}
+
+.timeline-compat-center .timeline-item-compat:nth-child(even) .timeline-column-compat {
+  margin-right: 0;
+  margin-left: var(--space-4);
+}
+

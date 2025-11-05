@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../services/api'
 import { Timeline, type TimelineItem } from '../Timeline'
+import { Button } from '../../../../mother-theme/src/components/Button'
+import { Panel } from '../../../../mother-theme/src/components/Panel'
+import { Tag } from '../../../../mother-theme/src/components/Tag'
+import { Badge } from '../../../../mother-theme/src/components/Badge'
 import type { Event, Seed, SeedState } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
@@ -152,9 +156,9 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   if (loading) {
     return (
       <div className="view-container">
-        <div className="panel">
+        <Panel>
           <p>Loading seed...</p>
-        </div>
+        </Panel>
       </div>
     )
   }
@@ -162,12 +166,12 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   if (error && !seed) {
     return (
       <div className="view-container">
-        <div className="panel">
+        <Panel>
           <p className="text-error">{error}</p>
-          <button className="btn-primary" onClick={onBack}>
+          <Button variant="primary" onClick={onBack}>
             Back to Seeds
-          </button>
-        </div>
+          </Button>
+        </Panel>
       </div>
     )
   }
@@ -175,12 +179,12 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   if (!seed) {
     return (
       <div className="view-container">
-        <div className="panel">
+        <Panel>
           <p>Seed not found</p>
-          <button className="btn-primary" onClick={onBack}>
+          <Button variant="primary" onClick={onBack}>
             Back to Seeds
-          </button>
-        </div>
+          </Button>
+        </Panel>
       </div>
     )
   }
@@ -192,7 +196,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         <div className="event-item-header">
           <span className="event-type">{event.event_type}</span>
           {event.automation_id && (
-            <span className="badge badge-primary">Auto</span>
+            <Badge variant="primary">Auto</Badge>
           )}
         </div>
         <p className="event-description">{formatEventDescription(event)}</p>
@@ -206,28 +210,28 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   return (
     <div className="view-container seed-detail-container">
       <div className="seed-detail-header">
-        <button
-          className="btn-secondary"
+        <Button
+          variant="secondary"
           onClick={onBack}
           aria-label="Back to seeds"
         >
           ← Back
-        </button>
+        </Button>
         <h2 className="seed-detail-title">Seed Detail</h2>
       </div>
 
       {/* Current State Display */}
-      <div className="panel panel-elevated seed-detail-state">
+      <Panel variant="elevated" className="seed-detail-state">
         <h3 className="panel-header">Current State</h3>
         <div className="seed-content-display">
           <p className="seed-text">{currentState?.seed || seed.seed_content}</p>
         </div>
         {currentState?.tags && currentState.tags.length > 0 && (
-          <div className="tag-list seed-tags">
+          <div className="tag-list seed-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
             {currentState.tags.map((tag) => (
-              <span key={tag.id} className="tag-item">
+              <Tag key={tag.id}>
                 {tag.name}
-              </span>
+              </Tag>
             ))}
           </div>
         )}
@@ -241,17 +245,17 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
             </ul>
           </div>
         )}
-      </div>
+      </Panel>
 
       {/* Timeline of Events */}
-      <div className="panel panel-elevated seed-detail-timeline">
+      <Panel variant="elevated" className="seed-detail-timeline">
         <h3 className="panel-header">Timeline</h3>
         {events.length === 0 ? (
           <p className="text-secondary">No events yet.</p>
         ) : (
           <Timeline items={timelineItems} />
         )}
-      </div>
+      </Panel>
     </div>
   )
 }

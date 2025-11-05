@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../services/api'
 import { Timeline, type TimelineItem } from '../Timeline'
+import { Button } from '../../../../mother-theme/src/components/Button'
+import { Panel } from '../../../../mother-theme/src/components/Panel'
+import { Tag } from '../../../../mother-theme/src/components/Tag'
+import { Badge } from '../../../../mother-theme/src/components/Badge'
 import type { Seed } from '../../types'
 import './Views.css'
 import './TimelineView.css'
@@ -73,9 +77,9 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
   if (loading) {
     return (
       <div className="view-container">
-        <div className="panel">
+        <Panel>
           <p>Loading timeline...</p>
-        </div>
+        </Panel>
       </div>
     )
   }
@@ -83,12 +87,12 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
   if (error) {
     return (
       <div className="view-container">
-        <div className="panel">
+        <Panel>
           <p className="text-error">{error}</p>
-          <button className="btn-secondary" onClick={loadSeeds}>
+          <Button variant="secondary" onClick={loadSeeds}>
             Retry
-          </button>
-        </div>
+          </Button>
+        </Panel>
       </div>
     )
   }
@@ -104,23 +108,25 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
             </p>
           </div>
           {(seed.currentState?.tags && seed.currentState.tags.length > 0) && (
-            <div className="tag-list seed-timeline-tags">
+            <div className="tag-list seed-timeline-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
               {seed.currentState.tags.slice(0, 3).map((tag) => (
-                <span key={tag.id} className="tag-item tag-item-small">
-                  {tag.name}
-                </span>
+                <Tag key={tag.id} className="tag-item-small">
+                  <span style={{ fontSize: 'var(--text-xs)' }}>{tag.name}</span>
+                </Tag>
               ))}
               {seed.currentState.tags.length > 3 && (
-                <span className="tag-item tag-item-small">+{seed.currentState.tags.length - 3}</span>
+                <Tag className="tag-item-small">
+                  <span style={{ fontSize: 'var(--text-xs)' }}>+{seed.currentState.tags.length - 3}</span>
+                </Tag>
               )}
             </div>
           )}
           {(seed.currentState?.categories && seed.currentState.categories.length > 0) && (
-            <div className="seed-timeline-categories">
+            <div className="seed-timeline-categories" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
               {seed.currentState.categories.map((cat) => (
-                <span key={cat.id} className="badge badge-primary badge-small">
-                  {cat.name}
-                </span>
+                <Badge key={cat.id} variant="primary">
+                  <span style={{ fontSize: 'var(--text-xs)' }}>{cat.name}</span>
+                </Badge>
               ))}
             </div>
           )}
@@ -148,13 +154,13 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
       </div>
 
       {seeds.length === 0 ? (
-        <div className="panel panel-elevated">
+        <Panel variant="elevated">
           <p className="text-center">Your timeline is empty. Start creating seeds to see them here!</p>
-        </div>
+        </Panel>
       ) : (
-        <div className="panel panel-elevated timeline-view-panel">
+        <Panel variant="elevated" className="timeline-view-panel">
           <Timeline items={timelineItems} />
-        </div>
+        </Panel>
       )}
     </div>
   )

@@ -5,15 +5,24 @@ import './Timeline.css';
 export interface TimelineItem {
   id: string;
   // Dot position along timeline (0-100% or pixel value)
-  position: number;
+  position?: number;
+  // Content to display (for compatibility mode)
+  content?: ReactNode;
+  // Time label (for compatibility mode)
+  time?: ReactNode;
   // Optional dot visual (used if renderDot not provided)
   dot?: ReactNode;
+  // Disabled state (for compatibility mode)
+  disabled?: boolean;
+  // Click handler (for compatibility mode)
+  onClick?: () => void;
 }
 
 export interface TimelineProps {
   items: TimelineItem[];
-  // Timeline alignment mode
-  mode: 'left' | 'center' | 'right';
+  // Timeline alignment mode (or 'align' for RSuite compatibility)
+  mode?: 'left' | 'center' | 'right';
+  align?: 'left' | 'alternate'; // RSuite compatibility mode
   // Render panel content (default: uses PointerPanel)
   renderPanel?: (index: number, width: number) => ReactNode;
   // Custom panel creation (overrides default PointerPanel)
@@ -43,11 +52,14 @@ export interface TimelineProps {
   // Panel spacing from timeline
   panelSpacing?: number;
   className?: string;
+  // Compatibility mode: use RSuite-style API
+  compatibilityMode?: boolean;
 }
 
 export function Timeline({
   items,
   mode,
+  align,
   renderPanel,
   createPanel,
   renderOpposite,
@@ -55,14 +67,64 @@ export function Timeline({
   maxPanelWidth = 400,
   panelSpacing = 16,
   className = '',
+  compatibilityMode = false,
 }: TimelineProps) {
   if (items.length === 0) {
     return null;
   }
 
+  // Determine mode from align prop (RSuite compatibility) or use provided mode
+  const resolvedMode: 'left' | 'center' | 'right' = 
+    align === 'alternate' ? 'center' : 
+    align === 'left' ? 'left' : 
+    mode || 'left';
+
+  // Compatibility mode: use simple vertical timeline with RSuite-like structure
+  if (compatibilityMode || align !== undefined) {
+    return (
+      <div className={`timeline-compat timeline-compat-${resolvedMode} ${className}`}>
+        {items.map((item, index) => {
+          const isTop = index === 0;
+          const isBottom = index === items.length - 1;
+          const side = resolvedMode === 'center' ? (index % 2 === 0 ? 'right' : 'left') : 'right';
+          
+          return (
+            <div
+              key={item.id}
+              className={`timeline-item-compat timeline-item-compat-${side} ${item.disabled ? 'timeline-item-disabled' : ''}`}
+            >
+              <div className="timeline-column-compat">
+                <div className={`timeline-line-compat timeline-line-top-compat ${isTop ? 'timeline-line-top-invisible' : ''}`} />
+                <div className="timeline-dot-container-compat">
+                  {item.dot || <div className="timeline-dot-default" />}
+                </div>
+                <div className={`timeline-line-compat timeline-line-bottom-compat ${isBottom ? 'timeline-line-bottom-invisible' : ''}`} />
+              </div>
+              <div className="timeline-content-compat">
+                {item.time && (
+                  <div className="timeline-time-compat">{item.time}</div>
+                )}
+                {item.onClick ? (
+                  <div
+                    className="timeline-item-clickable"
+                    onClick={item.onClick}
+                  >
+                    {item.content}
+                  </div>
+                ) : (
+                  item.content
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   const getPanelSide = (index: number): 'left' | 'right' => {
-    if (mode === 'left') return 'right';
-    if (mode === 'right') return 'left';
+    if (resolvedMode === 'left') return 'right';
+    if (resolvedMode === 'right') return 'left';
     // Center mode: alternate
     return index % 2 === 0 ? 'right' : 'left';
   };
@@ -125,31 +187,32 @@ export function Timeline({
   };
 
   return (
-    <div className={`timeline timeline-mode-${mode} ${className}`}>
+    <div className={`timeline timeline-mode-${resolvedMode} ${className}`}>
       {items.map((item, index) => {
         const isTop = index === 0;
         const isBottom = index === items.length - 1;
         const side = getPanelSide(index);
-        const showTail = mode === 'center' && renderOpposite;
+        const showTail = resolvedMode === 'center' && renderOpposite;
+        const position = item.position ?? ((index / (items.length - 1 || 1)) * 100);
 
         return (
           <div
             key={item.id}
             className={`timeline-item timeline-item-${side}`}
             style={{
-              '--timeline-position': `${item.position}%`,
+              '--timeline-position': `${position}%`,
             } as React.CSSProperties}
           >
             {/* Content column */}
             <div className="timeline-content">
-              {renderPanelContent(index, side, item.position)}
+              {renderPanelContent(index, side, position)}
             </div>
 
             {/* Timeline column */}
             <div className="timeline-column">
               <div className={`timeline-line timeline-line-top ${isTop ? 'timeline-line-top-invisible' : ''}`} />
               <div className="timeline-dot-container">
-                {renderDefaultDot(index, item.position)}
+                {renderDefaultDot(index, position)}
               </div>
               <div className={`timeline-line timeline-line-bottom ${isBottom ? 'timeline-line-bottom-invisible' : ''}`} />
             </div>

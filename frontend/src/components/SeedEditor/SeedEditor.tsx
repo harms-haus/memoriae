@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Bold, Italic, Link, X, Maximize } from 'lucide-react'
 import { api } from '../../services/api'
+import { Button } from '../../../../mother-theme/src/components/Button'
 import type { Seed } from '../../types'
 import './SeedEditor.css'
 
@@ -521,15 +522,16 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
           {/* Save button */}
           {content.trim() && (
             <div className="seed-editor-actions">
-              <button
-                type="button"
-                className="btn-primary seed-editor-save-button"
+              <Button
+                variant="primary"
+                className="seed-editor-save-button"
                 onClick={handleCreateSeed}
                 disabled={isSaving || !content.trim()}
                 title="Save seed (Ctrl+Enter)"
+                loading={isSaving}
               >
                 {isSaving ? 'Saving...' : 'Save'}
-              </button>
+              </Button>
             </div>
           )}
         </div>

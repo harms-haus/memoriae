@@ -60,3 +60,6 @@ export type { PointerPanelProps, PointerPosition } from './components/PointerPan
 export { Timeline } from './components/Timeline';
 export type { TimelineProps, TimelineItem } from './components/Timeline';
 
+export { Panel } from './components/Panel';
+export type { PanelProps } from './components/Panel';
+

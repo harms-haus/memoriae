@@ -1,4 +1,5 @@
 import { useAuth } from '../../contexts/AuthContext'
+import { Button } from '../../../../mother-theme/src/components/Button'
 import './Views.css'
 
 export function SettingsView() {
@@ -18,9 +19,9 @@ export function SettingsView() {
           <span className="label">Email</span>
           <p>{user?.email || 'N/A'}</p>
         </div>
-        <button className="btn-secondary" onClick={logout}>
+        <Button variant="secondary" onClick={logout}>
           Logout
-        </button>
+        </Button>
       </div>
 
       <div className="settings-section">

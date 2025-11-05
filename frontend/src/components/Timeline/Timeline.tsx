@@ -1,14 +1,13 @@
-import { useEffect, useRef, type ReactNode } from 'react'
-import { Timeline as RSuiteTimeline } from 'rsuite'
-import 'rsuite/dist/rsuite.min.css'
+import { useEffect, useRef } from 'react'
+import { Timeline as MotherTimeline, type TimelineItem as MotherTimelineItem } from '../../../../mother-theme/src/components/Timeline'
 import { useTimelineConfig } from '../../hooks/useTimelineConfig'
 import './Timeline.css'
 
 export interface TimelineItem {
   id: string
-  content: ReactNode
-  time?: ReactNode
-  dot?: ReactNode
+  content: React.ReactNode
+  time?: React.ReactNode
+  dot?: React.ReactNode
   disabled?: boolean
   onClick?: () => void
 }
@@ -23,8 +22,7 @@ interface TimelineProps {
  * - Responsive alignment (left on mobile, alternate on desktop)
  * - Keyboard navigation (arrow up/down)
  * - Click handling
- * - Custom styling with caret/triangle
- * - Scrollable timeline container
+ * - Uses mother-theme Timeline component with RSuite compatibility
  */
 export function Timeline({ items, className = '' }: TimelineProps) {
   const { align, isMobile } = useTimelineConfig()
@@ -59,33 +57,30 @@ export function Timeline({ items, className = '' }: TimelineProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Convert memoriae TimelineItem to mother-theme TimelineItem
+  const motherItems: MotherTimelineItem[] = items.map(item => {
+    const result: MotherTimelineItem = {
+      id: item.id,
+      content: item.content,
+    }
+    if (item.time !== undefined) result.time = item.time
+    if (item.dot !== undefined) result.dot = item.dot
+    if (item.disabled !== undefined) result.disabled = item.disabled
+    if (item.onClick !== undefined) result.onClick = item.onClick
+    return result
+  })
+
   return (
     <div
       ref={timelineRef}
       className={`memoriae-timeline ${isMobile ? 'timeline-mobile' : 'timeline-desktop'} ${className}`}
       tabIndex={0}
     >
-      <RSuiteTimeline align={align}>
-        {items.map((item) => (
-          <RSuiteTimeline.Item
-            key={item.id}
-            time={item.time}
-            dot={item.dot}
-            className={item.disabled ? 'timeline-item-disabled' : ''}
-          >
-            {item.onClick ? (
-              <div
-                className="timeline-item-clickable"
-                onClick={item.onClick}
-              >
-                {item.content}
-              </div>
-            ) : (
-              item.content
-            )}
-          </RSuiteTimeline.Item>
-        ))}
-      </RSuiteTimeline>
+      <MotherTimeline
+        items={motherItems}
+        align={align}
+        compatibilityMode={true}
+      />
     </div>
   )
 }
