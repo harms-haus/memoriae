@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Tabs, Tab, TabPanel } from '../../mother-theme/src/components/Tabs'
 import { Button } from '../../mother-theme/src/components/Button'
 import { Panel } from '../../mother-theme/src/components/Panel'
-import { SeedEditor } from './components/SeedEditor'
 import {
   SeedsView,
   TimelineView,
@@ -103,8 +102,6 @@ function AppContent() {
     return <LoginPage />
   }
 
-  const showEditor = activeView !== 'settings'
-
   // If a seed is selected, show detail view (outside tabs)
   if (selectedSeedId) {
     return (
@@ -121,14 +118,13 @@ function AppContent() {
           minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
-          paddingBottom: showEditor ? '180px' : '72px',
+          paddingBottom: '72px',
         }}>
           <SeedDetailView
             seedId={selectedSeedId}
             onBack={() => setSelectedSeedId(null)}
           />
         </div>
-        {showEditor && <SeedEditor />}
       </div>
     )
   }
@@ -153,7 +149,7 @@ function AppContent() {
           height: '100%', 
           display: 'flex', 
           flexDirection: 'column',
-          paddingBottom: showEditor ? '180px' : '72px',
+          paddingBottom: '72px',
         }}>
           <Tabs 
             orientation="top" 
@@ -210,8 +206,6 @@ function AppContent() {
         </Tabs>
         </div>
       </div>
-      
-      {showEditor && <SeedEditor />}
     </div>
   )
 }

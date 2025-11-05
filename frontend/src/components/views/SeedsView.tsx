@@ -221,7 +221,10 @@ export function SeedsView({ onSeedSelect }: SeedsViewProps) {
                   const options: SortOption[] = ['newest', 'oldest', 'alphabetical']
                   const currentIndex = options.indexOf(sortBy)
                   const nextIndex = (currentIndex + 1) % options.length
-                  setSortBy(options[nextIndex])
+                  const nextOption = options[nextIndex]
+                  if (nextOption) {
+                    setSortBy(nextOption)
+                  }
                 }}
                 className="seeds-view-sort-button"
               >
@@ -360,8 +363,7 @@ export function SeedsView({ onSeedSelect }: SeedsViewProps) {
                                 key={tag.id}
                                 variant={variant}
                                 className="tag-item-small"
-                                onClick={(e) => {
-                                  e.stopPropagation()
+                                onClick={() => {
                                   toggleTag(tag.id)
                                 }}
                               >

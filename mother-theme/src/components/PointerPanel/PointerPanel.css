@@ -12,6 +12,10 @@
   --pointer-panel-border-radius: var(--radius-md);
   --pointer-panel-padding: var(--panel-padding);
   --pointer-panel-shadow: var(--panel-shadow);
+  --pointer-panel-bg-hover: var(--hover-bg);
+  --pointer-panel-border-hover: var(--hover-border);
+  --pointer-panel-shadow-hover: var(--shadow-md);
+  --pointer-panel-transform-hover: translateY(-2px);
 }
 
 .pointer-panel {
@@ -23,6 +27,35 @@
   box-shadow: var(--pointer-panel-shadow);
   min-width: 100px;
   max-width: 400px;
+  transition: var(--transition-hover);
+}
+
+/* Clickable state - hover styles */
+.pointer-panel.pointer-panel-clickable {
+  cursor: pointer;
+}
+
+.pointer-panel.pointer-panel-clickable:hover {
+  background: var(--pointer-panel-bg-hover);
+  border-color: var(--pointer-panel-border-hover);
+  box-shadow: var(--pointer-panel-shadow-hover);
+  transform: var(--pointer-panel-transform-hover);
+}
+
+/* Update arrow border color on hover for clickable panels */
+/* This works for all positions because the borders are set per position class */
+.pointer-panel.pointer-panel-clickable:hover::before {
+  /* For left-pointing arrows (center-right, top-right, bottom-right) */
+  border-left-color: var(--pointer-panel-border-hover);
+  /* For right-pointing arrows (center-left, top-left, bottom-left) */
+  border-right-color: var(--pointer-panel-border-hover);
+}
+
+.pointer-panel.pointer-panel-clickable:hover::after {
+  /* For left-pointing arrows */
+  border-left-color: var(--pointer-panel-bg-hover);
+  /* For right-pointing arrows */
+  border-right-color: var(--pointer-panel-bg-hover);
 }
 
 /* Arrow pointer using border triangles */

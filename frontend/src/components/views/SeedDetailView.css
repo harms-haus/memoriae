@@ -64,13 +64,13 @@
   margin-bottom: var(--space-4);
 }
 
-.seed-detail-timeline .memoriae-timeline {
-  flex: 1;
-  min-height: 0; /* Important for flex scrolling */
+.event-item-content {
+  padding: var(--space-4);
+  transition: all var(--transition-base);
 }
 
-.event-item-content {
-  padding: var(--space-2) 0;
+.event-item-content:hover {
+  transform: translateY(-2px);
 }
 
 .event-item-header {
@@ -91,6 +91,23 @@
   margin: 0;
   color: var(--text-secondary);
   font-size: var(--text-sm);
+}
+
+.event-disabled-badge {
+  margin-top: var(--space-2);
+}
+
+/* Time on opposite side */
+.event-time-opposite {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2);
+}
+
+.event-time {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
 }
 
 /* Responsive adjustments */

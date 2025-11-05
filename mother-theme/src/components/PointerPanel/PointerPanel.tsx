@@ -18,6 +18,10 @@ export interface PointerPanelProps {
    * Size of the arrow pointer in pixels (default: 16px)
    */
   arrowSize?: number;
+  /**
+   * Whether the panel is clickable (adds hover styles and cursor)
+   */
+  clickable?: boolean;
 }
 
 export function PointerPanel({
@@ -26,12 +30,14 @@ export function PointerPanel({
   className = '',
   style,
   arrowSize = 16,
+  clickable = false,
 }: PointerPanelProps) {
   const positionClass = `pointer-panel-${position}`;
+  const clickableClass = clickable ? 'pointer-panel-clickable' : '';
   
   return (
     <div
-      className={`pointer-panel ${positionClass} ${className}`}
+      className={`pointer-panel ${positionClass} ${clickableClass} ${className}`}
       style={{
         ...style,
         '--pointer-size': `${arrowSize}px`,

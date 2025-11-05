@@ -1,198 +1,102 @@
+/* Timeline View Styles */
+
 .timeline-view-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  flex: 1 1 auto;
+  gap: var(--space-4);
 }
 
 .timeline-view-header {
-  margin-bottom: var(--space-6);
-  flex-shrink: 0;
+  margin-bottom: var(--space-4);
 }
 
 .timeline-view-header h2 {
   margin: 0 0 var(--space-2) 0;
+  font-size: var(--text-2xl);
+  color: var(--text-primary);
 }
 
 .timeline-view-panel {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.timeline-view-panel .memoriae-timeline {
   flex: 1;
-  min-height: 0; /* Important for flex scrolling */
+  overflow-y: auto;
+  padding: var(--space-6);
+  min-height: 400px;
 }
 
-/* Remove background and border from empty state panel too */
-.timeline-view-container .panel-elevated {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+.timeline-view-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-secondary);
 }
 
-.seed-timeline-item {
-  width: 100%;
-  position: relative;
-  padding: var(--space-4);
-  background: var(--bg-secondary);
-  border: var(--border-thick) solid var(--border-primary);
-  border-radius: 0; /* Sharp corners */
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.8); /* Sharp box shadow underneath */
+/* Seed Content Styles - PointerPanel handles the panel styling */
+
+.timeline-seed-content {
+  padding: 0;
   transition: all var(--transition-base);
-  cursor: pointer;
 }
 
-/* Arrow pointing to timeline - Mobile (left side) */
-.memoriae-timeline.timeline-mobile .seed-timeline-item::before {
-  content: '';
-  position: absolute;
-  left: -12px;
-  top: -3.25px;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 10px 10px 10px 0;
-  border-color: transparent var(--border-primary) transparent transparent;
-  z-index: 1;
+.timeline-seed-content:hover {
+  transform: translateY(-2px);
 }
 
-.memoriae-timeline.timeline-mobile .seed-timeline-item::after {
-  content: '';
-  position: absolute;
-  left: -8px;
-  top: -1px;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 8px 10px 8px 0;
-  border-color: transparent var(--bg-secondary) transparent transparent;
-  z-index: 2;
+.timeline-seed-text-wrapper {
+  margin-bottom: var(--space-3);
 }
 
-/* Arrow pointing to timeline - Desktop alternate (left side for odd items) */
-.memoriae-timeline.timeline-desktop .rs-timeline-item:nth-child(odd) .seed-timeline-item::before {
-  content: '';
-  position: absolute;
-  left: -12px;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 10px 12px 10px 0;
-  border-color: transparent var(--border-primary) transparent transparent;
-  z-index: 1;
-}
-
-.memoriae-timeline.timeline-desktop .rs-timeline-item:nth-child(odd) .seed-timeline-item::after {
-  content: '';
-  position: absolute;
-  left: -9px;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 9px 11px 9px 0;
-  border-color: transparent var(--bg-secondary) transparent transparent;
-  z-index: 2;
-}
-
-/* Arrow pointing to timeline - Desktop alternate (right side for even items) */
-.memoriae-timeline.timeline-desktop .rs-timeline-item:nth-child(even) .seed-timeline-item::before {
-  content: '';
-  position: absolute;
-  right: -12px;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 10px 0 10px 12px;
-  border-color: transparent transparent transparent var(--border-primary);
-  z-index: 1;
-}
-
-.memoriae-timeline.timeline-desktop .rs-timeline-item:nth-child(even) .seed-timeline-item::after {
-  content: '';
-  position: absolute;
-  right: -9px;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 9px 0 9px 11px;
-  border-color: transparent transparent transparent var(--bg-secondary);
-  z-index: 2;
-}
-
-/* Hover state - vibrant dark background */
-.seed-timeline-item:hover {
-  background: var(--accent-purple-dark);
-  border-color: var(--accent-purple);
-  color: var(--text-primary);
-}
-
-/* Update arrow background on hover */
-.memoriae-timeline.timeline-mobile .seed-timeline-item:hover::after,
-.memoriae-timeline.timeline-desktop .rs-timeline-item:nth-child(odd) .seed-timeline-item:hover::after,
-.memoriae-timeline.timeline-desktop .rs-timeline-item:nth-child(even) .seed-timeline-item:hover::after {
-  border-color: transparent var(--accent-purple-dark) transparent transparent;
-}
-
-.memoriae-timeline.timeline-desktop .rs-timeline-item:nth-child(even) .seed-timeline-item:hover::after {
-  border-color: transparent transparent transparent var(--accent-purple-dark);
-}
-
-.seed-timeline-content {
-  margin-bottom: var(--space-2);
-}
-
-.seed-timeline-text {
+.timeline-seed-text {
   margin: 0;
-  color: var(--text-primary);
+  font-size: var(--text-sm);
   line-height: 1.6;
+  color: var(--text-primary);
   white-space: pre-wrap;
   word-wrap: break-word;
 }
 
-.seed-timeline-tags {
-  margin-top: var(--space-2);
+/* Time on opposite side */
+.timeline-seed-time-opposite {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2);
+}
+
+.timeline-seed-time {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+}
+
+.timeline-seed-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.timeline-seed-tag {
+  font-size: var(--text-xs);
+}
+
+.timeline-seed-categories {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
 }
 
-.tag-item-small {
+.timeline-seed-category {
   font-size: var(--text-xs);
-  padding: var(--space-1) var(--space-2);
-}
-
-.seed-timeline-categories {
-  margin-top: var(--space-2);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
-.badge-small {
-  font-size: var(--text-xs);
-  padding: var(--space-1) var(--space-2);
 }
 
 /* Responsive adjustments */
-@media (max-width: 749px) {
-  .timeline-view-container {
-    padding: var(--space-2);
-  }
-
+@media (min-width: 768px) {
   .timeline-view-panel {
-    max-height: calc(100vh - 250px);
+    padding: var(--space-8);
   }
 }
+
+@media (min-width: 1024px) {
+  .timeline-view-panel {
+    padding: var(--space-10);
+  }
+}
+

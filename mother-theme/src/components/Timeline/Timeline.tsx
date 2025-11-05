@@ -42,6 +42,8 @@ export interface TimelineProps {
   maxPanelWidth?: number;
   // Panel spacing from timeline
   panelSpacing?: number;
+  // Whether panels are clickable (adds hover styles)
+  panelClickable?: boolean;
   className?: string;
 }
 
@@ -54,6 +56,7 @@ export function Timeline({
   renderDot,
   maxPanelWidth = 400,
   panelSpacing = 16,
+  panelClickable = false,
   className = '',
 }: TimelineProps) {
   if (items.length === 0) {
@@ -114,6 +117,7 @@ export function Timeline({
       <PointerPanel
         position={pointerPos}
         arrowSize={panelSpacing}
+        clickable={panelClickable}
         style={{
           maxWidth: maxPanelWidth,
           position: 'relative',

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
-import { api } from '../../services/api'
-import { Timeline, type TimelineItem } from '../Timeline'
-import { Button } from '../../../../mother-theme/src/components/Button'
+import { useState, useEffect, useMemo } from 'react'
+import { Timeline, type TimelineItem } from '../../../../mother-theme/src/components/Timeline'
 import { Panel } from '../../../../mother-theme/src/components/Panel'
 import { Tag } from '../../../../mother-theme/src/components/Tag'
 import { Badge } from '../../../../mother-theme/src/components/Badge'
+import { Button } from '../../../../mother-theme/src/components/Button'
+import { api } from '../../services/api'
 import type { Seed } from '../../types'
 import './Views.css'
 import './TimelineView.css'
@@ -15,7 +15,8 @@ interface TimelineViewProps {
 
 /**
  * TimelineView displays all seeds in a chronological timeline.
- * Each seed is a timeline item that can be clicked to view details.
+ * Uses the mother Timeline component with PointerPanel for each seed.
+ * Seeds are positioned along the timeline based on their creation date.
  */
 export function TimelineView({ onSeedSelect }: TimelineViewProps) {
   const [seeds, setSeeds] = useState<Seed[]>([])
@@ -47,6 +48,36 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
     }
   }
 
+  // Calculate timeline positions based on date range
+  const timelineItems: TimelineItem[] = useMemo(() => {
+    if (seeds.length === 0) return []
+
+    // Get date range
+    const dates = seeds.map(seed => new Date(seed.created_at).getTime())
+    const minDate = Math.min(...dates)
+    const maxDate = Math.max(...dates)
+    const dateRange = maxDate - minDate
+
+    // If all seeds are from the same time, distribute evenly (newest at top = 0%)
+    if (dateRange === 0) {
+      return seeds.map((seed, index) => ({
+        id: seed.id,
+        position: (index / (seeds.length - 1 || 1)) * 100,
+      }))
+    }
+
+    // Calculate position based on date (newest at top = 0%, oldest at bottom = 100%)
+    return seeds.map((seed) => {
+      const seedDate = new Date(seed.created_at).getTime()
+      // Reverse: newest (maxDate) should be at 0%, oldest (minDate) at 100%
+      const position = ((maxDate - seedDate) / dateRange) * 100
+      return {
+        id: seed.id,
+        position: Math.max(0, Math.min(100, position)), // Clamp to 0-100
+      }
+    })
+  }, [seeds])
+
   const formatSeedTime = (seed: Seed): string => {
     const date = new Date(seed.created_at)
     const now = new Date()
@@ -69,9 +100,75 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
     })
   }
 
-  const truncateContent = (content: string, maxLength: number = 150): string => {
+  const truncateContent = (content: string, maxLength: number = 200): string => {
     if (content.length <= maxLength) return content
     return content.substring(0, maxLength).trim() + '...'
+  }
+
+  const handleSeedClick = (seedId: string) => {
+    onSeedSelect?.(seedId)
+  }
+
+  const renderPanel = (index: number, width: number): React.ReactNode => {
+    const seed = seeds[index]
+    if (!seed) return null
+
+    const content = seed.currentState?.seed || seed.seed_content
+    const tags = seed.currentState?.tags || []
+    const categories = seed.currentState?.categories || []
+
+    return (
+      <div 
+        className="timeline-seed-content"
+        onClick={() => handleSeedClick(seed.id)}
+      >
+        <div className="timeline-seed-text-wrapper">
+          <p className="timeline-seed-text">
+            {truncateContent(content)}
+          </p>
+        </div>
+
+        {tags.length > 0 && (
+          <div className="timeline-seed-tags">
+            {tags.slice(0, 5).map((tag) => (
+              <Tag 
+                key={tag.id} 
+                variant="default"
+                className="timeline-seed-tag"
+              >
+                {tag.name}
+              </Tag>
+            ))}
+            {tags.length > 5 && (
+              <Tag variant="default" className="timeline-seed-tag">
+                +{tags.length - 5}
+              </Tag>
+            )}
+          </div>
+        )}
+
+        {categories.length > 0 && (
+          <div className="timeline-seed-categories">
+            {categories.map((cat) => (
+              <Badge key={cat.id} variant="primary" className="timeline-seed-category">
+                {cat.name}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
+    const seed = seeds[index]
+    if (!seed) return null
+
+    return (
+      <div className="timeline-seed-time-opposite">
+        <span className="timeline-seed-time">{formatSeedTime(seed)}</span>
+      </div>
+    )
   }
 
   if (loading) {
@@ -97,51 +194,6 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
     )
   }
 
-  const timelineItems: TimelineItem[] = seeds.map((seed) => {
-    const item: TimelineItem = {
-      id: seed.id,
-      content: (
-        <div className="seed-timeline-item">
-          <div className="seed-timeline-content">
-            <p className="seed-timeline-text">
-              {truncateContent(seed.currentState?.seed || seed.seed_content)}
-            </p>
-          </div>
-          {(seed.currentState?.tags && seed.currentState.tags.length > 0) && (
-            <div className="tag-list seed-timeline-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
-              {seed.currentState.tags.slice(0, 3).map((tag) => (
-                <Tag key={tag.id} className="tag-item-small">
-                  <span style={{ fontSize: 'var(--text-xs)' }}>{tag.name}</span>
-                </Tag>
-              ))}
-              {seed.currentState.tags.length > 3 && (
-                <Tag className="tag-item-small">
-                  <span style={{ fontSize: 'var(--text-xs)' }}>+{seed.currentState.tags.length - 3}</span>
-                </Tag>
-              )}
-            </div>
-          )}
-          {(seed.currentState?.categories && seed.currentState.categories.length > 0) && (
-            <div className="seed-timeline-categories" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
-              {seed.currentState.categories.map((cat) => (
-                <Badge key={cat.id} variant="primary">
-                  <span style={{ fontSize: 'var(--text-xs)' }}>{cat.name}</span>
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-      ),
-      time: formatSeedTime(seed),
-    }
-    
-    if (onSeedSelect) {
-      item.onClick = () => onSeedSelect(seed.id)
-    }
-    
-    return item
-  })
-
   return (
     <div className="view-container timeline-view-container">
       <div className="timeline-view-header">
@@ -154,14 +206,23 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
       </div>
 
       {seeds.length === 0 ? (
-        <Panel variant="elevated">
+        <div className="timeline-view-empty">
           <p className="text-center">Your timeline is empty. Start creating seeds to see them here!</p>
-        </Panel>
+        </div>
       ) : (
-        <Panel variant="elevated" className="timeline-view-panel">
-          <Timeline items={timelineItems} />
-        </Panel>
+        <div className="timeline-view-panel">
+          <Timeline
+            items={timelineItems}
+            mode="center"
+            renderPanel={renderPanel}
+            renderOpposite={renderOpposite}
+            maxPanelWidth={400}
+            panelSpacing={16}
+            panelClickable={!!onSeedSelect}
+          />
+        </div>
       )}
     </div>
   )
 }
+

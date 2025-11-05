@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { api } from '../../services/api'
-import { Timeline, type TimelineItem } from '../Timeline'
+import { Timeline, type TimelineItem } from '../../../../mother-theme/src/components/Timeline'
 import { Button } from '../../../../mother-theme/src/components/Button'
 import { Panel } from '../../../../mother-theme/src/components/Panel'
 import { Tag } from '../../../../mother-theme/src/components/Tag'
@@ -61,7 +61,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
 
       setSeed(seedData)
       setEvents(eventsData.sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ))
       setCurrentState(stateData.current_state)
     } catch (err) {
@@ -96,7 +96,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       // Reload events to ensure consistency
       const eventsData = await api.get<Event[]>(`/seeds/${seedId}/timeline`)
       setEvents(eventsData.sort((a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ))
     } catch (err) {
       console.error('Error toggling event:', err)
@@ -153,6 +153,70 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     })
   }
 
+  // Calculate timeline positions based on event dates
+  const timelineItems: TimelineItem[] = useMemo(() => {
+    if (events.length === 0) return []
+
+    // Get date range
+    const dates = events.map(event => new Date(event.created_at).getTime())
+    const minDate = Math.min(...dates)
+    const maxDate = Math.max(...dates)
+    const dateRange = maxDate - minDate
+
+    // If all events are from the same time, distribute evenly (newest at top = 0%)
+    if (dateRange === 0) {
+      return events.map((event, index) => ({
+        id: event.id,
+        position: (index / (events.length - 1 || 1)) * 100,
+      }))
+    }
+
+    // Calculate position based on date (newest at top = 0%, oldest at bottom = 100%)
+    return events.map((event) => {
+      const eventDate = new Date(event.created_at).getTime()
+      // Reverse: newest (maxDate) should be at 0%, oldest (minDate) at 100%
+      const position = ((maxDate - eventDate) / dateRange) * 100
+      return {
+        id: event.id,
+        position: Math.max(0, Math.min(100, position)), // Clamp to 0-100
+      }
+    })
+  }, [events])
+
+  const renderPanel = (index: number, width: number): React.ReactNode => {
+    const event = events[index]
+    if (!event) return null
+
+    return (
+      <div 
+        className="event-item-content"
+        onClick={() => handleToggleEvent(event.id, event.enabled)}
+      >
+        <div className="event-item-header">
+          <span className="event-type">{event.event_type}</span>
+          {event.automation_id && (
+            <Badge variant="primary">Auto</Badge>
+          )}
+        </div>
+        <p className="event-description">{formatEventDescription(event)}</p>
+        {!event.enabled && (
+          <Badge variant="warning" className="event-disabled-badge">Disabled</Badge>
+        )}
+      </div>
+    )
+  }
+
+  const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
+    const event = events[index]
+    if (!event) return null
+
+    return (
+      <div className="event-time-opposite">
+        <span className="event-time">{formatEventTime(event)}</span>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="view-container">
@@ -188,24 +252,6 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       </div>
     )
   }
-
-  const timelineItems: TimelineItem[] = events.map((event) => ({
-    id: event.id,
-    content: (
-      <div className="event-item-content">
-        <div className="event-item-header">
-          <span className="event-type">{event.event_type}</span>
-          {event.automation_id && (
-            <Badge variant="primary">Auto</Badge>
-          )}
-        </div>
-        <p className="event-description">{formatEventDescription(event)}</p>
-      </div>
-    ),
-    time: formatEventTime(event),
-    disabled: !event.enabled,
-    onClick: () => handleToggleEvent(event.id, event.enabled),
-  }))
 
   return (
     <div className="view-container seed-detail-container">
@@ -253,7 +299,15 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         {events.length === 0 ? (
           <p className="text-secondary">No events yet.</p>
         ) : (
-          <Timeline items={timelineItems} />
+          <Timeline
+            items={timelineItems}
+            mode="center"
+            renderPanel={renderPanel}
+            renderOpposite={renderOpposite}
+            maxPanelWidth={400}
+            panelSpacing={16}
+            panelClickable={true}
+          />
         )}
       </Panel>
     </div>

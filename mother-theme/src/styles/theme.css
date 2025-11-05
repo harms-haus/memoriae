@@ -30,6 +30,7 @@
 @import './theme.layout.css';
 @import './theme.icon.css';
 @import './theme.utilities.css';
+@import './theme.scrollbars.css';
 
 /* ========================================
  * BASE STYLES
