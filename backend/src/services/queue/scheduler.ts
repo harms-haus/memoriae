@@ -19,6 +19,10 @@ export class PressureEvaluationScheduler {
   private intervalId: NodeJS.Timeout | null = null
   private isRunning = false
   private isProcessing = false
+  private consecutiveErrors = 0
+  private maxConsecutiveErrors = 3
+  private lastErrorTime: number | null = null
+  private recoveryDelayMs = 60000 // Wait 1 minute before retrying after max errors
 
   /**
    * Start the scheduler
@@ -71,15 +75,22 @@ export class PressureEvaluationScheduler {
           clearInterval(checkProcessing)
           console.log('Pressure evaluation scheduler stopped')
           resolve()
+          return
         }
       }, 100)
 
       // Timeout after 5 seconds
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         clearInterval(checkProcessing)
         console.log('Pressure evaluation scheduler stopped (timeout)')
         resolve()
       }, 5000)
+      
+      // Store timeout ID so we can clear it if needed
+      // (for cleanup in tests)
+      if (checkProcessing && timeoutId) {
+        // Both timers are set, they'll handle cleanup
+      }
     })
   }
 
@@ -98,11 +109,47 @@ export class PressureEvaluationScheduler {
       return
     }
 
+    // If we've had too many consecutive errors, skip this evaluation to allow pool to recover
+    if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+      const now = Date.now()
+      
+      // If we haven't set lastErrorTime yet, set it now
+      if (!this.lastErrorTime) {
+        this.lastErrorTime = now
+      }
+      
+      // Check if enough time has passed for recovery
+      const timeSinceLastError = now - this.lastErrorTime
+      if (timeSinceLastError < this.recoveryDelayMs) {
+        const remainingMs = this.recoveryDelayMs - timeSinceLastError
+        console.warn(
+          `Skipping pressure evaluation due to ${this.consecutiveErrors} consecutive errors. Pool may be exhausted. Retrying in ${Math.ceil(remainingMs / 1000)}s.`
+        )
+        return
+      }
+      
+      // Enough time has passed, allow one recovery attempt
+      console.log(
+        `Attempting recovery after ${this.consecutiveErrors} consecutive errors. Resetting error counter.`
+      )
+      this.consecutiveErrors = 0
+      this.lastErrorTime = null
+    }
+
     this.isProcessing = true
 
     try {
       // Get all pressure points that exceed their threshold
-      const exceededPoints = await PressurePointsService.getExceededThresholds()
+      // Wrap in timeout to prevent hanging queries
+      const exceededPoints = await this.withTimeout(
+        PressurePointsService.getExceededThresholds(),
+        5000, // 5 second timeout
+        'getExceededThresholds'
+      )
+
+      // Reset error counter on successful query
+      this.consecutiveErrors = 0
+      this.lastErrorTime = null
 
       if (exceededPoints.length === 0) {
         // No pressure points exceeding threshold
@@ -115,7 +162,7 @@ export class PressureEvaluationScheduler {
 
       const registry = AutomationRegistry.getInstance()
 
-      // Process each exceeded pressure point
+      // Process each exceeded pressure point with a small delay to avoid connection exhaustion
       for (const point of exceededPoints) {
         try {
           // Get the automation
@@ -134,10 +181,15 @@ export class PressureEvaluationScheduler {
 
           // Get user ID from seed (we need it for the context)
           // SeedsService.getById requires userId, so we query the database directly
-          const seedRow = await db('seeds')
-            .where('id', point.seed_id)
-            .select('user_id')
-            .first()
+          // Wrap in timeout to prevent hanging queries
+          const seedRow = await this.withTimeout(
+            db('seeds')
+              .where('id', point.seed_id)
+              .select('user_id')
+              .first(),
+            3000, // 3 second timeout
+            'getSeedUserId'
+          )
 
           if (!seedRow) {
             console.warn(`Could not find user_id for seed ${point.seed_id}`)
@@ -147,7 +199,13 @@ export class PressureEvaluationScheduler {
           const userId = seedRow.user_id
 
           // Get full seed with current state
-          const fullSeed = await SeedsService.getById(point.seed_id, userId)
+          // Wrap in timeout to prevent hanging queries
+          const fullSeed = await this.withTimeout(
+            SeedsService.getById(point.seed_id, userId),
+            5000, // 5 second timeout
+            'getSeedById'
+          )
+
           if (!fullSeed) {
             continue
           }
@@ -170,6 +228,9 @@ export class PressureEvaluationScheduler {
           console.log(
             `Triggered re-evaluation for seed ${point.seed_id} via automation ${automation.name} (pressure: ${point.pressure_amount})`
           )
+
+          // Small delay between processing points to avoid overwhelming the connection pool
+          await this.delay(100)
         } catch (error) {
           // Log error but continue processing other pressure points
           console.error(
@@ -179,10 +240,76 @@ export class PressureEvaluationScheduler {
         }
       }
     } catch (error) {
-      console.error('Error in pressure evaluation scheduler:', error)
+      // Check if it's a connection timeout error
+      const isConnectionError =
+        error instanceof Error &&
+        (error.message.includes('Timeout acquiring a connection') ||
+          error.message.includes('KnexTimeoutError') ||
+          error.name === 'KnexTimeoutError')
+
+      if (isConnectionError) {
+        this.consecutiveErrors++
+        this.lastErrorTime = Date.now()
+        console.error(
+          `Connection pool exhausted (consecutive errors: ${this.consecutiveErrors}/${this.maxConsecutiveErrors}). Skipping next evaluations to allow pool recovery.`
+        )
+      } else {
+        // Reset error counter for non-connection errors
+        this.consecutiveErrors = 0
+        this.lastErrorTime = null
+        console.error('Error in pressure evaluation scheduler:', error)
+      }
     } finally {
       this.isProcessing = false
     }
+  }
+
+  /**
+   * Wrap a promise with a timeout to prevent hanging queries
+   * 
+   * @param promise - The promise to wrap
+   * @param timeoutMs - Timeout in milliseconds
+   * @param operationName - Name of the operation for logging
+   * @returns The promise result or throws timeout error
+   */
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    operationName: string
+  ): Promise<T> {
+    // Use AbortController if available (Node 15+), otherwise fall back to setTimeout
+    // This works better with both real and fake timers
+    let timeoutId: NodeJS.Timeout | null = null
+    
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Operation ${operationName} timed out after ${timeoutMs}ms`))
+      }, timeoutMs)
+    })
+
+    try {
+      const result = await Promise.race([promise, timeoutPromise])
+      // Clear timeout if promise resolved first
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+      return result
+    } catch (error) {
+      // Clear timeout on error
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+      throw error
+    }
+  }
+
+  /**
+   * Delay execution for a given number of milliseconds
+   * 
+   * @param ms - Milliseconds to delay
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   /**

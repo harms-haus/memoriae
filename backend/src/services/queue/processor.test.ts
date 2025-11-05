@@ -85,6 +85,11 @@ describe('Queue Processor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    
+    // Suppress console.log during tests
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
 
     // Create fresh mock automation
     mockAutomation = {
@@ -158,6 +163,8 @@ describe('Queue Processor', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    // Restore console methods
+    vi.restoreAllMocks()
   })
 
   describe('successful job processing', () => {

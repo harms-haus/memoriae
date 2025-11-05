@@ -302,16 +302,16 @@ memoriae/
 - [x] Implement TagAutomation: calls OpenRouter to generate tags, creates ADD_TAG events, calculates pressure
 - [x] Implement CategorizeAutomation: calls OpenRouter for category assignment, creates SET_CATEGORY events, handles hierarchy
 - [x] Set up Bull/BullMQ queue system with Redis, job processors for automation execution, error handling
-- [ ] Implement pressure points table and logic: track pressure per seed/automation, detect threshold crossing
-- [ ] Build category change detection: monitor renames, additions, removals, calculate and apply pressure to affected seeds
-- [ ] Create timer service that periodically evaluates pressure points, triggers re-evaluation queue jobs when thresholds reached
+- [x] Implement pressure points table and logic: track pressure per seed/automation, detect threshold crossing
+- [x] Build category change detection: monitor renames, additions, removals, calculate and apply pressure to affected seeds
+- [x] Create timer service that periodically evaluates pressure points, triggers re-evaluation queue jobs when thresholds reached
 - [x] Convert style guide to CSS file with all custom properties, component classes, animations, responsive utilities
 - [x] Build dynamic 3-stage seed editor: small (plain textarea), medium (markdown toolbar), large (full-screen zen mode)
 - [x] Create seed list component with filtering, sorting, responsive layout following style guide
-- [ ] Build seed detail view with timeline visualization, event toggle controls, current state display
+- [x] Build seed detail view with timeline visualization, event toggle controls, current state display
 - [ ] Implement hierarchical category browser component with expand/collapse, seed filtering by category
 - [ ] Create tag cloud visualization with frequency-based sizing, color coding, click-to-filter functionality
-- [ ] Build timeline view showing all seeds chronologically, with filters and interactive seed markers
+- [x] Build timeline view showing all seeds chronologically, with filters and interactive seed markers
 - [ ] Implement search bar with full-text search across content, tags, and categories, instant results display
 - [ ] Create settings page for OAuth account management, OpenRouter model selection, API key input
 - [ ] Refine responsive design across all breakpoints, test mobile/tablet/desktop layouts, ensure touch-friendly interactions

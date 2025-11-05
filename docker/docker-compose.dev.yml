@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  memoriae-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: memoriae-dev
+    ports:
+      - "3000:3000"   # Backend API
+      - "5173:5173"   # Frontend Vite dev server
+      - "9229:9229"   # Node.js debugging
+      - "5432:5432"   # PostgreSQL (optional, for external access)
+      - "6379:6379"   # Redis (optional, for external access)
+    volumes:
+      # Mount source code for hot reload
+      - ../backend:/app/backend:rw
+      - ../frontend:/app/frontend:rw
+      - ../mother-theme:/app/mother-theme:ro
+      # Persist database and Redis data
+      - memoriae-postgres-data:/var/lib/postgresql/14/main
+      - memoriae-redis-data:/var/lib/redis
+      # Exclude node_modules from volume mount (use container's node_modules)
+      - /app/backend/node_modules
+      - /app/frontend/node_modules
+      - /app/mother-theme/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://memoriae:memoriae@localhost:5432/memoriae
+      - REDIS_URL=redis://localhost:6379
+      - PORT=3000
+      # Add your environment variables here
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_API_URL=${OPENROUTER_API_URL:-https://openrouter.ai/api/v1}
+      - FRONTEND_URL=http://localhost:5173
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  memoriae-postgres-data:
+  memoriae-redis-data:
+
