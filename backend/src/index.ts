@@ -5,7 +5,7 @@ import { db } from './db/connection'
 import { AutomationRegistry } from './services/automation/registry'
 import { TagAutomation } from './services/automation/tag'
 import { CategorizeAutomation } from './services/automation/categorize'
-import { automationWorker } from './services/queue'
+import { automationWorker, getPressureEvaluationScheduler } from './services/queue'
 
 const PORT = config.port
 
@@ -81,6 +81,11 @@ async function initializeServices() {
     // It will process jobs as they come in
     console.log('Queue worker initialized')
     
+    // Start pressure evaluation scheduler
+    const scheduler = getPressureEvaluationScheduler()
+    scheduler.start()
+    console.log('Pressure evaluation scheduler started')
+    
   } catch (error) {
     console.error('Failed to initialize services:', error)
     throw error
@@ -94,6 +99,10 @@ async function shutdown() {
   console.log('Shutting down...')
   
   try {
+    // Stop pressure evaluation scheduler
+    const scheduler = getPressureEvaluationScheduler()
+    await scheduler.stop()
+    
     // Close queue worker
     await automationWorker.close()
     console.log('Queue worker closed')
