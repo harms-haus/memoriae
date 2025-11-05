@@ -5,7 +5,7 @@
 
 ## ⚠️ Important Note
 
-**The complete style system implementation is in `frontend/src/styles/theme.css`**. This document provides design philosophy, usage examples, and references to the CSS file. All custom properties, component classes, animations, and utilities are defined in `theme.css`.
+**The complete style system implementation is in `mother-theme/src/styles/theme.css`**. This document provides design philosophy, usage examples, and references to the CSS file. All custom properties, component classes, animations, and utilities are defined in `theme.css`.
 
 ---
 
@@ -362,6 +362,73 @@ Accessibility features are built into `theme.css`:
 
 ---
 
+## Using Mother Theme Components
+
+In addition to CSS classes and utilities, Mother Theme provides React components that implement the design system. These components are built on the theme CSS and provide type-safe, accessible implementations.
+
+### Importing Components
+
+```typescript
+// Import individual components
+import { Button } from '../../mother-theme/src/components/Button';
+import { Panel } from '../../mother-theme/src/components/Panel';
+import { Tag } from '../../mother-theme/src/components/Tag';
+import { Badge } from '../../mother-theme/src/components/Badge';
+import { Input, Textarea } from '../../mother-theme/src/components/Input';
+import { Tabs, Tab, TabPanel } from '../../mother-theme/src/components/Tabs';
+import { Dialog } from '../../mother-theme/src/components/Dialog';
+import { Drawer } from '../../mother-theme/src/components/Drawer';
+import { Toast } from '../../mother-theme/src/components/Toast';
+import { Timeline, type TimelineItem } from '../../mother-theme/src/components/Timeline';
+```
+
+### Available Components
+
+- **Button** - Primary, secondary, and ghost variants with loading states
+- **Panel** - Container panels with elevation variants
+- **Tag** - Tag components with color variants and click handlers
+- **Badge** - Badge components for status indicators
+- **Input** - Text inputs with validation states
+- **Textarea** - Textarea inputs with same styling
+- **Tabs** - Tab navigation with smooth animations
+- **Dialog** - Modal dialogs with focus trapping
+- **Drawer** - Slide-out panels
+- **Toast** - Toast notifications with queue management
+- **Timeline** - Timeline visualization component
+- **Checkbox** - Checkbox with label wrapping
+- **Radio** - Radio buttons with group management
+- **Toggle** - Toggle switches
+- **Progress** - Progress bars with variants
+- **Slider** - Range sliders with value display
+
+### Component Usage Example
+
+```typescript
+import { Button, Panel, Tag, Badge } from '../../mother-theme/src/components';
+
+function MyComponent() {
+  return (
+    <Panel className="panel-elevated">
+      <div className="flex gap-4">
+        <Button variant="primary">Save</Button>
+        <Button variant="secondary">Cancel</Button>
+      </div>
+      <div className="tag-list">
+        <Tag color="blue">Work</Tag>
+        <Tag color="green" active>Personal</Tag>
+      </div>
+      <Badge variant="success">Complete</Badge>
+    </Panel>
+  );
+}
+```
+
+**Note**: All Mother Theme components use the CSS classes and custom properties from `theme.css`. They are fully integrated with the design system.
+
+**Reference**: See `mother-theme/README.md` for complete component documentation.
+
+---
+
 ## Implementation Notes
 
 1. **CSS Custom Properties**: All design tokens are available as CSS custom properties in `theme.css` for easy theming and runtime updates.
@@ -374,9 +441,14 @@ Accessibility features are built into `theme.css`:
 
 5. **Browser Support**: Target modern browsers that support CSS custom properties and Grid/Flexbox.
 
-6. **Import the Theme**: Always import `styles/theme.css` in your main application file:
+6. **Import the Theme**: Always import the theme from `mother-theme` in your main application file:
    ```typescript
-   import './styles/theme.css';
+   import '../../mother-theme/src/styles/theme.css';
+   ```
+   
+   Or if importing from the frontend root:
+   ```typescript
+   import '../mother-theme/src/styles/theme.css';
    ```
 
 ---
@@ -419,7 +491,7 @@ Accessibility features are built into `theme.css`:
 - `.container`, `.grid`, `.grid-2`
 - `.slide-up`, `.fade-in`
 
-**For complete reference, see `frontend/src/styles/theme.css`.**
+**For complete reference, see `mother-theme/src/styles/theme.css`.**
 
 ---
 
