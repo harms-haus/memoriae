@@ -156,6 +156,7 @@ function AppContent() {
             value={activeView} 
             onValueChange={(value) => setActiveView(value as ViewType)}
             className="flex-1 flex flex-col min-h-0"
+            expand={true}
           >
           <TabPanel value="seeds">
             <SeedsView onSeedSelect={setSelectedSeedId} />

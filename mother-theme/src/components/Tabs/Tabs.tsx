@@ -26,9 +26,10 @@ export interface TabsProps {
   children: React.ReactNode;
   className?: string;
   orientation?: 'top' | 'bottom';
+  expand?: boolean;
 }
 
-export function Tabs({ defaultValue, value: controlledValue, onValueChange, children, className, orientation = 'bottom' }: TabsProps) {
+export function Tabs({ defaultValue, value: controlledValue, onValueChange, children, className, orientation = 'bottom', expand = false }: TabsProps) {
   const [internalValue, setInternalValue] = useState(defaultValue || '');
   const [tabs, setTabs] = useState<Map<string, HTMLElement>>(new Map());
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
@@ -62,7 +63,7 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
     }
   }, []);
 
-  // Animate indicator and background position with hover "cheat"
+  // Animate indicator and background position with hover grow effect
   useEffect(() => {
     if (!indicatorRef.current || !backgroundRef.current || !tabsRef.current || !currentValue) return;
 
@@ -81,23 +82,25 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
       let targetLeft = activeTabRect.left - containerRect.left;
       let targetWidth = activeTabRect.width;
 
-      // If hovering over a different tab, "cheat" the indicator towards it by a fixed amount
+      // If hovering over a different tab, grow the indicator towards it
       if (hoveredTab && hoveredTab !== currentValue) {
         const hoveredTabElement = tabs.get(hoveredTab);
         if (hoveredTabElement) {
           const hoveredTabRect = hoveredTabElement.getBoundingClientRect();
           const hoveredLeft = hoveredTabRect.left - containerRect.left;
           
-          // Fixed cheat distance: 6px
-          const cheatDistance = 6;
+          // Fixed grow distance: 6px
+          const growDistance = 6;
           
-          // Determine direction: move left (negative) or right (positive)
+          // Determine direction: grow left or right
           if (hoveredLeft < targetLeft) {
-            // Hovered tab is to the left, move indicator left
-            targetLeft = Math.max(targetLeft - cheatDistance, hoveredLeft);
+            // Hovered tab is to the left, grow indicator leftward
+            targetLeft = targetLeft - growDistance;
+            targetWidth = targetWidth + growDistance;
           } else {
-            // Hovered tab is to the right, move indicator right
-            targetLeft = Math.min(targetLeft + cheatDistance, hoveredLeft);
+            // Hovered tab is to the right, grow indicator rightward
+            targetWidth = targetWidth + growDistance;
+            // targetLeft stays the same (grows to the right)
           }
         }
       }
@@ -164,20 +167,22 @@ export function Tabs({ defaultValue, value: controlledValue, onValueChange, chil
             {panelChildren}
           </div>
         )}
-        <div className="tabs-wrapper" ref={tabsRef}>
-          <div className="tabs" role="tablist">
-            <div 
-              ref={backgroundRef}
-              className="tab-background"
-              aria-hidden="true"
-            />
-            {tabChildren}
-            <div 
-              ref={indicatorRef}
-              className={`tab-indicator ${orientation === 'top' ? 'tab-indicator-top' : 'tab-indicator-bottom'}`}
-              aria-hidden="true"
-            />
-          </div>
+        <div 
+          className={`tabs ${expand ? 'tabs-expand' : ''}`} 
+          role="tablist"
+          ref={tabsRef}
+        >
+          <div 
+            ref={backgroundRef}
+            className="tab-background"
+            aria-hidden="true"
+          />
+          {tabChildren}
+          <div 
+            ref={indicatorRef}
+            className={`tab-indicator ${orientation === 'top' ? 'tab-indicator-top' : 'tab-indicator-bottom'}`}
+            aria-hidden="true"
+          />
         </div>
         {orientation === 'bottom' && (
           <div className="tabs-panels">

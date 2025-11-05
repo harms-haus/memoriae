@@ -187,10 +187,10 @@ describe('Tabs', () => {
       expect(tabsContainer).toHaveClass('tabs-container-top');
       
       // Check that panels come before tabs in DOM order
-      const tabsWrapper = container.querySelector('.tabs-wrapper');
+      const tabs = container.querySelector('.tabs');
       const panels = container.querySelector('.tabs-panels');
       expect(panels).toBeInTheDocument();
-      expect(tabsWrapper).toBeInTheDocument();
+      expect(tabs).toBeInTheDocument();
     });
 
     it('should render panels below tabs when orientation is bottom (default)', () => {
@@ -207,9 +207,9 @@ describe('Tabs', () => {
       expect(tabsContainer).not.toHaveClass('tabs-container-top');
       
       // Check that tabs come before panels in DOM order
-      const tabsWrapper = container.querySelector('.tabs-wrapper');
+      const tabs = container.querySelector('.tabs');
       const panels = container.querySelector('.tabs-panels');
-      expect(tabsWrapper).toBeInTheDocument();
+      expect(tabs).toBeInTheDocument();
       expect(panels).toBeInTheDocument();
     });
 
