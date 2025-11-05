@@ -1,5 +1,5 @@
 import { useAuth } from '../../contexts/AuthContext'
-import { Button } from '../../../../mother-theme/src/components/Button'
+import { Button } from '@mother/components/Button'
 import './Views.css'
 
 export function SettingsView() {

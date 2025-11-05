@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { Tabs, Tab, TabPanel } from '../../mother-theme/src/components/Tabs'
-import { Button } from '../../mother-theme/src/components/Button'
-import { Panel } from '../../mother-theme/src/components/Panel'
+import { Tabs, Tab, TabPanel } from '@mother/components/Tabs'
+import { Button } from '@mother/components/Button'
+import { Panel } from '@mother/components/Panel'
 import {
   SeedsView,
   TimelineView,
