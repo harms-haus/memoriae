@@ -88,7 +88,22 @@
 }
 
 /* Responsive adjustments */
-@media (min-width: 768px) {
+@media (max-width: 767px) {
+  .timeline-view-header h2 {
+    font-size: var(--text-xl);
+  }
+
+  .timeline-view-panel {
+    padding: var(--space-4);
+    min-height: 300px;
+  }
+
+  .timeline-seed-content {
+    min-height: 48px; /* Better touch target */
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
   .timeline-view-panel {
     padding: var(--space-8);
   }

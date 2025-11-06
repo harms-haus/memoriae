@@ -77,7 +77,17 @@ app.use('/api/*', (req: Request, res: Response) => {
 // Error handling middleware (must be last)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Error:', err)
-  res.status(500).json({ error: 'Internal server error' })
+  console.error('Error stack:', err.stack)
+  // In development, send more details
+  if (process.env.NODE_ENV === 'development') {
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: err.message,
+      stack: err.stack
+    })
+  } else {
+    res.status(500).json({ error: 'Internal server error' })
+  }
 })
 
 export default app

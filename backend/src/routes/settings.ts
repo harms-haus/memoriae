@@ -55,7 +55,12 @@ router.put('/', async (req: Request, res: Response, next: NextFunction) => {
     const settings = await SettingsService.update(userId, updates)
     res.json(settings)
   } catch (error) {
-    next(error)
+    // Ensure error is an Error instance
+    if (error instanceof Error) {
+      next(error)
+    } else {
+      next(new Error(String(error)))
+    }
   }
 })
 

@@ -149,12 +149,13 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
         flexDirection: 'column',
         position: 'relative',
       }}>
-        <div style={{ 
-          height: '100%', 
-          display: 'flex', 
-          flexDirection: 'column',
-          paddingBottom: '72px',
-        }}>
+        <div 
+          className="tab-content-wrapper"
+          style={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column',
+          }}>
           <Tabs 
             orientation="top" 
             value={activeView} 
@@ -219,13 +220,15 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
       </div>
       
       {showSeedComposer && !isSeedDetail && (
-        <div style={{
-          position: 'fixed',
-          bottom: '72px', // Above the tabs (which are 72px tall)
-          left: 0,
-          right: 0,
-          zIndex: 999,
-        }}>
+        <div 
+          className="seed-composer-wrapper"
+          style={{
+            position: 'fixed',
+            bottom: '72px', // Default: above tabs (72px tall)
+            left: 0,
+            right: 0,
+            zIndex: 999,
+          }}>
           <SeedComposer onSeedCreated={handleSeedCreated} />
         </div>
       )}
@@ -252,12 +255,11 @@ function SeedDetailWrapper() {
       color: 'var(--text-primary)',
       overflow: 'hidden',
     }}>
-      <div style={{
+      <div className="tab-content-wrapper" style={{
         flex: '1 1 auto',
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        paddingBottom: '72px',
       }}>
         <SeedDetailView
           seedId={id}

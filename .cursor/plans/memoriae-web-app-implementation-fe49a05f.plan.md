@@ -313,5 +313,5 @@ memoriae/
 - [x] Create tag cloud visualization with frequency-based sizing, color coding, click-to-filter functionality
 - [x] Build timeline view showing all seeds chronologically, with filters and interactive seed markers
 - [ ] Implement search bar with full-text search across content, tags, and categories, instant results display
-- [ ] Create settings page for OAuth account management, OpenRouter model selection, API key input
-- [ ] Refine responsive design across all breakpoints, test mobile/tablet/desktop layouts, ensure touch-friendly interactions
+- [x] Create settings page for OAuth account management, OpenRouter model selection, API key input
+- [x] Refine responsive design across all breakpoints, test mobile/tablet/desktop layouts, ensure touch-friendly interactions

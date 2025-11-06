@@ -67,46 +67,55 @@ export class SettingsService {
    * Update user settings
    */
   static async update(userId: string, updates: UpdateSettingsDto): Promise<UserSettings> {
-    // Check if settings exist
-    const existing = await db<UserSettingsRow>('user_settings')
-      .where({ user_id: userId })
-      .first()
-
-    if (!existing) {
-      // Create new settings record
-      const id = uuidv4()
-      await db('user_settings').insert({
-        id,
-        user_id: userId,
-        openrouter_api_key: updates.openrouter_api_key ?? null,
-        openrouter_model: updates.openrouter_model ?? null,
-        openrouter_model_name: updates.openrouter_model_name ?? null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-    } else {
-      // Update existing settings
-      const updateData: Partial<UserSettingsRow> = {
-        updated_at: new Date(),
-      }
-
-      if (updates.openrouter_api_key !== undefined) {
-        updateData.openrouter_api_key = updates.openrouter_api_key
-      }
-      if (updates.openrouter_model !== undefined) {
-        updateData.openrouter_model = updates.openrouter_model
-      }
-      if (updates.openrouter_model_name !== undefined) {
-        updateData.openrouter_model_name = updates.openrouter_model_name
-      }
-
-      await db('user_settings')
+    try {
+      // Check if settings exist
+      const existing = await db<UserSettingsRow>('user_settings')
         .where({ user_id: userId })
-        .update(updateData)
-    }
+        .first()
 
-    // Return updated settings
-    return await this.getByUserId(userId)
+      if (!existing) {
+        // Create new settings record
+        const id = uuidv4()
+        await db('user_settings').insert({
+          id,
+          user_id: userId,
+          openrouter_api_key: updates.openrouter_api_key ?? null,
+          openrouter_model: updates.openrouter_model ?? null,
+          openrouter_model_name: updates.openrouter_model_name ?? null,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+      } else {
+        // Update existing settings
+        const updateData: Partial<UserSettingsRow> = {
+          updated_at: new Date(),
+        }
+
+        if (updates.openrouter_api_key !== undefined) {
+          updateData.openrouter_api_key = updates.openrouter_api_key
+        }
+        if (updates.openrouter_model !== undefined) {
+          updateData.openrouter_model = updates.openrouter_model
+        }
+        if (updates.openrouter_model_name !== undefined) {
+          updateData.openrouter_model_name = updates.openrouter_model_name
+        }
+
+        await db('user_settings')
+          .where({ user_id: userId })
+          .update(updateData)
+      }
+
+      // Return updated settings
+      return await this.getByUserId(userId)
+    } catch (error) {
+      console.error('Error updating user settings:', error)
+      // Re-throw as Error if it isn't already
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error(`Failed to update settings: ${String(error)}`)
+    }
   }
 }
 

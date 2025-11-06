@@ -1,0 +1,362 @@
+/* 
+ * Responsive Design Utilities
+ * Touch-friendly interactions and responsive enhancements
+ * 
+ * Ensures minimum 44x44px touch targets (WCAG recommendation)
+ * Provides responsive utilities for mobile, tablet, and desktop
+ */
+
+/* ========================================
+ * TOUCH-FRIENDLY INTERACTIONS
+ * ======================================== */
+
+/* Minimum touch target size: 44x44px (WCAG 2.5.5) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Touch-friendly button padding */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch devices */
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* Ensure interactive elements have adequate spacing */
+  .tag-item,
+  .badge,
+  button,
+  a[role="button"],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  /* Category tree items */
+  .category-tree-item {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* Category tree expand button */
+  .category-tree-expand {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Seed item wrappers */
+  .seeds-view-item-wrapper,
+  .categories-view-seed-item {
+    min-height: 44px;
+  }
+
+  /* Event items */
+  .event-item-content {
+    min-height: 44px;
+    padding: var(--space-4);
+  }
+
+  /* Tag cloud items */
+  .tag-cloud-item {
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  /* Toolbar buttons */
+  .seed-composer-toolbar-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-2) !important;
+  }
+
+  /* Zen mode close button */
+  .seed-composer-zen-close {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Bottom navigation items */
+  .bottom-nav-item {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-2);
+  }
+
+  /* Increase spacing between touch targets */
+  .tag-list,
+  .seeds-view-item-tags,
+  .categories-view-seed-tags {
+    gap: var(--space-2);
+  }
+
+  /* Filter controls */
+  .seeds-view-controls {
+    gap: var(--space-3);
+  }
+
+  /* Category badges */
+  .seeds-view-category-badge,
+  .seeds-view-category-clickable {
+    min-height: 44px;
+    padding: var(--space-2);
+  }
+}
+
+/* ========================================
+ * RESPONSIVE UTILITIES
+ * ======================================== */
+
+/* Mobile-only utilities */
+@media (max-width: 767px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  .mobile-full-width {
+    width: 100% !important;
+  }
+
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+
+  .mobile-center {
+    text-align: center !important;
+  }
+
+  .mobile-padding-sm {
+    padding: var(--space-2) !important;
+  }
+
+  .mobile-padding-md {
+    padding: var(--space-4) !important;
+  }
+}
+
+/* Tablet-only utilities */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-hidden {
+    display: none !important;
+  }
+
+  .tablet-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+/* Desktop-only utilities */
+@media (min-width: 1024px) {
+  .desktop-hidden {
+    display: none !important;
+  }
+
+  .desktop-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-6);
+  }
+
+  .desktop-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+  }
+}
+
+/* ========================================
+ * RESPONSIVE SPACING
+ * ======================================== */
+
+/* Mobile: Reduced spacing */
+@media (max-width: 767px) {
+  .responsive-gap-sm {
+    gap: var(--space-2) !important;
+  }
+
+  .responsive-gap-md {
+    gap: var(--space-3) !important;
+  }
+
+  .responsive-gap-lg {
+    gap: var(--space-4) !important;
+  }
+
+  .responsive-padding-sm {
+    padding: var(--space-2) !important;
+  }
+
+  .responsive-padding-md {
+    padding: var(--space-3) !important;
+  }
+
+  .responsive-padding-lg {
+    padding: var(--space-4) !important;
+  }
+}
+
+/* Tablet: Medium spacing */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .responsive-gap-sm {
+    gap: var(--space-3) !important;
+  }
+
+  .responsive-gap-md {
+    gap: var(--space-4) !important;
+  }
+
+  .responsive-gap-lg {
+    gap: var(--space-6) !important;
+  }
+
+  .responsive-padding-sm {
+    padding: var(--space-3) !important;
+  }
+
+  .responsive-padding-md {
+    padding: var(--space-4) !important;
+  }
+
+  .responsive-padding-lg {
+    padding: var(--space-6) !important;
+  }
+}
+
+/* Desktop: Full spacing */
+@media (min-width: 1024px) {
+  .responsive-gap-sm {
+    gap: var(--space-4) !important;
+  }
+
+  .responsive-gap-md {
+    gap: var(--space-6) !important;
+  }
+
+  .responsive-gap-lg {
+    gap: var(--space-8) !important;
+  }
+
+  .responsive-padding-sm {
+    padding: var(--space-4) !important;
+  }
+
+  .responsive-padding-md {
+    padding: var(--space-6) !important;
+  }
+
+  .responsive-padding-lg {
+    padding: var(--space-8) !important;
+  }
+}
+
+/* ========================================
+ * RESPONSIVE TYPOGRAPHY
+ * ======================================== */
+
+@media (max-width: 767px) {
+  .responsive-text-xs {
+    font-size: var(--text-xs) !important;
+  }
+
+  .responsive-text-sm {
+    font-size: var(--text-sm) !important;
+  }
+
+  .responsive-text-base {
+    font-size: var(--text-base) !important;
+  }
+
+  .responsive-text-lg {
+    font-size: var(--text-base) !important;
+  }
+
+  .responsive-text-xl {
+    font-size: var(--text-lg) !important;
+  }
+
+  .responsive-text-2xl {
+    font-size: var(--text-xl) !important;
+  }
+}
+
+/* ========================================
+ * SCROLLING IMPROVEMENTS
+ * ======================================== */
+
+/* Smooth scrolling on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* ========================================
+ * VIEWPORT-SPECIFIC ADJUSTMENTS
+ * ======================================== */
+
+/* Very small screens (320px - 374px) */
+@media (max-width: 374px) {
+  .view-container {
+    padding: var(--space-2) var(--space-2);
+  }
+
+  .panel {
+    padding: var(--space-3);
+  }
+}
+
+/* Small mobile (375px - 479px) */
+@media (min-width: 375px) and (max-width: 479px) {
+  .view-container {
+    padding: var(--space-3) var(--space-3);
+  }
+}
+
+/* Large mobile (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .view-container {
+    padding: var(--space-4) var(--space-4);
+  }
+}
+
+/* Tablet portrait (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .view-container {
+    padding: var(--space-6) var(--space-6);
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .view-container {
+    padding: var(--space-8) var(--space-8);
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* Large desktop (1440px+) */
+@media (min-width: 1440px) {
+  .view-container {
+    max-width: 1600px;
+  }
+}
+

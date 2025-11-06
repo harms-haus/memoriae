@@ -1,5 +1,21 @@
 /* SeedComposer Component Styles */
 
+/* Seed composer wrapper - positioned above bottom navigation */
+.seed-composer-wrapper {
+  position: fixed;
+  bottom: 72px; /* Default: above tabs (72px tall) */
+  left: 0;
+  right: 0;
+  z-index: 999;
+}
+
+/* Touch devices get taller navigation */
+@media (hover: none) and (pointer: coarse) {
+  .seed-composer-wrapper {
+    bottom: 80px; /* Taller navigation on touch devices */
+  }
+}
+
 .seed-composer-container {
   position: relative;
   width: 100%;
@@ -70,6 +86,15 @@
   justify-content: center !important;
   border: none !important;
   background: transparent !important;
+}
+
+/* Touch-friendly toolbar buttons */
+@media (hover: none) and (pointer: coarse) {
+  .seed-composer-toolbar-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-2) !important;
+  }
 }
 
 .seed-composer-toolbar-button:hover {
@@ -159,8 +184,10 @@
   position: absolute;
   top: var(--space-4);
   right: var(--space-4);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   background: transparent;
   border: var(--border-thick) solid var(--border-primary);
@@ -173,6 +200,19 @@
   opacity: 0.1;
   transition: opacity var(--transition-base), border-color var(--transition-base), background var(--transition-base);
   z-index: 2001;
+}
+
+/* Zen mode responsive adjustments */
+@media (max-width: 767px) {
+  .seed-composer-zen-content {
+    padding: var(--space-4);
+  }
+
+  .seed-composer-zen-close {
+    top: var(--space-2);
+    right: var(--space-2);
+    opacity: 0.3; /* More visible on mobile */
+  }
 }
 
 .seed-composer-zen-close:hover {
