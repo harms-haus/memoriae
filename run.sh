@@ -104,43 +104,11 @@ check_port_free() {
   return 0
 }
 
-echo -e "${GREEN}[1/6] Building backend...${NC}"
-cd "$BACKEND_DIR"
-if ! npm run build; then
-  echo -e "${RED}Backend build failed!${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✓ Backend built successfully${NC}"
+echo -e "${GREEN}[1/4] Running build and tests...${NC}"
+"$SCRIPT_DIR/build.sh"
 echo ""
 
-echo -e "${GREEN}[2/6] Building frontend...${NC}"
-cd "$FRONTEND_DIR"
-if ! npm run build; then
-  echo -e "${RED}Frontend build failed!${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✓ Frontend built successfully${NC}"
-echo ""
-
-echo -e "${GREEN}[3/6] Running backend tests...${NC}"
-cd "$BACKEND_DIR"
-if ! npm run test; then
-  echo -e "${RED}Backend tests failed!${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✓ Backend tests passed${NC}"
-echo ""
-
-echo -e "${GREEN}[4/6] Running frontend tests...${NC}"
-cd "$FRONTEND_DIR"
-if ! npm run test; then
-  echo -e "${RED}Frontend tests failed!${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✓ Frontend tests passed${NC}"
-echo ""
-
-echo -e "${GREEN}[5/6] Killing processes on our ports...${NC}"
+echo -e "${GREEN}[2/4] Killing processes on our ports...${NC}"
 kill_port_if_ours $BACKEND_PORT
 kill_port_if_ours $FRONTEND_PORT
 
@@ -161,7 +129,7 @@ fi
 echo -e "${GREEN}✓ Ports are free${NC}"
 echo ""
 
-echo -e "${GREEN}[6/7] Checking environment...${NC}"
+echo -e "${GREEN}[3/4] Checking environment...${NC}"
 
 # Check for backend .env file
 if [ ! -f "$BACKEND_DIR/.env" ]; then
@@ -177,7 +145,7 @@ echo -e "${GREEN}✓ Backend .env file found${NC}"
 echo ""
 
 # Check for Redis and start Podman container if needed
-echo -e "${GREEN}[7/7] Checking Redis...${NC}"
+echo -e "${GREEN}[4/4] Checking Redis...${NC}"
 REDIS_PORT=6379
 
 # Function to check if Redis is accessible

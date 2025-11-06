@@ -6,6 +6,13 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Project directories
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo -e "${GREEN}Running build and tests...${NC}"
+"$SCRIPT_DIR/build.sh"
+echo ""
+
 echo -e "${GREEN}Building development container...${NC}"
 podman build -f Dockerfile.dev -t memoriae-dev:latest .
 
