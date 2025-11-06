@@ -139,7 +139,8 @@ export function applyEvents(baseState: SeedState, events: EventData[]): SeedStat
     } catch (error) {
       // Log error but continue processing other events
       // This allows partial state recovery if one event fails
-      console.error(`Failed to apply event ${event.id}:`, error)
+      // Use separate arguments to avoid format string issues
+      console.error('Failed to apply event:', event.id, error)
       
       // Re-throw if it's a validation error (shouldn't happen in production)
       if (error instanceof Error && error.message.includes('not allowed')) {
