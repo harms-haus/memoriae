@@ -7,9 +7,14 @@
   overflow: hidden;
 }
 
-/* Settings view has different padding since editor is hidden */
+/* Settings view has different padding since editor is hidden and needs to scroll */
 .view-container.settings-view {
   padding-bottom: 72px; /* Just navigation height */
+  flex: 1 1 auto; /* Ensure it fills parent tab-panel */
+  min-height: 0; /* Allow flex shrinking */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 /* Utility Classes */
@@ -29,6 +34,10 @@
 
 .text-error {
   color: var(--error);
+}
+
+.text-sm {
+  font-size: var(--text-sm);
 }
 
 .settings-section {

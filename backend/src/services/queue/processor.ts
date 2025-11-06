@@ -6,16 +6,7 @@ import { AutomationRegistry } from '../automation/registry'
 import { SeedsService } from '../seeds'
 import { EventsService } from '../events'
 import { createOpenRouterClient } from '../openrouter/client'
-import db from '../../db/connection'
-
-/**
- * User settings interface (for storing OpenRouter API key and model)
- * TODO: Create proper settings table/migration in future
- */
-interface UserSettings {
-  openrouter_api_key: string | null
-  openrouter_model: string | null
-}
+import { type UserSettings } from '../settings'
 
 /**
  * Queue connection options (same as in queue.ts)
@@ -52,33 +43,10 @@ const queueConnection = getQueueConnection()
 
 /**
  * Get user settings from database
- * For now, we'll fetch from a settings table if it exists, otherwise use defaults
- * TODO: Create proper settings migration and table
  */
 async function getUserSettings(userId: string): Promise<UserSettings> {
-  // Check if settings table exists (we'll create migration later)
-  // For now, return defaults - can be enhanced when settings table is created
-  try {
-    const settings = await db('user_settings')
-      .where({ user_id: userId })
-      .first()
-
-    if (settings) {
-      return {
-        openrouter_api_key: settings.openrouter_api_key || null,
-        openrouter_model: settings.openrouter_model || null,
-      }
-    }
-  } catch (error) {
-    // Settings table doesn't exist yet, use defaults
-    // This is fine for now - we'll create the migration later
-  }
-
-  // Default: no API key (automations will fail gracefully)
-  return {
-    openrouter_api_key: null,
-    openrouter_model: null,
-  }
+  const { SettingsService } = await import('../settings')
+  return await SettingsService.getByUserId(userId)
 }
 
 /**

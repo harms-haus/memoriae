@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react'
+import React, { useRef } from 'react'
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Tabs, Tab, TabPanel } from '@mother/components/Tabs'
 import { Button } from '@mother/components/Button'
@@ -82,68 +83,54 @@ function LoginPage() {
   )
 }
 
-function AppContent() {
-  const { authenticated, loading } = useAuth()
-  const [activeView, setActiveView] = useState<ViewType>('seeds')
-  const [selectedSeedId, setSelectedSeedId] = useState<string | null>(null)
+function TabNavigation({ children }: { children?: React.ReactNode }) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const seedsViewRefreshRef = useRef<(() => void) | null>(null)
   const timelineViewRefreshRef = useRef<(() => void) | null>(null)
   const categoriesViewRefreshRef = useRef<(() => void) | null>(null)
+  
+  // Determine active view from current route
+  const getActiveView = (): ViewType => {
+    const path = location.pathname
+    if (path.startsWith('/seeds/') && path !== '/seeds') {
+      // Seed detail view - show seeds tab as active
+      return 'seeds'
+    }
+    if (path === '/timeline') return 'timeline'
+    if (path === '/categories') return 'categories'
+    if (path === '/tags') return 'tags'
+    if (path === '/settings') return 'settings'
+    return 'seeds' // default
+  }
+
+  const activeView = getActiveView()
+  const showSeedComposer = activeView === 'seeds' || 
+                          activeView === 'timeline' || 
+                          activeView === 'categories' || 
+                          activeView === 'tags'
+  const isSeedDetail = location.pathname.startsWith('/seeds/') && location.pathname !== '/seeds'
+
+  const handleTabChange = (value: string) => {
+    const routeMap: Record<string, string> = {
+      'seeds': '/seeds',
+      'timeline': '/timeline',
+      'categories': '/categories',
+      'tags': '/tags',
+      'settings': '/settings',
+    }
+    navigate(routeMap[value] || '/seeds')
+  }
+
+  const handleSeedSelect = (seedId: string) => {
+    navigate(`/seeds/${seedId}`)
+  }
 
   const handleSeedCreated = () => {
     // Trigger refresh in all views that have refresh functions
     seedsViewRefreshRef.current?.()
     timelineViewRefreshRef.current?.()
     categoriesViewRefreshRef.current?.()
-  }
-
-  // Views that should show SeedComposer
-  const showSeedComposer = activeView === 'seeds' || 
-                          activeView === 'timeline' || 
-                          activeView === 'categories' || 
-                          activeView === 'tags'
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center" style={{
-        minHeight: '100vh',
-        background: 'var(--bg-primary)',
-        color: 'var(--text-primary)',
-      }}>
-        Loading...
-      </div>
-    )
-  }
-
-  if (!authenticated) {
-    return <LoginPage />
-  }
-
-  // If a seed is selected, show detail view (outside tabs)
-  if (selectedSeedId) {
-    return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--bg-primary)',
-        color: 'var(--text-primary)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          flex: '1 1 auto',
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          paddingBottom: '72px',
-        }}>
-          <SeedDetailView
-            seedId={selectedSeedId}
-            onBack={() => setSelectedSeedId(null)}
-          />
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -171,67 +158,67 @@ function AppContent() {
           <Tabs 
             orientation="top" 
             value={activeView} 
-            onValueChange={(value) => setActiveView(value as ViewType)}
+            onValueChange={handleTabChange}
             className="flex-1 flex flex-col min-h-0"
             expand={true}
           >
-          <TabPanel value="seeds">
-            <SeedsView 
-              onSeedSelect={setSelectedSeedId}
-              refreshRef={seedsViewRefreshRef}
-            />
-          </TabPanel>
-          <TabPanel value="timeline">
-            <TimelineView 
-              onSeedSelect={setSelectedSeedId}
-              refreshRef={timelineViewRefreshRef}
-            />
-          </TabPanel>
-          <TabPanel value="categories">
-            <CategoriesView refreshRef={categoriesViewRefreshRef} />
-          </TabPanel>
-          <TabPanel value="tags">
-            <TagsView />
-          </TabPanel>
-          <TabPanel value="settings">
-            <SettingsView />
-          </TabPanel>
+            <TabPanel value="seeds">
+              <SeedsView 
+                onSeedSelect={handleSeedSelect}
+                refreshRef={seedsViewRefreshRef}
+              />
+            </TabPanel>
+            <TabPanel value="timeline">
+              <TimelineView 
+                onSeedSelect={handleSeedSelect}
+                refreshRef={timelineViewRefreshRef}
+              />
+            </TabPanel>
+            <TabPanel value="categories">
+              <CategoriesView refreshRef={categoriesViewRefreshRef} />
+            </TabPanel>
+            <TabPanel value="tags">
+              <TagsView />
+            </TabPanel>
+            <TabPanel value="settings">
+              <SettingsView />
+            </TabPanel>
 
-          <Tab value="seeds">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-              <FileText size={24} />
-              <span style={{ fontSize: 'var(--text-xs)' }}>Seeds</span>
-            </div>
-          </Tab>
-          <Tab value="timeline">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-              <Clock size={24} />
-              <span style={{ fontSize: 'var(--text-xs)' }}>Timeline</span>
-            </div>
-          </Tab>
-          <Tab value="categories">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-              <FolderTree size={24} />
-              <span style={{ fontSize: 'var(--text-xs)' }}>Categories</span>
-            </div>
-          </Tab>
-          <Tab value="tags">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-              <Tags size={24} />
-              <span style={{ fontSize: 'var(--text-xs)' }}>Tags</span>
-            </div>
-          </Tab>
-          <Tab value="settings">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-              <Settings size={24} />
-              <span style={{ fontSize: 'var(--text-xs)' }}>Settings</span>
-            </div>
-          </Tab>
-        </Tabs>
+            <Tab value="seeds">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <FileText size={24} />
+                <span style={{ fontSize: 'var(--text-xs)' }}>Seeds</span>
+              </div>
+            </Tab>
+            <Tab value="timeline">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <Clock size={24} />
+                <span style={{ fontSize: 'var(--text-xs)' }}>Timeline</span>
+              </div>
+            </Tab>
+            <Tab value="categories">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <FolderTree size={24} />
+                <span style={{ fontSize: 'var(--text-xs)' }}>Categories</span>
+              </div>
+            </Tab>
+            <Tab value="tags">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <Tags size={24} />
+                <span style={{ fontSize: 'var(--text-xs)' }}>Tags</span>
+              </div>
+            </Tab>
+            <Tab value="settings">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <Settings size={24} />
+                <span style={{ fontSize: 'var(--text-xs)' }}>Settings</span>
+              </div>
+            </Tab>
+          </Tabs>
         </div>
       </div>
       
-      {showSeedComposer && !selectedSeedId && (
+      {showSeedComposer && !isSeedDetail && (
         <div style={{
           position: 'fixed',
           bottom: '72px', // Above the tabs (which are 72px tall)
@@ -242,15 +229,84 @@ function AppContent() {
           <SeedComposer onSeedCreated={handleSeedCreated} />
         </div>
       )}
+      {children}
     </div>
+  )
+}
+
+function SeedDetailWrapper() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+
+  if (!id) {
+    navigate('/seeds')
+    return null
+  }
+
+  return (
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        flex: '1 1 auto',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        paddingBottom: '72px',
+      }}>
+        <SeedDetailView
+          seedId={id}
+          onBack={() => navigate('/seeds')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function AppContent() {
+  const { authenticated, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center" style={{
+        minHeight: '100vh',
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+      }}>
+        Loading...
+      </div>
+    )
+  }
+
+  if (!authenticated) {
+    return <LoginPage />
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<TabNavigation />} />
+      <Route path="/seeds" element={<TabNavigation />} />
+      <Route path="/seeds/:id" element={<SeedDetailWrapper />} />
+      <Route path="/timeline" element={<TabNavigation />} />
+      <Route path="/categories" element={<TabNavigation />} />
+      <Route path="/tags" element={<TabNavigation />} />
+      <Route path="/settings" element={<TabNavigation />} />
+    </Routes>
   )
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 

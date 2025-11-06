@@ -153,13 +153,23 @@ export class TagAutomation extends Automation {
    * Returns array of tag names (strings).
    */
   private async generateTags(seed: Seed, context: AutomationContext): Promise<string[]> {
-    const systemPrompt = `You are a tag extraction assistant. Analyze the given text and extract 3-8 relevant tags that best describe the content.
+    // Get all existing tag names from database to suggest to AI
+    const existingTags = await db<TagRow>('tags')
+      .select('name')
+      .orderBy('name', 'asc')
+    
+    const existingTagNames = existingTags.map(t => t.name).join(', ') || 'none'
+
+    const systemPrompt = `You are a tag extraction assistant. Analyze the given text and extract no more than 8 relevant tags that best describe the content.
 
 Tags should be:
 - Short (1-2 words when possible)
 - Descriptive and relevant
 - Lowercase
 - Use hyphens for multi-word tags (e.g., "machine-learning" not "machine learning")
+
+Prefer tags that are not already directly stated in the seed's text.
+Prefer tags that already exist in the database: [${existingTagNames}]
 
 Return ONLY a JSON array of tag names, nothing else. Example: ["work", "programming", "typescript"]`
 
