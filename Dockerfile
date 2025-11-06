@@ -22,8 +22,8 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 18+ from NodeSource
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+# Install Node.js 22+ from NodeSource
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
 # Install supervisord
@@ -60,6 +60,20 @@ COPY backend/ ./backend/
 # Build backend
 WORKDIR /app/backend
 RUN npm run build
+
+# Copy mother-theme source (needed for frontend build)
+WORKDIR /app
+COPY mother-theme/package*.json ./mother-theme/
+
+# Install mother-theme dependencies (needed for TypeScript type checking)
+# Install React explicitly for TypeScript type resolution (even though it's a peer dependency)
+WORKDIR /app/mother-theme
+RUN npm ci --legacy-peer-deps && \
+    npm install react@^19.0.0 react-dom@^19.0.0 --legacy-peer-deps --no-save || true
+
+# Copy mother-theme source files
+WORKDIR /app
+COPY mother-theme/ ./mother-theme/
 
 # Copy frontend source
 WORKDIR /app

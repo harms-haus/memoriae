@@ -16,7 +16,7 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
   const [toolbarVisible, setToolbarVisible] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const mouseMoveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const mouseMoveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isCreatingRef = useRef(false)
 
   // Update height dynamically

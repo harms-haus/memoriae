@@ -51,7 +51,7 @@ export function SettingsView() {
           return prev
         }
         // Add it to the beginning of the list
-        return [{ id: settings.openrouter_model, name: settings.openrouter_model_name! }, ...prev]
+        return [{ id: settings.openrouter_model!, name: settings.openrouter_model_name! }, ...prev]
       })
     }
   }, [settings])
@@ -228,7 +228,7 @@ export function SettingsView() {
             label="OpenRouter API Key"
             type="password"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
             placeholder="sk-or-v1-..."
             helperText="Your OpenRouter API key. Keep this secure and never share it."
           />

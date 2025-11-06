@@ -215,7 +215,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
             icon={Search}
             placeholder="Search seeds..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             className="seeds-view-search-input"
           />
           <div className="seeds-view-controls">
