@@ -208,7 +208,7 @@ export class CategorizeAutomation extends Automation {
 
 Categories should be hierarchical paths like "/work/projects" or "/personal/notes".
 - Use forward slashes to separate levels (e.g., "/work/projects/web")
-- Keep paths concise (2-3 levels maximum)
+- Keep paths concise
 - Use lowercase with hyphens for multi-word names (e.g., "/personal/daily-notes")
 
 If you see similar existing categories, prefer to use those.
