@@ -1,0 +1,323 @@
+/* 
+ * Tag Cloud Component Styles
+ * 
+ * Uses theme variables and extends tag styles from theme.css
+ * Implements frequency-based sizing and responsive layout
+ */
+
+/* ========================================
+ * TAG CLOUD CONTAINER
+ * ======================================== */
+
+.tag-cloud {
+  width: 100%;
+  max-width: 100%;
+}
+
+.tag-cloud-panel {
+  padding: var(--space-6);
+  min-height: 300px;
+}
+
+.tag-cloud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.tag-cloud-header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.tag-cloud-stats {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ========================================
+ * TAG CLOUD CONTENT
+ * ======================================== */
+
+.tag-cloud-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) 0;
+  min-height: 200px;
+}
+
+/* ========================================
+ * TAG CLOUD ITEMS
+ * ======================================== */
+
+.tag-cloud-item {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  padding: var(--tag-padding-y) var(--tag-padding-x);
+  border: var(--border-medium) solid var(--tag-border);
+  border-radius: var(--tag-border-radius);
+  background: var(--tag-bg);
+  color: var(--tag-color);
+  font-size: var(--tag-font-size);
+  font-weight: var(--tag-font-weight);
+  transition: var(--transition-hover);
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tag-cloud-item:hover {
+  border-color: var(--tag-border-hover);
+  color: var(--tag-color-hover);
+  background: var(--tag-bg-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.tag-cloud-item:focus-visible {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tag-cloud-item-selected {
+  border-color: var(--tag-border-active);
+  background: var(--tag-bg-active);
+  color: var(--tag-color-active);
+  font-weight: var(--tag-font-weight-active);
+  box-shadow: var(--shadow-glow-yellow);
+}
+
+/* ========================================
+ * TAG CLOUD SIZE VARIATIONS
+ * Based on frequency (usage count)
+ * ======================================== */
+
+.tag-cloud-size-xs {
+  font-size: var(--text-sm);
+  padding: calc(var(--tag-padding-y) * 0.7) calc(var(--tag-padding-x) * 0.8);
+  opacity: 0.7;
+}
+
+.tag-cloud-size-sm {
+  font-size: var(--text-base);
+  padding: calc(var(--tag-padding-y) * 0.8) calc(var(--tag-padding-x) * 0.9);
+  opacity: 0.8;
+}
+
+.tag-cloud-size-md {
+  font-size: var(--text-lg);
+  padding: calc(var(--tag-padding-y) * 0.9) calc(var(--tag-padding-x) * 1.0);
+  opacity: 0.9;
+}
+
+.tag-cloud-size-lg {
+  font-size: var(--text-xl);
+  padding: calc(var(--tag-padding-y) * 1.0) calc(var(--tag-padding-x) * 1.1);
+  opacity: 0.95;
+}
+
+.tag-cloud-size-xl {
+  font-size: var(--text-2xl);
+  padding: calc(var(--tag-padding-y) * 1.1) calc(var(--tag-padding-x) * 1.2);
+  font-weight: var(--weight-semibold);
+}
+
+/* ========================================
+ * TAG CLOUD COUNT BADGE
+ * ======================================== */
+
+.tag-cloud-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  border: var(--border-thin) solid var(--border-primary);
+  min-width: 20px;
+  text-align: center;
+  line-height: 1;
+}
+
+/* ========================================
+ * TAG CLOUD COLOR VARIANTS
+ * Extends theme tag color classes
+ * ======================================== */
+
+.tag-cloud-item.tag-blue {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.tag-cloud-item.tag-blue:hover {
+  border-color: var(--accent-blue-dark);
+  color: var(--accent-blue-dark);
+  background: rgba(79, 195, 247, 0.1);
+}
+
+.tag-cloud-item.tag-green {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.tag-cloud-item.tag-green:hover {
+  border-color: var(--accent-green-dark);
+  color: var(--accent-green-dark);
+  background: rgba(102, 187, 106, 0.1);
+}
+
+.tag-cloud-item.tag-purple {
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
+.tag-cloud-item.tag-purple:hover {
+  border-color: var(--accent-purple-dark);
+  color: var(--accent-purple-dark);
+  background: rgba(171, 71, 188, 0.1);
+}
+
+.tag-cloud-item.tag-pink {
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
+}
+
+.tag-cloud-item.tag-pink:hover {
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
+  background: rgba(236, 64, 122, 0.1);
+}
+
+/* ========================================
+ * LOADING AND ERROR STATES
+ * ======================================== */
+
+.tag-cloud-loading,
+.tag-cloud-error,
+.tag-cloud-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  text-align: center;
+  gap: var(--space-4);
+}
+
+.tag-cloud-loading p,
+.tag-cloud-error p,
+.tag-cloud-empty p {
+  margin: 0;
+}
+
+.tag-cloud-error .text-error {
+  color: var(--error);
+  font-weight: var(--weight-medium);
+}
+
+/* ========================================
+ * RESPONSIVE DESIGN
+ * ======================================== */
+
+/* Tablet (768px+) */
+@media (min-width: 768px) {
+  .tag-cloud-panel {
+    padding: var(--space-8);
+  }
+  
+  .tag-cloud-content {
+    gap: var(--space-4);
+    padding: var(--space-6) 0;
+  }
+  
+  .tag-cloud-size-xs {
+    font-size: var(--text-base);
+  }
+  
+  .tag-cloud-size-sm {
+    font-size: var(--text-lg);
+  }
+  
+  .tag-cloud-size-md {
+    font-size: var(--text-xl);
+  }
+  
+  .tag-cloud-size-lg {
+    font-size: var(--text-2xl);
+  }
+  
+  .tag-cloud-size-xl {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .tag-cloud-panel {
+    padding: var(--space-8);
+  }
+  
+  .tag-cloud-content {
+    gap: var(--space-6);
+    padding: var(--space-8) 0;
+  }
+  
+  .tag-cloud-size-xs {
+    font-size: var(--text-lg);
+  }
+  
+  .tag-cloud-size-sm {
+    font-size: var(--text-xl);
+  }
+  
+  .tag-cloud-size-md {
+    font-size: var(--text-2xl);
+  }
+  
+  .tag-cloud-size-lg {
+    font-size: var(--text-3xl);
+  }
+  
+  .tag-cloud-size-xl {
+    font-size: var(--text-4xl);
+    font-weight: var(--weight-bold);
+  }
+}
+
+/* ========================================
+ * ANIMATIONS
+ * ======================================== */
+
+.tag-cloud-item {
+  animation: fade-in 0.3s ease-out;
+}
+
+.tag-cloud-item:hover {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .tag-cloud-item {
+    animation: none;
+  }
+  
+  .tag-cloud-item:hover {
+    animation: none;
+    transform: none;
+  }
+}

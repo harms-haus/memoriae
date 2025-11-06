@@ -310,7 +310,7 @@ memoriae/
 - [x] Create seed list component with filtering, sorting, responsive layout following style guide
 - [x] Build seed detail view with timeline visualization, event toggle controls, current state display
 - [x] Implement hierarchical category browser component with expand/collapse, seed filtering by category
-- [ ] Create tag cloud visualization with frequency-based sizing, color coding, click-to-filter functionality
+- [x] Create tag cloud visualization with frequency-based sizing, color coding, click-to-filter functionality
 - [x] Build timeline view showing all seeds chronologically, with filters and interactive seed markers
 - [ ] Implement search bar with full-text search across content, tags, and categories, instant results display
 - [ ] Create settings page for OAuth account management, OpenRouter model selection, API key input
