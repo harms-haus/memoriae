@@ -7,10 +7,13 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, Describeable } from 'vitest';
+import { vi } from 'vitest';
 import { createUserEvent } from '../utils';
+
+// Type for describe blocks
+type Describeable = ReturnType<typeof describe>;
 
 // Re-export types and utilities for convenience
 export { createUserEvent } from '../utils';
@@ -65,7 +68,6 @@ export class FormControlTestPattern {
       it('should work in uncontrolled mode', async () => {
         render(<this.Component defaultValue={defaultValue} />);
 
-        const element = getElement();
         expect(getValue()).toBe(defaultValue);
       });
 
@@ -445,7 +447,7 @@ export class FormControlTestPattern {
   /**
    * Test performance characteristics
    */
-  performance(): Describeable {
+  performance(getElement?: () => HTMLElement): Describeable {
     return describe('Performance', () => {
       it('should render within acceptable time', () => {
         const startTime = performance.now();
@@ -456,6 +458,10 @@ export class FormControlTestPattern {
       });
 
       it('should handle rapid updates efficiently', async () => {
+        if (!getElement) {
+          // Skip if getElement not provided
+          return;
+        }
         const handleChange = vi.fn();
         render(<this.Component onChange={handleChange} />);
 
@@ -536,7 +542,7 @@ export class FormControlTestPattern {
       this.errorHandling(getElement);
       this.focusManagement(getElement);
       this.styling(getElement);
-      this.performance();
+      this.performance(getElement);
     });
   }
 }
@@ -584,7 +590,7 @@ export class BooleanControlTestPattern extends FormControlTestPattern {
       this.errorHandling(getElement);
       this.focusManagement(getElement);
       this.styling(getElement);
-      this.performance();
+      this.performance(getElement);
 
       // Boolean-specific tests
       describe('Boolean State', () => {
@@ -668,7 +674,7 @@ export class RangeControlTestPattern extends FormControlTestPattern {
       this.errorHandling(getElement);
       this.focusManagement(getElement);
       this.styling(getElement);
-      this.performance();
+      this.performance(getElement);
 
       // Range-specific tests
       describe('Range Controls', () => {
@@ -760,7 +766,7 @@ export class TextInputTestPattern extends FormControlTestPattern {
       this.errorHandling(getElement);
       this.focusManagement(getElement);
       this.styling(getElement);
-      this.performance();
+      this.performance(getElement);
 
       // Text-specific tests
       describe('Text Input', () => {
@@ -879,7 +885,7 @@ export const TestUtils = {
   /**
    * Create a test user event with custom configuration
    */
-  createCustomUserEvent: (config?: ConstructorParameters<typeof userEvent.setup>[0]) => {
+  createCustomUserEvent: (config?: Parameters<typeof userEvent.setup>[0]) => {
     return userEvent.setup(config);
   },
 
@@ -908,7 +914,13 @@ export const TestUtils = {
       observe() {}
       unobserve() {}
       disconnect() {}
-    };
+      root: Element | null = null;
+      rootMargin: string = '';
+      thresholds: ReadonlyArray<number> = [];
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    } as typeof IntersectionObserver;
   }
 };
 

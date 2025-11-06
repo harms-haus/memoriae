@@ -4,10 +4,7 @@ import {
   render,
   screen,
   fireEvent,
-  waitFor,
-  within,
 } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { Checkbox } from "../../components/Checkbox/Checkbox";
 import { Toggle } from "../../components/Toggle/Toggle";
 import { RadioGroup, Radio } from "../../components/Radio/Radio";
@@ -144,7 +141,7 @@ describe("Form Components Accessibility", () => {
 
       it("should have proper radio checked states", () => {
         render(
-          <RadioGroup label="Language" defaultValue="en">
+          <RadioGroup defaultValue="en">
             <Radio value="en" label="English" />
             <Radio value="es" label="Spanish" />
             <Radio value="fr" label="French" />
@@ -161,7 +158,7 @@ describe("Form Components Accessibility", () => {
 
       it("should be properly labeled", () => {
         render(
-          <RadioGroup label="Color" defaultValue="blue">
+          <RadioGroup defaultValue="blue">
             <Radio value="red" label="Red" id="color-red" />
             <Radio value="blue" label="Blue" id="color-blue" />
           </RadioGroup>,
@@ -238,7 +235,7 @@ describe("Form Components Accessibility", () => {
             <Input label="Email" type="email" />
             <Input label="Password" type="password" />
             <Checkbox label="Remember me" />
-            <RadioGroup label="Option">
+            <RadioGroup>
               <Radio value="opt1" label="Option 1" />
               <Radio value="opt2" label="Option 2" />
               <Radio value="opt3" label="Option 3" />
@@ -344,7 +341,7 @@ describe("Form Components Accessibility", () => {
         const handleChange = vi.fn();
 
         render(
-          <RadioGroup label="Radio Test" onValueChange={handleChange}>
+          <RadioGroup onValueChange={handleChange}>
             <Radio value="opt1" label="Option 1" />
             <Radio value="opt2" label="Option 2" />
             <Radio value="opt3" label="Option 3" />

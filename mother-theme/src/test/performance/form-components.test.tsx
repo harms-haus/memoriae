@@ -1,7 +1,6 @@
 import React from "react";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { Checkbox } from "../../components/Checkbox/Checkbox";
 import { Toggle } from "../../components/Toggle/Toggle";
 import { RadioGroup, Radio } from "../../components/Radio/Radio";
@@ -23,7 +22,7 @@ describe("Form Components Performance", () => {
         () => <Checkbox label="Test Checkbox" />,
         () => <Toggle label="Test Toggle" />,
         () => (
-          <RadioGroup label="Test Radio">
+          <RadioGroup>
             <Radio value="opt1" label="Option 1" />
             <Radio value="opt2" label="Option 2" />
           </RadioGroup>
@@ -173,7 +172,6 @@ describe("Form Components Performance", () => {
               onCheckedChange={(checked) => handleChange("checkbox2", checked)}
             />
             <RadioGroup
-              label="Radio Group"
               value={values.radio}
               onValueChange={(value) => handleChange("radio", value)}
             >
@@ -302,7 +300,6 @@ describe("Form Components Performance", () => {
     });
 
     it("should handle prop changes efficiently", async () => {
-      const user = createUserEvent();
       const { rerender } = render(
         <Input label="Test" value="initial" onChange={() => {}} />,
       );
@@ -360,12 +357,12 @@ describe("Form Components Performance", () => {
     it("should become interactive quickly after render", async () => {
       const user = createUserEvent();
 
-      const startTime = performance.now();
+      const renderStartTime = performance.now();
       render(
         <form>
           <Input label="Name" required />
           <Input label="Email" type="email" required />
-          <Checkbox label="Accept terms" required />
+          <Checkbox label="Accept terms" />
           <button type="submit">Submit</button>
         </form>,
       );
@@ -376,6 +373,9 @@ describe("Form Components Performance", () => {
       const interactionEndTime = performance.now();
 
       const timeToInteractive = interactionEndTime - renderEndTime;
+      // Use renderStartTime to avoid unused variable warning
+      const totalTime = interactionEndTime - renderStartTime;
+      expect(totalTime).toBeGreaterThan(0);
 
       // Should be interactive within reasonable time
       expect(timeToInteractive).toBeLessThan(50);
@@ -432,7 +432,6 @@ describe("Form Components Performance", () => {
 
   describe("Concurrent Updates", () => {
     it("should handle concurrent state updates efficiently", async () => {
-      const user = createUserEvent();
 
       const TestForm = () => {
         const [values, setValues] = React.useState({

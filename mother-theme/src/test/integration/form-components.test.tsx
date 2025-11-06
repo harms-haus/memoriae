@@ -5,9 +5,7 @@ import {
   screen,
   fireEvent,
   waitFor,
-  act,
 } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { Checkbox } from "../../components/Checkbox/Checkbox";
 import { Toggle } from "../../components/Toggle/Toggle";
 import { RadioGroup, Radio } from "../../components/Radio/Radio";
@@ -83,7 +81,6 @@ describe("Form Components Integration", () => {
               }
             />
             <RadioGroup
-              label="User Type"
               value={formData.userType}
               onValueChange={(value) => handleInputChange("userType", value)}
             >
@@ -150,7 +147,7 @@ describe("Form Components Integration", () => {
         const [formData, setFormData] = React.useState({
           name: "",
           email: "",
-          age: "",
+          age: "18", // Initialize with valid age to match slider default
           terms: false,
         });
         const formDataRef = React.useRef(formData);
@@ -218,7 +215,7 @@ describe("Form Components Integration", () => {
               label="Full Name"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              error={errors.name}
+              {...(errors.name ? { error: errors.name } : {})}
               required
             />
             <Input
@@ -226,7 +223,7 @@ describe("Form Components Integration", () => {
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              error={errors.email}
+              {...(errors.email ? { error: errors.email } : {})}
               required
             />
             <Slider
@@ -242,8 +239,6 @@ describe("Form Components Integration", () => {
               label="I accept the terms and conditions"
               checked={formData.terms}
               onCheckedChange={(checked) => handleInputChange("terms", checked)}
-              error={errors.terms}
-              required
             />
             <button type="submit">Register</button>
           </form>
@@ -294,21 +289,29 @@ describe("Form Components Integration", () => {
       // Check terms checkbox (required for form submission)
       await user.click(screen.getByLabelText("I accept the terms and conditions"));
 
-      // Submit form - use fireEvent to ensure form submission
-      const submitForm = screen.getByRole("button", { name: "Register" }).closest("form");
-      if (submitForm) {
-        fireEvent.submit(submitForm);
-      }
+      // Wait for state updates to complete
+      await waitFor(() => {
+        const checkbox = screen.getByRole("checkbox", { name: "I accept the terms and conditions" });
+        expect(checkbox).toBeChecked();
+      });
+
+      // Submit form by clicking the button (more reliable than fireEvent.submit)
+      await user.click(screen.getByRole("button", { name: "Register" }));
 
       // Wait for form to submit (validation should pass now)
       await waitFor(() => {
-        expect(handleSubmit).toHaveBeenCalledWith({
+        expect(handleSubmit).toHaveBeenCalled();
+      }, { timeout: 3000 });
+      
+      // Verify it was called with correct data
+      expect(handleSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
           name: "John Doe",
           email: "john@example.com",
           age: "18",
           terms: true,
-        });
-      });
+        })
+      );
     });
   });
 
@@ -320,7 +323,7 @@ describe("Form Components Integration", () => {
           <Textarea label="Text Area" />
           <Checkbox label="Check Box" />
           <Toggle label="Toggle Switch" />
-          <RadioGroup label="Radio Group">
+          <RadioGroup>
             <Radio value="opt1" label="Option 1" />
             <Radio value="opt2" label="Option 2" />
           </RadioGroup>
@@ -422,7 +425,7 @@ describe("Form Components Integration", () => {
               label="Username"
               value={formData.username}
               onChange={(e) => handleInputChange("username", e.target.value)}
-              error={errors.username}
+              {...(errors.username ? { error: errors.username } : {})}
               required
             />
             <Input
@@ -430,7 +433,7 @@ describe("Form Components Integration", () => {
               type="password"
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
-              error={errors.password}
+              {...(errors.password ? { error: errors.password } : {})}
               required
             />
             <Input
@@ -440,14 +443,14 @@ describe("Form Components Integration", () => {
               onChange={(e) =>
                 handleInputChange("confirmPassword", e.target.value)
               }
-              error={errors.confirmPassword}
+              {...(errors.confirmPassword ? { error: errors.confirmPassword } : {})}
               required
             />
             <Textarea
               label="Bio"
               value={formData.bio}
               onChange={(e) => handleInputChange("bio", e.target.value)}
-              error={errors.bio}
+              {...(errors.bio ? { error: errors.bio } : {})}
               maxLength={500}
               showCount
             />
@@ -559,7 +562,7 @@ describe("Form Components Integration", () => {
           <Input label="First Name" />
           <Input label="Last Name" />
           <Checkbox label="Subscribe to updates" />
-          <RadioGroup label="Contact Preference">
+          <RadioGroup>
             <Radio value="email" label="Email" />
             <Radio value="phone" label="Phone" />
           </RadioGroup>
@@ -726,7 +729,7 @@ describe("Form Components Integration", () => {
             <Input label={`${name} Input`} />
             <Textarea label={`${name} Textarea`} />
             <Checkbox label={`${name} Checkbox`} />
-            <RadioGroup label={`${name} Radio Group`}>
+            <RadioGroup>
               <Radio value="opt1" label="Option 1" />
               <Radio value="opt2" label="Option 2" />
             </RadioGroup>

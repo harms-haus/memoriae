@@ -4,10 +4,11 @@
  * Provides common helpers and test utilities used across component tests.
  */
 
-import { render, RenderOptions } from "@testing-library/react";
+import { render, RenderOptions, screen } from "@testing-library/react";
 import { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { fireEvent } from "@testing-library/react";
+import { vi } from "vitest";
 
 /**
  * Custom render function that includes theme CSS
@@ -186,8 +187,7 @@ export const formTestPatterns = {
   ) => {
     describe("Controlled/Uncontrolled Mode", () => {
       it("should work in uncontrolled mode", async () => {
-        const user = createUserEvent();
-        const { rerender } = render(Component);
+        render(Component);
 
         let element = document.querySelector(
           "[role], input, textarea, button",
@@ -196,7 +196,7 @@ export const formTestPatterns = {
       });
 
       it("should respect controlled value", () => {
-        const { rerender } = render(Component);
+        render(Component);
 
         let element = document.querySelector(
           "[role], input, textarea, button",
@@ -205,7 +205,6 @@ export const formTestPatterns = {
       });
 
       it("should handle mode switching", async () => {
-        const user = createUserEvent();
         const { rerender } = render(Component);
 
         let element = document.querySelector(
@@ -219,6 +218,8 @@ export const formTestPatterns = {
         ) as HTMLElement;
 
         expect(getValue(element)).toBe(controlledValue);
+        // Mark rerender as used
+        void rerender;
       });
     });
   },
@@ -238,7 +239,6 @@ export const formTestPatterns = {
       });
 
       it("should not respond to clicks when disabled", async () => {
-        const user = createUserEvent();
         const element = getElement();
 
         await testInteraction(element);
@@ -622,10 +622,10 @@ export const animationTests = {
       // Mock reduced motion preference
       Object.defineProperty(window, "matchMedia", {
         writable: true,
-        value: jest.fn().mockImplementation((query) => ({
+        value: vi.fn().mockImplementation((query: string) => ({
           matches: query === "(prefers-reduced-motion: reduce)",
-          addListener: jest.fn(),
-          removeListener: jest.fn(),
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
         })),
       });
 
