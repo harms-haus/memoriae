@@ -2,7 +2,24 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
 import type { AuthStatus } from '../types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+// In production, use relative URLs since backend serves frontend
+// In development, use explicit URL or Vite proxy
+const getApiUrl = (): string => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // In production mode, use relative URL (backend serves frontend)
+  if (import.meta.env.PROD) {
+    return '/api'
+  }
+  
+  // In development, default to localhost (Vite proxy will handle it)
+  return 'http://localhost:3000/api'
+}
+
+const API_URL = getApiUrl()
 
 class ApiClient {
   private client: AxiosInstance
