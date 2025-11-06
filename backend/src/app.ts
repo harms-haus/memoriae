@@ -6,6 +6,7 @@ import authRoutes from './routes/auth'
 import eventsRoutes from './routes/events'
 import seedsRoutes from './routes/seeds'
 import categoriesRoutes from './routes/categories'
+import tagsRoutes from './routes/tags'
 import settingsRoutes from './routes/settings'
 import searchRoutes from './routes/search'
 import { config } from './config'
@@ -47,6 +48,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/seeds', seedsRoutes)
 app.use('/api/categories', categoriesRoutes)
+app.use('/api/tags', tagsRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/search', searchRoutes)
 app.use('/api', eventsRoutes)
