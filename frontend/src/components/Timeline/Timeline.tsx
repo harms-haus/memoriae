@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useMemo } from 'react'
 import { Timeline as MotherTimeline, type TimelineItem as MotherTimelineItem } from '../../../../mother-theme/src/components/Timeline'
 import { useTimelineConfig } from '../../hooks/useTimelineConfig'
 import './Timeline.css'
@@ -22,7 +22,7 @@ interface TimelineProps {
  * - Responsive alignment (left on mobile, alternate on desktop)
  * - Keyboard navigation (arrow up/down)
  * - Click handling
- * - Uses mother-theme Timeline component with RSuite compatibility
+ * - Uses mother-theme Timeline component
  */
 export function Timeline({ items, className = '' }: TimelineProps) {
   const { align, isMobile } = useTimelineConfig()
@@ -58,17 +58,64 @@ export function Timeline({ items, className = '' }: TimelineProps) {
   }, [])
 
   // Convert memoriae TimelineItem to mother-theme TimelineItem
-  const motherItems: MotherTimelineItem[] = items.map(item => {
-    const result: MotherTimelineItem = {
-      id: item.id,
-      content: item.content,
+  // Position items evenly along timeline (0% to 100%)
+  const motherItems: MotherTimelineItem[] = useMemo(() => {
+    if (items.length === 0) return []
+    
+    return items.map((item, index) => {
+      const position = items.length === 1 
+        ? 50 // Single item at center
+        : (index / (items.length - 1)) * 100 // Evenly distributed
+        
+      return {
+        id: item.id,
+        position: position,
+        dot: item.dot,
+      }
+    })
+  }, [items])
+
+  // Map align to mode: 'left' -> 'left', 'alternate' -> 'center'
+  const mode = align === 'alternate' ? 'center' : 'left'
+
+  // Render panel content with click handling
+  const renderPanel = (index: number, width: number): React.ReactNode => {
+    const item = items[index]
+    if (!item) return null
+
+    const handleClick = () => {
+      if (!item.disabled && item.onClick) {
+        item.onClick()
+      }
     }
-    if (item.time !== undefined) result.time = item.time
-    if (item.dot !== undefined) result.dot = item.dot
-    if (item.disabled !== undefined) result.disabled = item.disabled
-    if (item.onClick !== undefined) result.onClick = item.onClick
-    return result
-  })
+
+    return (
+      <div 
+        onClick={item.disabled ? undefined : handleClick}
+        style={{
+          cursor: item.disabled || !item.onClick ? 'default' : 'pointer',
+          opacity: item.disabled ? 0.6 : 1,
+        }}
+      >
+        {item.content}
+        {item.time && (
+          <div style={{ marginTop: '0.5rem', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+            {item.time}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Render custom dot if provided
+  const renderDot = (index: number, position: number, isTop: boolean, isBottom: boolean): React.ReactNode => {
+    const item = items[index]
+    if (!item || !item.dot) return null
+    
+    return item.dot
+  }
+
+  const hasCustomDots = items.some(item => item.dot)
 
   return (
     <div
@@ -78,8 +125,12 @@ export function Timeline({ items, className = '' }: TimelineProps) {
     >
       <MotherTimeline
         items={motherItems}
-        align={align}
-        compatibilityMode={true}
+        mode={mode}
+        renderPanel={renderPanel}
+        {...(hasCustomDots && { renderDot })}
+        maxPanelWidth={400}
+        panelSpacing={16}
+        panelClickable={items.some(item => !!item.onClick && !item.disabled)}
       />
     </div>
   )
