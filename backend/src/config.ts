@@ -26,6 +26,10 @@ export const config = {
   },
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:5173',
+    // Support multiple allowed origins (comma-separated)
+    allowedOrigins: process.env.FRONTEND_ALLOWED_ORIGINS
+      ? process.env.FRONTEND_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+      : [process.env.FRONTEND_URL || 'http://localhost:5173'],
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
