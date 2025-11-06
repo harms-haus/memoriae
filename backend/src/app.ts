@@ -25,10 +25,15 @@ app.use(cors({
       return callback(null, true)
     }
     
-    // Reject the request
-    callback(new Error('Not allowed by CORS'))
+    // Log rejected origin for debugging
+    console.warn(`CORS: Rejected origin "${origin}". Allowed origins:`, config.frontend.allowedOrigins)
+    
+    // Reject the request (return false, not an error)
+    callback(null, false)
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
