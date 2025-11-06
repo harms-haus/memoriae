@@ -87,7 +87,14 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
     }
 
     // 3. Get user settings (API key and model)
-    const settings = await getUserSettings(userId)
+    let settings: UserSettings
+    try {
+      settings = await getUserSettings(userId)
+    } catch (error) {
+      // Database error getting settings - skip automation gracefully
+      console.error(`Failed to get user settings for user ${userId}:`, error)
+      return
+    }
 
     if (!settings.openrouter_api_key) {
       // No API key configured - skip automation

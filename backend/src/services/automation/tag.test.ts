@@ -11,16 +11,22 @@ const mockWhere = vi.fn()
 const mockInsert = vi.fn()
 const mockReturning = vi.fn()
 const mockFirst = vi.fn()
+const mockSelect = vi.fn()
+const mockOrderBy = vi.fn()
 
 vi.mock('../../db/connection', () => {
-  const mockDb = vi.fn((table: string) => ({
-    where: mockWhere.mockReturnValue({
+  const mockDb = vi.fn((table: string) => {
+    const queryBuilder = {
+      where: mockWhere.mockReturnThis(),
+      select: mockSelect.mockReturnThis(),
+      orderBy: mockOrderBy.mockResolvedValue([]),
+      insert: mockInsert.mockReturnValue({
+        returning: mockReturning,
+      }),
       first: mockFirst,
-    }),
-    insert: mockInsert.mockReturnValue({
-      returning: mockReturning,
-    }),
-  }))
+    }
+    return queryBuilder
+  })
 
   return {
     default: mockDb,
@@ -40,6 +46,13 @@ describe('TagAutomation', () => {
     mockInsert.mockClear()
     mockReturning.mockClear()
     mockFirst.mockClear()
+    mockSelect.mockClear()
+    mockOrderBy.mockClear()
+    
+    // Reset mock implementations
+    mockWhere.mockReturnThis()
+    mockSelect.mockReturnThis()
+    mockOrderBy.mockResolvedValue([])
     
     automation = new TagAutomation()
     automation.id = 'automation-tag-123'
@@ -328,8 +341,9 @@ describe('TagAutomation', () => {
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.events.length).toBeGreaterThan(0)
-      // Verify database was called
-      expect(mockWhere).toHaveBeenCalled()
+      // Verify database was called to get existing tags
+      expect(mockSelect).toHaveBeenCalledWith('name')
+      expect(mockOrderBy).toHaveBeenCalledWith('name', 'asc')
     })
   })
 

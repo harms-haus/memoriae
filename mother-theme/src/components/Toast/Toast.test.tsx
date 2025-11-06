@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { ToastProvider, useToast } from './Toast';
 
 // Component to test toast hook
@@ -22,12 +21,12 @@ function TestComponent() {
   );
 }
 
-// Mock createPortal
+// Mock createPortal to render directly in the test container
 vi.mock('react-dom', async () => {
   const actual = await vi.importActual('react-dom');
   return {
     ...actual,
-    createPortal: (node: React.ReactNode) => node,
+    createPortal: (node: React.ReactNode, container: Element) => node,
   };
 });
 
@@ -52,50 +51,49 @@ describe('Toast', () => {
       expect(screen.getByText('Test Content')).toBeInTheDocument();
     });
 
-    it('should display toast when triggered', async () => {
-      const user = userEvent.setup({ delay: null });
+    it('should display toast when triggered', () => {
       render(
         <ToastProvider>
           <TestComponent />
         </ToastProvider>
       );
 
-      await act(async () => {
-        await user.click(screen.getByText('Show Success'));
-      });
+      // Wait for component to render
+      expect(screen.getByText('Show Success')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Show Success'));
       expect(screen.getByText('Success!')).toBeInTheDocument();
     });
 
-    it('should display multiple toasts', async () => {
-      const user = userEvent.setup({ delay: null });
+    it('should display multiple toasts', () => {
       render(
         <ToastProvider>
           <TestComponent />
         </ToastProvider>
       );
 
-      await act(async () => {
-        await user.click(screen.getByText('Show Success'));
-      });
-      await act(async () => {
-        await user.click(screen.getByText('Show Error'));
-      });
+      // Wait for component to render
+      expect(screen.getByText('Show Success')).toBeInTheDocument();
+      expect(screen.getByText('Show Error')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Show Success'));
+      fireEvent.click(screen.getByText('Show Error'));
 
       expect(screen.getByText('Success!')).toBeInTheDocument();
       expect(screen.getByText('Error!')).toBeInTheDocument();
     });
 
     it('should auto-dismiss toast after duration', async () => {
-      const user = userEvent.setup({ delay: null });
       render(
         <ToastProvider>
           <TestComponent />
         </ToastProvider>
       );
 
-      await act(async () => {
-        await user.click(screen.getByText('Show Success'));
-      });
+      // Wait for component to render
+      expect(screen.getByText('Show Success')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Show Success'));
       expect(screen.getByText('Success!')).toBeInTheDocument();
 
       // Fast-forward time to trigger auto-dismiss
@@ -113,16 +111,16 @@ describe('Toast', () => {
     });
 
     it('should not auto-dismiss when duration is 0', async () => {
-      const user = userEvent.setup({ delay: null });
       render(
         <ToastProvider>
           <TestComponent />
         </ToastProvider>
       );
 
-      await act(async () => {
-        await user.click(screen.getByText('Show Persistent'));
-      });
+      // Wait for component to render
+      expect(screen.getByText('Show Persistent')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Show Persistent'));
       expect(screen.getByText('Info!')).toBeInTheDocument();
 
       // Fast-forward time
@@ -135,22 +133,20 @@ describe('Toast', () => {
     });
 
     it('should close toast when close button is clicked', async () => {
-      const user = userEvent.setup({ delay: null });
       render(
         <ToastProvider>
           <TestComponent />
         </ToastProvider>
       );
 
-      await act(async () => {
-        await user.click(screen.getByText('Show Success'));
-      });
+      // Wait for component to render
+      expect(screen.getByText('Show Success')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Show Success'));
       expect(screen.getByText('Success!')).toBeInTheDocument();
 
       const closeButton = screen.getByLabelText('Close toast');
-      await act(async () => {
-        await user.click(closeButton);
-      });
+      fireEvent.click(closeButton);
 
       // Wait for the 300ms animation delay before removal
       await act(async () => {
@@ -161,23 +157,22 @@ describe('Toast', () => {
       expect(screen.queryByText('Success!')).not.toBeInTheDocument();
     });
 
-    it('should apply variant classes', async () => {
-      const user = userEvent.setup({ delay: null });
+    it('should apply variant classes', () => {
       render(
         <ToastProvider>
           <TestComponent />
         </ToastProvider>
       );
 
-      await act(async () => {
-        await user.click(screen.getByText('Show Success'));
-      });
+      // Wait for component to render
+      expect(screen.getByText('Show Success')).toBeInTheDocument();
+      expect(screen.getByText('Show Error')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Show Success'));
       const toast = screen.getByText('Success!').closest('.toast');
       expect(toast).toHaveClass('toast-success');
 
-      await act(async () => {
-        await user.click(screen.getByText('Show Error'));
-      });
+      fireEvent.click(screen.getByText('Show Error'));
       const errorToast = screen.getByText('Error!').closest('.toast');
       expect(errorToast).toHaveClass('toast-error');
     });

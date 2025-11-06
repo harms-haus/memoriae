@@ -62,6 +62,17 @@ vi.mock('../openrouter/client', () => ({
   createOpenRouterClient: (...args: any[]) => mockCreateOpenRouterClient(...args),
 }))
 
+const mockSettingsService = {
+  getByUserId: vi.fn().mockResolvedValue({
+    openrouter_api_key: 'test-api-key',
+    openrouter_model: 'test-model',
+  }),
+}
+
+vi.mock('../settings', () => ({
+  SettingsService: mockSettingsService,
+}))
+
 // Mock db with proper chaining support
 const mockDbResult = {
   where: vi.fn().mockReturnThis(),
@@ -152,6 +163,12 @@ describe('Queue Processor', () => {
     })
 
     mockCreateOpenRouterClient.mockReturnValue(mockOpenRouterClient)
+
+    // Reset SettingsService mock
+    mockSettingsService.getByUserId.mockResolvedValue({
+      openrouter_api_key: 'test-api-key',
+      openrouter_model: 'test-model',
+    })
 
     // Reset db mock
     mockDbResult.where.mockReturnThis()
@@ -296,7 +313,7 @@ describe('Queue Processor', () => {
     it('should skip if user has no API key', async () => {
       const { processAutomationJob } = await import('./processor')
       
-      mockDbResult.first.mockResolvedValueOnce({
+      mockSettingsService.getByUserId.mockResolvedValueOnce({
         openrouter_api_key: null,
         openrouter_model: null,
       })
@@ -308,6 +325,7 @@ describe('Queue Processor', () => {
           automationId: 'auto-123',
           userId: 'user-456',
         },
+        updateProgress: vi.fn().mockResolvedValue(undefined),
       } as any
 
       await processAutomationJob(mockJob)
@@ -391,7 +409,8 @@ describe('Queue Processor', () => {
     it('should handle database errors gracefully', async () => {
       const { processAutomationJob } = await import('./processor')
       
-      mockDbResult.first.mockRejectedValueOnce(new Error('Database connection failed'))
+      // Mock SettingsService to throw an error
+      mockSettingsService.getByUserId.mockRejectedValueOnce(new Error('Database connection failed'))
 
       const mockJob = {
         id: 'job-123',
@@ -402,10 +421,16 @@ describe('Queue Processor', () => {
         },
       } as any
 
-      // Should skip gracefully (returns null API key from catch block)
-      await processAutomationJob(mockJob)
+      // Should handle error gracefully and not throw
+      await expect(processAutomationJob(mockJob)).resolves.not.toThrow()
 
       expect(mockAutomation.process).not.toHaveBeenCalled()
+      
+      // Reset mock for other tests
+      mockSettingsService.getByUserId.mockResolvedValue({
+        openrouter_api_key: 'test-api-key',
+        openrouter_model: 'test-model',
+      })
     })
 
     it('should handle event save errors', async () => {

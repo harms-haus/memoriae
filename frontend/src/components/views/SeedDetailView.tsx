@@ -3,11 +3,19 @@ import { api } from '../../services/api'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
+import { ExpandingPanel } from '@mother/components/ExpandingPanel'
 import { Tag } from '@mother/components/Tag'
 import { Badge } from '@mother/components/Badge'
 import type { Event, Seed, SeedState } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
+
+interface Automation {
+  id: string
+  name: string
+  description: string | null
+  enabled: boolean
+}
 
 interface SeedStateResponse {
   seed_id: string
@@ -34,6 +42,9 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
+  const [automations, setAutomations] = useState<Automation[]>([])
+  const [loadingAutomations, setLoadingAutomations] = useState(false)
+  const [runningAutomations, setRunningAutomations] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!seedId) {
@@ -43,6 +54,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     }
 
     loadSeedData()
+    loadAutomations()
   }, [seedId])
 
   const loadSeedData = async () => {
@@ -69,6 +81,45 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       setError(err instanceof Error ? err.message : 'Failed to load seed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAutomations = async () => {
+    if (!seedId) return
+
+    try {
+      setLoadingAutomations(true)
+      const automationsData = await api.get<Automation[]>(`/seeds/${seedId}/automations`)
+      setAutomations(automationsData)
+    } catch (err) {
+      console.error('Error loading automations:', err)
+      // Don't set error state - automations are optional
+    } finally {
+      setLoadingAutomations(false)
+    }
+  }
+
+  const handleRunAutomation = async (automationId: string) => {
+    if (!seedId || runningAutomations.has(automationId)) return
+
+    try {
+      setRunningAutomations((prev) => new Set(prev).add(automationId))
+
+      await api.post(`/seeds/${seedId}/automations/${automationId}/run`)
+
+      // Wait a bit for the automation to process, then reload seed data and timeline
+      setTimeout(() => {
+        loadSeedData()
+      }, 2000)
+    } catch (err) {
+      console.error('Error running automation:', err)
+      setError(err instanceof Error ? err.message : 'Failed to run automation')
+    } finally {
+      setRunningAutomations((prev) => {
+        const next = new Set(prev)
+        next.delete(automationId)
+        return next
+      })
     }
   }
 
@@ -292,6 +343,46 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           </div>
         )}
       </Panel>
+
+      {/* Automations Section */}
+      <ExpandingPanel
+        variant="elevated"
+        title="Run Automations"
+        className="seed-detail-automations"
+        defaultExpanded={false}
+      >
+        {loadingAutomations ? (
+          <p className="text-secondary">Loading automations...</p>
+        ) : automations.length === 0 ? (
+          <p className="text-secondary">No automations available.</p>
+        ) : (
+          <div className="automations-list">
+            {automations.map((automation) => (
+              <div key={automation.id} className="automation-item">
+                <div className="automation-info">
+                  <div className="automation-header">
+                    <span className="automation-name">{automation.name}</span>
+                    {!automation.enabled && (
+                      <Badge variant="warning">Disabled</Badge>
+                    )}
+                  </div>
+                  {automation.description && (
+                    <p className="automation-description">{automation.description}</p>
+                  )}
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleRunAutomation(automation.id)}
+                  disabled={!automation.enabled || runningAutomations.has(automation.id)}
+                  aria-label={`Run ${automation.name} automation`}
+                >
+                  {runningAutomations.has(automation.id) ? 'Running...' : 'Run'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </ExpandingPanel>
 
       {/* Timeline of Events */}
       <Panel variant="elevated" className="seed-detail-timeline">

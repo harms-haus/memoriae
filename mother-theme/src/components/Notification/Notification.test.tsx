@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { Notification } from './Notification';
 
 describe('Notification', () => {
@@ -71,8 +70,7 @@ describe('Notification', () => {
       expect(screen.getByText('Action 2')).toBeInTheDocument();
     });
 
-    it('should call action onClick when action button is clicked', async () => {
-      const user = userEvent.setup({ delay: null });
+    it('should call action onClick when action button is clicked', () => {
       const handleAction = vi.fn();
       render(
         <Notification
@@ -83,7 +81,7 @@ describe('Notification', () => {
         />
       );
 
-      await user.click(screen.getByText('Action'));
+      fireEvent.click(screen.getByText('Action'));
       expect(handleAction).toHaveBeenCalled();
     });
   });
@@ -92,16 +90,14 @@ describe('Notification', () => {
     it('should auto-dismiss after duration', async () => {
       const onClose = vi.fn();
       
-      await act(async () => {
-        render(
-          <Notification
-            title="Auto Dismiss Test"
-            message="Test Message"
-            duration={5000}
-            onClose={onClose}
-          />
-        );
-      });
+      render(
+        <Notification
+          title="Auto Dismiss Test"
+          message="Test Message"
+          duration={5000}
+          onClose={onClose}
+        />
+      );
 
       expect(screen.getByText('Auto Dismiss Test')).toBeInTheDocument();
 
@@ -123,16 +119,14 @@ describe('Notification', () => {
     it('should not auto-dismiss when duration is 0', async () => {
       const onClose = vi.fn();
       
-      await act(async () => {
-        render(
-          <Notification
-            title="No Auto Dismiss Test"
-            message="Test Message"
-            duration={0}
-            onClose={onClose}
-          />
-        );
-      });
+      render(
+        <Notification
+          title="No Auto Dismiss Test"
+          message="Test Message"
+          duration={0}
+          onClose={onClose}
+        />
+      );
 
       expect(screen.getByText('No Auto Dismiss Test')).toBeInTheDocument();
 
@@ -150,27 +144,17 @@ describe('Notification', () => {
 
   describe('Manual Close', () => {
     it('should call onClose when close button is clicked', async () => {
-      const user = userEvent.setup({ delay: null });
       const onClose = vi.fn();
-      await act(async () => {
-        render(
-          <Notification
-            title="Test"
-            message="Test"
-            onClose={onClose}
-          />
-        );
-      });
-
-      // Advance timers to ensure component initializes
-      await act(async () => {
-        vi.advanceTimersByTime(1);
-      });
+      render(
+        <Notification
+          title="Test"
+          message="Test"
+          onClose={onClose}
+        />
+      );
 
       const closeButton = screen.getByLabelText('Close notification');
-      await act(async () => {
-        await user.click(closeButton);
-      });
+      fireEvent.click(closeButton);
 
       // Wait for the 300ms animation delay before onClose is called
       await act(async () => {
