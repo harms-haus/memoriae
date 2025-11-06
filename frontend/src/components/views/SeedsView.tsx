@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '../../services/api'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
@@ -12,11 +12,12 @@ import './SeedsView.css'
 
 interface SeedsViewProps {
   onSeedSelect?: (seedId: string) => void
+  refreshRef?: React.MutableRefObject<(() => void) | null>
 }
 
 type SortOption = 'newest' | 'oldest' | 'alphabetical'
 
-export function SeedsView({ onSeedSelect }: SeedsViewProps) {
+export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<TagType[]>([])
@@ -30,11 +31,7 @@ export function SeedsView({ onSeedSelect }: SeedsViewProps) {
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showFilters, setShowFilters] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -55,7 +52,23 @@ export function SeedsView({ onSeedSelect }: SeedsViewProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  // Expose refresh function via ref
+  useEffect(() => {
+    if (refreshRef) {
+      refreshRef.current = loadData
+    }
+    return () => {
+      if (refreshRef) {
+        refreshRef.current = null
+      }
+    }
+  }, [refreshRef, loadData])
 
   // Filter and sort seeds
   const filteredAndSortedSeeds = useMemo(() => {

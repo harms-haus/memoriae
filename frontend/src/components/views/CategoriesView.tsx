@@ -10,7 +10,11 @@ import type { Seed, Category } from '../../types'
 import './Views.css'
 import './CategoriesView.css'
 
-export function CategoriesView() {
+interface CategoriesViewProps {
+  refreshRef?: React.MutableRefObject<(() => void) | null>
+}
+
+export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [loading, setLoading] = useState(false)
@@ -101,6 +105,22 @@ export function CategoriesView() {
     if (content.length <= maxLength) return content
     return content.substring(0, maxLength).trim() + '...'
   }
+
+  // Expose refresh function via ref
+  useEffect(() => {
+    if (refreshRef) {
+      refreshRef.current = () => {
+        if (selectedCategoryId) {
+          loadFilteredSeeds()
+        }
+      }
+    }
+    return () => {
+      if (refreshRef) {
+        refreshRef.current = null
+      }
+    }
+  }, [refreshRef, selectedCategoryId])
 
   return (
     <div className="view-container categories-view-container">

@@ -1,0 +1,201 @@
+/* SeedComposer Component Styles */
+
+.seed-composer-container {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border-top: var(--border-medium) solid var(--border-primary);
+}
+
+.seed-composer-editor {
+  width: 100%;
+  min-height: 0;
+  padding: var(--space-8);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  font-family: var(--font-primary);
+  line-height: 1.6;
+  border: none;
+  outline: none;
+  transition: height 0.2s ease;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  box-sizing: border-box;
+  height: 0;
+}
+
+.seed-composer-editor:focus {
+  outline: none;
+}
+
+.seed-composer-editor:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* Toolbar */
+.seed-composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-elevated);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+  transition: opacity var(--transition-base), transform var(--transition-base);
+  pointer-events: none;
+  margin: var(--space-3) 0;
+}
+
+.seed-composer-toolbar.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: all;
+}
+
+.seed-composer-toolbar-button {
+  padding: 4px 6px !important;
+  min-width: auto !important;
+  height: auto !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.seed-composer-toolbar-button:hover {
+  background: var(--hover-bg) !important;
+  border: none !important;
+}
+
+.seed-composer-toolbar-divider {
+  width: var(--border-thin);
+  height: 20px;
+  background: var(--border-primary);
+  margin: 0 var(--space-1);
+}
+
+.seed-composer-toolbar-menu {
+  position: relative;
+}
+
+.seed-composer-toolbar-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-elevated);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1001;
+  min-width: 150px;
+}
+
+.seed-composer-toolbar-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: background var(--transition-base);
+  border-radius: var(--radius-sm);
+}
+
+.seed-composer-toolbar-menu-item:hover {
+  background: var(--hover-bg);
+}
+
+.seed-composer-toolbar-menu-item:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Zen Mode Overlay */
+.seed-composer-zen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-primary);
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base), backdrop-filter var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seed-composer-zen-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.seed-composer-zen-content {
+  width: 100%;
+  max-width: 900px;
+  padding: var(--space-8);
+  position: relative;
+}
+
+.seed-composer-zen-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.1;
+  transition: opacity var(--transition-base), border-color var(--transition-base), background var(--transition-base);
+  z-index: 2001;
+}
+
+.seed-composer-zen-close:hover {
+  opacity: 1;
+  border-color: var(--border-vibrant);
+  background: var(--hover-bg);
+}
+
+.seed-composer-zen-close:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* When in zen mode, adjust editor styling */
+.seed-composer-zen-overlay.active .seed-composer-editor {
+  font-size: var(--text-xl);
+  padding: var(--space-8);
+}
+
+/* Ensure toolbar is visible in zen mode */
+.seed-composer-zen-overlay.active .seed-composer-toolbar {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: all;
+}
+

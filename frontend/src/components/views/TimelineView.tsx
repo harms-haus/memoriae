@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Panel } from '@mother/components/Panel'
 import { Tag } from '@mother/components/Tag'
@@ -11,6 +11,7 @@ import './TimelineView.css'
 
 interface TimelineViewProps {
   onSeedSelect?: (seedId: string) => void
+  refreshRef?: React.MutableRefObject<(() => void) | null>
 }
 
 /**
@@ -18,7 +19,7 @@ interface TimelineViewProps {
  * Uses the mother Timeline component with PointerPanel for each seed.
  * Seeds are positioned along the timeline based on their creation date.
  */
-export function TimelineView({ onSeedSelect }: TimelineViewProps) {
+export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +28,19 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
     loadSeeds()
   }, [])
 
-  const loadSeeds = async () => {
+  // Expose refresh function via ref
+  useEffect(() => {
+    if (refreshRef) {
+      refreshRef.current = loadSeeds
+    }
+    return () => {
+      if (refreshRef) {
+        refreshRef.current = null
+      }
+    }
+  }, [refreshRef])
+
+  const loadSeeds = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -46,7 +59,23 @@ export function TimelineView({ onSeedSelect }: TimelineViewProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadSeeds()
+  }, [loadSeeds])
+
+  // Expose refresh function via ref
+  useEffect(() => {
+    if (refreshRef) {
+      refreshRef.current = loadSeeds
+    }
+    return () => {
+      if (refreshRef) {
+        refreshRef.current = null
+      }
+    }
+  }, [refreshRef, loadSeeds])
 
   // Calculate timeline positions based on date range
   const timelineItems: TimelineItem[] = useMemo(() => {

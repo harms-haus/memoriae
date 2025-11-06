@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Tabs, Tab, TabPanel } from '@mother/components/Tabs'
 import { Button } from '@mother/components/Button'
@@ -11,6 +11,7 @@ import {
   SettingsView,
   SeedDetailView,
 } from './components/views'
+import { SeedComposer } from './components/SeedComposer'
 import { 
   FileText, 
   Clock, 
@@ -85,6 +86,22 @@ function AppContent() {
   const { authenticated, loading } = useAuth()
   const [activeView, setActiveView] = useState<ViewType>('seeds')
   const [selectedSeedId, setSelectedSeedId] = useState<string | null>(null)
+  const seedsViewRefreshRef = useRef<(() => void) | null>(null)
+  const timelineViewRefreshRef = useRef<(() => void) | null>(null)
+  const categoriesViewRefreshRef = useRef<(() => void) | null>(null)
+
+  const handleSeedCreated = () => {
+    // Trigger refresh in all views that have refresh functions
+    seedsViewRefreshRef.current?.()
+    timelineViewRefreshRef.current?.()
+    categoriesViewRefreshRef.current?.()
+  }
+
+  // Views that should show SeedComposer
+  const showSeedComposer = activeView === 'seeds' || 
+                          activeView === 'timeline' || 
+                          activeView === 'categories' || 
+                          activeView === 'tags'
 
   if (loading) {
     return (
@@ -159,13 +176,19 @@ function AppContent() {
             expand={true}
           >
           <TabPanel value="seeds">
-            <SeedsView onSeedSelect={setSelectedSeedId} />
+            <SeedsView 
+              onSeedSelect={setSelectedSeedId}
+              refreshRef={seedsViewRefreshRef}
+            />
           </TabPanel>
           <TabPanel value="timeline">
-            <TimelineView onSeedSelect={setSelectedSeedId} />
+            <TimelineView 
+              onSeedSelect={setSelectedSeedId}
+              refreshRef={timelineViewRefreshRef}
+            />
           </TabPanel>
           <TabPanel value="categories">
-            <CategoriesView />
+            <CategoriesView refreshRef={categoriesViewRefreshRef} />
           </TabPanel>
           <TabPanel value="tags">
             <TagsView />
@@ -207,6 +230,18 @@ function AppContent() {
         </Tabs>
         </div>
       </div>
+      
+      {showSeedComposer && !selectedSeedId && (
+        <div style={{
+          position: 'fixed',
+          bottom: '72px', // Above the tabs (which are 72px tall)
+          left: 0,
+          right: 0,
+          zIndex: 999,
+        }}>
+          <SeedComposer onSeedCreated={handleSeedCreated} />
+        </div>
+      )}
     </div>
   )
 }
