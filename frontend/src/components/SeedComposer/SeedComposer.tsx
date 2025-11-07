@@ -1,281 +1,42 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Maximize, Check } from 'lucide-react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { X, Maximize2, Minimize2, Send } from 'lucide-react'
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
+import { Button } from '@mother/components/Button'
 import { api } from '../../services/api'
-import { SeedComposerToolbar } from './SeedComposerToolbar'
+import type { Seed } from '../../types'
 import './SeedComposer.css'
 
-interface SeedComposerProps {
-  onSeedCreated?: () => void
-  onClose?: () => void
+export interface SeedComposerProps {
+  onSeedCreated?: (seed: Seed) => void
+  onClose: () => void
+  isClosing?: boolean
 }
 
-export function SeedComposer({ onSeedCreated, onClose }: SeedComposerProps) {
-  const [markdown, setMarkdown] = useState('')
-  const [isFocused, setIsFocused] = useState(false)
-  const [zenMode, setZenMode] = useState(false)
-  const [toolbarPosition, setToolbarPosition] = useState<{ top: number; left: number } | null>(null)
-  const [toolbarVisible, setToolbarVisible] = useState(false)
-  const editorRef = useRef<HTMLDivElement>(null)
+type ViewMode = 'small' | 'medium' | 'zen'
+
+export function SeedComposer({ onSeedCreated, onClose, isClosing = false }: SeedComposerProps) {
+  const [content, setContent] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('medium')
+  const [isSaving, setIsSaving] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const mouseMoveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const isCreatingRef = useRef(false)
-  const isEnteringZenRef = useRef(false)
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollPositionRef = useRef<number>(0)
 
-  // Update height dynamically
-  const updateHeight = useCallback(() => {
-    const editor = editorRef.current
-    if (!editor) return
+  // Check if content has text (non-whitespace)
+  const hasText = content.trim().length > 0
 
-    // Get current height before changing anything
-    const currentHeight = editor.offsetHeight
-    
-    // Temporarily set height to auto to measure scrollHeight
-    const savedHeight = editor.style.height
-    editor.style.height = 'auto'
-    const scrollHeight = editor.scrollHeight
-    editor.style.height = savedHeight // Restore immediately
-    
-    const newHeight = Math.max(
-      scrollHeight,
-      isFocused ? 300 : 0 // min 300px when focused
-    )
-    
-    // Only update if height actually changed
-    if (Math.abs(currentHeight - newHeight) > 1) {
-      // Set current height first to enable transition FROM this value
-      editor.style.height = `${currentHeight}px`
-      
-      // Use requestAnimationFrame to ensure browser has applied the current height
-      // before transitioning to the new height
-      requestAnimationFrame(() => {
-        if (editorRef.current) {
-          editorRef.current.style.height = `${newHeight}px`
-        }
-      })
-    }
-  }, [isFocused])
-
-  // Initialize height on mount
+  // Focus textarea when switching to medium or zen mode
   useEffect(() => {
-    const editor = editorRef.current
-    if (editor && !editor.style.height) {
-      // Set initial height to enable transitions
-      editor.style.height = isFocused ? '300px' : '0px'
+    if ((viewMode === 'medium' || viewMode === 'zen') && textareaRef.current) {
+      textareaRef.current.focus()
     }
-    updateHeight()
-  }, [updateHeight, isFocused])
+  }, [viewMode])
 
-  // Update height when content changes
+  // Add/remove zen mode body class
   useEffect(() => {
-    updateHeight()
-  }, [markdown, updateHeight])
-
-  // Handle window resize for zen mode detection
-  useEffect(() => {
-    const handleResize = () => {
-      updateHeight()
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [updateHeight])
-
-  // Handle toolbar positioning and visibility
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      const selection = window.getSelection()
-      if (!selection || selection.rangeCount === 0) {
-        setToolbarVisible(false)
-        setToolbarPosition(null)
-        return
-      }
-
-      // Check if selection is within the editor
-      const editor = editorRef.current
-      if (!editor || !editor.contains(selection.anchorNode)) {
-        setToolbarVisible(false)
-        setToolbarPosition(null)
-        return
-      }
-
-      const selectedText = selection.toString().trim()
-      if (selectedText.length === 0) {
-        setToolbarVisible(false)
-        setToolbarPosition(null)
-        return
-      }
-
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-      
-      // Calculate toolbar dimensions
-      const toolbarHeight = 36 // Approximate toolbar height with reduced padding
-      const toolbarSpacing = 15 // Space between toolbar and text
-      const totalOffset = toolbarHeight + toolbarSpacing
-      
-      // Check if there's enough space above the selection
-      const spaceAbove = rect.top
-      const spaceBelow = window.innerHeight - rect.bottom
-      
-      // Position toolbar above selection if there's enough space, otherwise below
-      let topPosition: number
-      if (spaceAbove >= totalOffset) {
-        // Position above selection
-        topPosition = rect.top - totalOffset
-      } else if (spaceBelow >= totalOffset) {
-        // Position below selection if not enough space above
-        topPosition = rect.bottom + toolbarSpacing
-      } else {
-        // Default to above, but ensure it doesn't go off-screen
-        topPosition = Math.max(8, rect.top - totalOffset)
-      }
-      
-      setToolbarPosition({
-        top: topPosition,
-        left: rect.left + rect.width / 2, // Center above selection
-      })
-    }
-
-    const handleMouseMove = () => {
-      const selection = window.getSelection()
-      if (!selection || selection.rangeCount === 0) {
-        setToolbarVisible(false)
-        return
-      }
-
-      // Check if selection is within the editor
-      const editor = editorRef.current
-      if (!editor || !editor.contains(selection.anchorNode)) {
-        setToolbarVisible(false)
-        return
-      }
-
-      const hasSelection = selection.toString().trim().length > 0
-
-      if (hasSelection) {
-        setToolbarVisible(true)
-        // Clear existing timeout
-        if (mouseMoveTimeoutRef.current) {
-          clearTimeout(mouseMoveTimeoutRef.current)
-        }
-        // Set timeout to fade out after mouse stops
-        mouseMoveTimeoutRef.current = setTimeout(() => {
-          setToolbarVisible(false)
-        }, 2000) // 2 second delay
-      } else {
-        setToolbarVisible(false)
-      }
-    }
-
-    document.addEventListener('selectionchange', handleSelectionChange)
-    window.addEventListener('mousemove', handleMouseMove)
-
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange)
-      window.removeEventListener('mousemove', handleMouseMove)
-      if (mouseMoveTimeoutRef.current) {
-        clearTimeout(mouseMoveTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  // Handle submit
-  const handleSubmit = useCallback(async () => {
-    if (isCreatingRef.current) return
-    
-    const content = editorRef.current?.textContent?.trim() || ''
-    if (!content) return
-
-    isCreatingRef.current = true
-    try {
-      await api.post('/seeds', { content })
-      setMarkdown('')
-      if (editorRef.current) {
-        editorRef.current.textContent = ''
-        updateHeight()
-      }
-      onSeedCreated?.()
-      // Close composer after successful creation
-      onClose?.()
-    } catch (error) {
-      console.error('Failed to create seed:', error)
-    } finally {
-      isCreatingRef.current = false
-    }
-  }, [onSeedCreated, onClose, updateHeight])
-
-  // Handle ESC key for zen mode and closing
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (zenMode) {
-          setZenMode(false)
-        } else {
-          // Close composer if not in zen mode
-          onClose?.()
-        }
-      }
-      // Ctrl+Enter to submit
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        handleSubmit()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [zenMode, handleSubmit, onClose])
-
-  // Handle input changes
-  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-    const content = e.currentTarget.textContent || ''
-    setMarkdown(content)
-  }
-
-  // Handle focus
-  const handleFocus = () => {
-    setIsFocused(true)
-  }
-
-  // Handle blur - close if empty (but not if clicking header buttons)
-  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
-    setIsFocused(false)
-    // Check if focus is moving to a header button
-    const relatedTarget = e.relatedTarget as HTMLElement
-    const isClickingHeaderButton = relatedTarget?.closest('.seed-composer-header')
-    
-    // Don't close if zen mode is active or being activated
-    if (zenMode || isEnteringZenRef.current) {
-      return
-    }
-    
-    // Close composer if empty when blurred, but not if clicking header buttons
-    if (!markdown.trim() && !isClickingHeaderButton) {
-      onClose?.()
-    }
-  }
-
-  // Focus editor when component mounts
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.focus()
-    }
-  }, [])
-
-  // Refocus editor when entering zen mode
-  useEffect(() => {
-    if (zenMode && editorRef.current) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.focus()
-        }
-      }, 10)
-    }
-  }, [zenMode])
-
-  // Add/remove class to body when zen mode is active to hide tabs
-  useEffect(() => {
-    if (zenMode) {
+    if (viewMode === 'zen') {
       document.body.classList.add('zen-mode-active')
     } else {
       document.body.classList.remove('zen-mode-active')
@@ -283,274 +44,326 @@ export function SeedComposer({ onSeedCreated, onClose }: SeedComposerProps) {
     return () => {
       document.body.classList.remove('zen-mode-active')
     }
-  }, [zenMode])
+  }, [viewMode])
 
-  // Handle paste (strip formatting)
-  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    const text = e.clipboardData.getData('text/plain')
-    document.execCommand('insertText', false, text)
-  }
+  // Handle blur in medium view - use timeout to allow button clicks to register
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
+    // Check if the new focus target is within the composer container
+    const relatedTarget = e.relatedTarget as HTMLElement | null
+    if (relatedTarget && containerRef.current?.contains(relatedTarget)) {
+      // Focus is moving to a button within the composer, don't handle blur
+      return
+    }
 
-  // Update markdown state
-  const updateMarkdown = useCallback((content: string) => {
-    setMarkdown(content)
+    // Delay blur handling to allow button clicks to register
+    blurTimeoutRef.current = setTimeout(() => {
+      if (viewMode === 'medium') {
+        if (hasText) {
+          // Shrink to smallview
+          setViewMode('small')
+        } else {
+          // Close composer
+          onClose()
+        }
+      }
+    }, 150)
+  }, [viewMode, hasText, onClose])
+
+  // Clear blur timeout on focus and handle smallview -> mediumview transition
+  const handleFocus = useCallback(() => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = null
+    }
+    if (viewMode === 'small') {
+      setViewMode('medium')
+    }
+  }, [viewMode])
+
+  // Cleanup blur timeout
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current)
+      }
+    }
   }, [])
 
-  // Handle zen mode exit
-  const handleExitZen = () => {
-    setZenMode(false)
-  }
+  // Handle close button click
+  const handleCloseClick = useCallback(() => {
+    // Clear any pending blur timeout
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = null
+    }
 
-  // Handle zen mode entry
-  const handleEnterZen = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    isEnteringZenRef.current = true
-    setZenMode(true)
-    // Refocus editor after zen mode is set to prevent blur from closing
-    setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.focus()
+    if (viewMode === 'zen') {
+      // In zen mode, check if we need confirmation
+      if (hasText) {
+        setShowConfirmDialog(true)
+      } else {
+        // Close immediately if no text
+        onClose()
       }
-    }, 0)
-  }
+    } else if (viewMode === 'medium') {
+      // In medium view, check if we need confirmation
+      if (hasText) {
+        setShowConfirmDialog(true)
+      } else {
+        // Close immediately if no text
+        onClose()
+      }
+    }
+  }, [viewMode, hasText, onClose])
 
-  // Format functions for toolbar
-  const formatBold = () => {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
+  // Handle maximize button (medium -> zen)
+  const handleMaximize = useCallback(() => {
+    // Clear blur timeout when clicking maximize
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = null
+    }
+    setViewMode('zen')
+  }, [])
 
-    const range = selection.getRangeAt(0)
-    const selectedText = range.toString()
-    if (!selectedText) return
+  // Handle minimize button (zen -> medium)
+  const handleMinimize = useCallback(() => {
+    setViewMode('medium')
+  }, [])
 
-    const boldText = `**${selectedText}**`
-    range.deleteContents()
-    range.insertNode(document.createTextNode(boldText))
-    
-    // Update markdown state
-    const newContent = editorRef.current?.textContent || ''
-    updateMarkdown(newContent)
-    updateHeight()
-  }
+  // Handle confirmation dialog
+  const handleConfirmClose = useCallback(() => {
+    setShowConfirmDialog(false)
+    onClose()
+  }, [onClose])
 
-  const formatItalic = () => {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
+  const handleCancelClose = useCallback(() => {
+    setShowConfirmDialog(false)
+    // Refocus textarea after canceling
+    if (textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [])
 
-    const range = selection.getRangeAt(0)
-    const selectedText = range.toString()
-    if (!selectedText) return
+  // Handle content change
+  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value)
+  }, [])
 
-    const italicText = `*${selectedText}*`
-    range.deleteContents()
-    range.insertNode(document.createTextNode(italicText))
-    
-    const newContent = editorRef.current?.textContent || ''
-    updateMarkdown(newContent)
-    updateHeight()
-  }
-
-  const formatLink = () => {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-    const selectedText = range.toString()
-    if (!selectedText) return
-
-    const url = prompt('Enter URL:')
-    if (!url) return
-
-    const linkText = `[${selectedText}](${url})`
-    range.deleteContents()
-    range.insertNode(document.createTextNode(linkText))
-    
-    const newContent = editorRef.current?.textContent || ''
-    updateMarkdown(newContent)
-    updateHeight()
-  }
-
-  const formatHeader = (level: number) => {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-    const editor = editorRef.current
-    if (!editor) return
-
-    // Find the start of the current line
-    const textNode = range.startContainer
-    let lineStart = 0
-    
-    if (textNode.nodeType === Node.TEXT_NODE && textNode.parentNode) {
-      const text = textNode.textContent || ''
-      const offset = range.startOffset
-      const beforeText = text.substring(0, offset)
-      lineStart = beforeText.lastIndexOf('\n') + 1
+  // Create seed
+  const handleCreateSeed = useCallback(async () => {
+    const trimmedContent = content.trim()
+    if (!trimmedContent || isSaving) {
+      return
     }
 
-    // Insert header markdown at line start
-    const headerPrefix = '#'.repeat(level) + ' '
-    
-    // If we're at the start of a line, just insert prefix
-    if (lineStart === 0 || (textNode.textContent?.[lineStart - 1] === '\n')) {
-      range.setStart(textNode, lineStart)
-      range.insertNode(document.createTextNode(headerPrefix))
-    } else {
-      // Insert on new line
-      const newline = document.createTextNode('\n' + headerPrefix)
-      range.insertNode(newline)
+    setIsSaving(true)
+    try {
+      const seed = await api.post<Seed>('/seeds', { content: trimmedContent })
+      onSeedCreated?.(seed)
+      // Clear content and close
+      setContent('')
+      onClose()
+    } catch (error) {
+      console.error('Failed to create seed:', error)
+    } finally {
+      setIsSaving(false)
     }
-    
-    const newContent = editorRef.current?.textContent || ''
-    updateMarkdown(newContent)
-    updateHeight()
-  }
+  }, [content, isSaving, onSeedCreated, onClose])
 
-  const formatList = (ordered: boolean) => {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-    const editor = editorRef.current
-    if (!editor) return
-
-    // Find the start of the current line
-    const textNode = range.startContainer
-    let lineStart = 0
-    
-    if (textNode.nodeType === Node.TEXT_NODE && textNode.parentNode) {
-      const text = textNode.textContent || ''
-      const offset = range.startOffset
-      const beforeText = text.substring(0, offset)
-      lineStart = beforeText.lastIndexOf('\n') + 1
+  // Handle keyboard shortcuts
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl/Cmd + Enter to submit
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault()
+      handleCreateSeed()
     }
-
-    // Insert list markdown at line start
-    const listPrefix = ordered ? '1. ' : '- '
-    
-    // If we're at the start of a line, just insert prefix
-    if (lineStart === 0 || (textNode.textContent?.[lineStart - 1] === '\n')) {
-      range.setStart(textNode, lineStart)
-      range.insertNode(document.createTextNode(listPrefix))
-    } else {
-      // Insert on new line
-      const newline = document.createTextNode('\n' + listPrefix)
-      range.insertNode(newline)
+    // Escape to close (only in zen mode)
+    if (e.key === 'Escape' && viewMode === 'zen') {
+      handleCloseClick()
     }
-    
-    const newContent = editorRef.current?.textContent || ''
-    updateMarkdown(newContent)
-    updateHeight()
-  }
+  }, [viewMode, handleCreateSeed, handleCloseClick])
 
-  const formatCodeBlock = () => {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-    const selectedText = range.toString()
-    
-    if (selectedText) {
-      // Wrap selection in code block
-      const codeText = `\`\`\`\n${selectedText}\n\`\`\``
-      range.deleteContents()
-      range.insertNode(document.createTextNode(codeText))
-    } else {
-      // Insert code block at cursor
-      const codeText = `\`\`\`\n\n\`\`\``
-      range.insertNode(document.createTextNode(codeText))
-    }
-    
-    const newContent = editorRef.current?.textContent || ''
-    updateMarkdown(newContent)
-    updateHeight()
-  }
-
-  const editorContent = (
-    <div className="seed-composer-container" ref={containerRef}>
-      {/* Header with X and Maximize buttons */}
-      <div className="seed-composer-header">
-        {!zenMode && (
-          <button
-            className="seed-composer-zen-button grow-hover"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              handleEnterZen(e)
-            }}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-            }}
-            aria-label="Enter zen mode"
-          >
-            <Maximize size={20} />
-          </button>
-        )}
-        <button
-          className="seed-composer-close-button grow-hover"
-          onClick={zenMode ? handleExitZen : onClose}
-          aria-label={zenMode ? "Exit zen mode" : "Close composer"}
-        >
-          <X size={20} />
-        </button>
-      </div>
+  // Auto-resize textarea and preserve scroll position during transitions
+  useEffect(() => {
+    if (textareaRef.current) {
+      // Save scroll position before transition
+      scrollPositionRef.current = textareaRef.current.scrollTop
       
-      <div
-        ref={editorRef}
-        className="seed-composer-editor"
-        contentEditable
-        onInput={handleInput}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onPaste={handlePaste}
-        data-placeholder=""
-      />
-      
-      {toolbarVisible && toolbarPosition && (
-        <SeedComposerToolbar
-          position={toolbarPosition}
-          visible={toolbarVisible}
-          onBold={formatBold}
-          onItalic={formatItalic}
-          onLink={formatLink}
-          onHeader={formatHeader}
-          onList={formatList}
-          onCodeBlock={formatCodeBlock}
-        />
-      )}
-      
-      {(markdown.trim() || isFocused) && (
-        <button
-          className="seed-composer-submit grow-hover"
-          onClick={handleSubmit}
-          disabled={!markdown.trim() || isCreatingRef.current}
-          aria-label="Submit seed"
-        >
-          <Check size={20} />
-        </button>
-      )}
-    </div>
-  )
+      // Use requestAnimationFrame to ensure smooth transition
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          if (viewMode === 'small') {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.minHeight = '40px'
+          } else if (viewMode === 'medium') {
+            textareaRef.current.style.height = '300px'
+          } else if (viewMode === 'zen') {
+            textareaRef.current.style.height = '100%'
+          }
+          
+          // Restore scroll position after transition starts
+          requestAnimationFrame(() => {
+            if (textareaRef.current) {
+              textareaRef.current.scrollTop = scrollPositionRef.current
+            }
+          })
+        }
+      })
+    }
+  }, [viewMode])
 
-  if (zenMode) {
-    return (
-      <div 
-        className={`seed-composer-zen-overlay ${zenMode ? 'active' : ''}`}
-        onClick={handleExitZen}
-      >
-        <div 
-          className="seed-composer-zen-content"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {editorContent}
+  // Prevent closing when clicking inside the composer
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
+
+  // Prevent blur when clicking buttons
+  const handleButtonMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+  }, [])
+
+  const isZenMode = viewMode === 'zen'
+  const isMediumMode = viewMode === 'medium'
+  const isSmallMode = viewMode === 'small'
+
+  return (
+    <>
+      {/* Zen mode overlay */}
+      {isZenMode && (
+        <div className="seed-composer-zen-overlay active">
+          <div className="seed-composer-zen-content">
+            <div
+              ref={containerRef}
+              className="seed-composer-container"
+              onClick={handleContainerClick}
+            >
+              {/* Header with minimize and close buttons */}
+              <div className="seed-composer-header">
+                <button
+                  className="seed-composer-zen-button"
+                  onClick={handleMinimize}
+                  onMouseDown={handleButtonMouseDown}
+                  aria-label="Minimize"
+                  type="button"
+                >
+                  <Minimize2 size={20} />
+                </button>
+                <button
+                  className="seed-composer-close-button"
+                  onClick={handleCloseClick}
+                  onMouseDown={handleButtonMouseDown}
+                  aria-label="Close"
+                  type="button"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Editor */}
+              <textarea
+                ref={textareaRef}
+                className="seed-composer-editor"
+                value={content}
+                onChange={handleContentChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Write your seed..."
+                style={{
+                  height: '100%',
+                  fontSize: 'var(--text-xl)',
+                }}
+              />
+
+              {/* Submit button */}
+              <button
+                className="seed-composer-submit"
+                onClick={handleCreateSeed}
+                onMouseDown={handleButtonMouseDown}
+                disabled={!hasText || isSaving}
+                aria-label="Submit"
+                type="button"
+              >
+                <Send size={20} />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    )
-  }
+      )}
 
-  return editorContent
+      {/* Medium and Small view */}
+      {!isZenMode && (
+        <div
+          ref={containerRef}
+          className={`seed-composer-container ${isClosing ? 'seed-composer-closing' : ''} ${isSmallMode ? 'seed-composer-minimized' : ''}`}
+          onClick={handleContainerClick}
+        >
+          {/* Header - only show in medium mode */}
+          {isMediumMode && (
+            <div className="seed-composer-header">
+              <button
+                className="seed-composer-zen-button"
+                onClick={handleMaximize}
+                onMouseDown={handleButtonMouseDown}
+                aria-label="Maximize"
+                type="button"
+              >
+                <Maximize2 size={20} />
+              </button>
+              <button
+                className="seed-composer-close-button"
+                onClick={handleCloseClick}
+                onMouseDown={handleButtonMouseDown}
+                aria-label="Close"
+                type="button"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          )}
+
+          {/* Editor - no inline styles, let CSS handle transitions */}
+          <textarea
+            ref={textareaRef}
+            className="seed-composer-editor"
+            value={content}
+            onChange={handleContentChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+            onKeyDown={handleKeyDown}
+            placeholder={isSmallMode ? "Click to expand..." : "Write your seed..."}
+          />
+
+          {/* Submit button - only show in medium mode */}
+          {isMediumMode && (
+            <button
+              className="seed-composer-submit"
+              onClick={handleCreateSeed}
+              onMouseDown={handleButtonMouseDown}
+              disabled={!hasText || isSaving}
+              aria-label="Submit"
+              type="button"
+            >
+              <Send size={20} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog} size="small">
+        <DialogHeader title="Discard changes?" onClose={handleCancelClose} />
+        <DialogBody>
+          <p>You have unsaved content. Are you sure you want to close and lose your changes?</p>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="secondary" onClick={handleCancelClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleConfirmClose}>
+            Discard
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </>
+  )
 }
-

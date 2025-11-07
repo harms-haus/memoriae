@@ -86,7 +86,8 @@
 }
 
 .dialog-small {
-  max-width: 300px;
+  max-width: 400px;
+  min-width: 320px;
 }
 
 .dialog-large {

@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+# NEVER create summary, issue, or other documentation markdown files unless specifically asked to

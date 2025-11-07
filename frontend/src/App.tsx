@@ -94,6 +94,8 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   const timelineViewRefreshRef = useRef<(() => void) | null>(null)
   const categoriesViewRefreshRef = useRef<(() => void) | null>(null)
   const [isComposerOpen, setIsComposerOpen] = React.useState(false)
+  const [isComposerClosing, setIsComposerClosing] = React.useState(false)
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
   // Determine active view from current route
   const getActiveView = (): ViewType => {
@@ -147,8 +149,30 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
     timelineViewRefreshRef.current?.()
     categoriesViewRefreshRef.current?.()
     // Close composer after seed is created
-    setIsComposerOpen(false)
+    handleCloseComposer()
   }
+
+  const handleCloseComposer = () => {
+    setIsComposerClosing(true)
+    // Clear any existing timeout
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+    }
+    // Wait for animation to complete before removing component
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsComposerOpen(false)
+      setIsComposerClosing(false)
+    }, 300) // Match CSS transition duration
+  }
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div style={{
@@ -240,7 +264,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
       {showComposerButton && !isSeedDetail && !isComposerOpen && (
         <button
           className="seed-composer-fab"
-          onClick={() => setIsComposerOpen(true)}
+          onClick={() => {
+            setIsComposerClosing(false)
+            setIsComposerOpen(true)
+          }}
           aria-label="Create new seed"
         >
           <Plus size={24} />
@@ -250,7 +277,7 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
       {/* Seed composer - only shown when opened */}
       {isComposerOpen && !isSeedDetail && (
         <div 
-          className="seed-composer-wrapper"
+          className={`seed-composer-wrapper ${isComposerClosing ? 'seed-composer-wrapper-closing' : ''}`}
           style={{
             position: 'fixed',
             bottom: '72px', // Default: above tabs (72px tall)
@@ -260,7 +287,8 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
           }}>
           <SeedComposer 
             onSeedCreated={handleSeedCreated}
-            onClose={() => setIsComposerOpen(false)}
+            onClose={handleCloseComposer}
+            isClosing={isComposerClosing}
           />
         </div>
       )}
