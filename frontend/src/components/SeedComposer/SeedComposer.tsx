@@ -435,6 +435,17 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
           onCodeBlock={formatCodeBlock}
         />
       )}
+      
+      {(markdown.trim() || isFocused) && (
+        <button
+          className="seed-composer-submit"
+          onClick={handleSubmit}
+          disabled={!markdown.trim() || isCreatingRef.current}
+          aria-label="Submit seed"
+        >
+          Submit
+        </button>
+      )}
     </div>
   )
 
