@@ -141,9 +141,6 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
     <div className="view-container categories-view-container">
       <div className="categories-view-header">
         <h2>Categories</h2>
-        <p className="lead">
-          Browse your hierarchical categories and filter seeds by category.
-        </p>
       </div>
 
       <div className="categories-view-content">
@@ -159,71 +156,69 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
         {/* Filtered Seeds */}
         {selectedCategoryId && (
           <div className="categories-view-seeds">
-            <Panel variant="elevated" className="categories-view-seeds-panel">
-              <div className="categories-view-seeds-header">
-                <div>
-                  <h3>
-                    Seeds in "{selectedCategory?.name || 'Category'}"
-                  </h3>
-                  <p className="text-secondary">
-                    {loading ? 'Loading...' : `${seeds.length} ${seeds.length === 1 ? 'seed' : 'seeds'}`}
-                  </p>
-                </div>
-                <Button variant="ghost" onClick={clearSelection} className="categories-view-clear">
-                  <X size={16} />
-                  Clear
+            <div className="categories-view-seeds-header">
+              <span className="categories-view-seeds-count">
+                {loading ? 'Loading...' : `${seeds.length} ${seeds.length === 1 ? 'seed' : 'seeds'}`}
+              </span>
+              <Button variant="ghost" onClick={clearSelection} className="categories-view-clear">
+                <X size={16} />
+                CLEAR
+              </Button>
+            </div>
+
+            {error && (
+              <div className="categories-view-error">
+                <p className="text-error">{error}</p>
+                <Button variant="secondary" onClick={loadFilteredSeeds}>
+                  Retry
                 </Button>
               </div>
+            )}
 
-              {error && (
-                <div className="categories-view-error">
-                  <p className="text-error">{error}</p>
-                  <Button variant="secondary" onClick={loadFilteredSeeds}>
-                    Retry
-                  </Button>
-                </div>
-              )}
+            {!error && loading && (
+              <div className="categories-view-loading">
+                <p>Loading seeds...</p>
+              </div>
+            )}
 
-              {!error && loading && (
-                <div className="categories-view-loading">
-                  <p>Loading seeds...</p>
-                </div>
-              )}
+            {!error && !loading && seeds.length === 0 && (
+              <div className="categories-view-empty">
+                <p className="lead">No seeds in this category yet.</p>
+              </div>
+            )}
 
-              {!error && !loading && seeds.length === 0 && (
-                <div className="categories-view-empty">
-                  <p className="lead">No seeds in this category yet.</p>
-                </div>
-              )}
+            {!error && !loading && seeds.length > 0 && (
+              <div className="categories-view-seeds-list">
+                {seeds.map((seed) => {
+                  // Create tag color map: tag name (lowercase) -> color
+                  const tagColorMap = new Map<string, string>()
+                  tags.forEach(tag => {
+                    if (tag.color) {
+                      tagColorMap.set(tag.name.toLowerCase(), tag.color)
+                    }
+                  })
 
-              {!error && !loading && seeds.length > 0 && (
-                <div className="categories-view-seeds-list">
-                  {seeds.map((seed) => {
-                    // Create tag color map: tag name (lowercase) -> color
-                    const tagColorMap = new Map<string, string>()
-                    tags.forEach(tag => {
-                      if (tag.color) {
-                        tagColorMap.set(tag.name.toLowerCase(), tag.color)
-                      }
-                    })
-
-                    return (
-                      <div key={seed.id} className="categories-view-seed-item">
-                        <Panel variant="elevated" className="categories-view-seed-panel">
-                          <SeedView
-                            seed={seed}
-                            tagColors={tagColorMap}
-                            onTagClick={(tagId, tagName) => {
-                              navigate(`/tags/${tagId}`)
-                            }}
-                          />
-                        </Panel>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </Panel>
+                  return (
+                    <div 
+                      key={seed.id} 
+                      className="categories-view-seed-item"
+                      onClick={() => navigate(`/seeds/${seed.id}`)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <Panel variant="elevated">
+                        <SeedView
+                          seed={seed}
+                          tagColors={tagColorMap}
+                          onTagClick={(tagId, tagName) => {
+                            navigate(`/tags/${tagId}`)
+                          }}
+                        />
+                      </Panel>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
