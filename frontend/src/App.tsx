@@ -14,13 +14,15 @@ import {
   TagDetailView,
 } from './components/views'
 import { SeedComposer } from './components/SeedComposer'
+import './components/SeedComposer/SeedComposer.css'
 import { useFollowupNotifications } from './hooks/useFollowupNotifications'
 import { 
   FileText, 
   Clock, 
   FolderTree, 
   Tags, 
-  Settings 
+  Settings,
+  Plus
 } from 'lucide-react'
 
 export type ViewType = 'seeds' | 'timeline' | 'categories' | 'tags' | 'settings'
@@ -91,6 +93,7 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   const seedsViewRefreshRef = useRef<(() => void) | null>(null)
   const timelineViewRefreshRef = useRef<(() => void) | null>(null)
   const categoriesViewRefreshRef = useRef<(() => void) | null>(null)
+  const [isComposerOpen, setIsComposerOpen] = React.useState(false)
   
   // Determine active view from current route
   const getActiveView = (): ViewType => {
@@ -115,10 +118,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   }
 
   const activeView = getActiveView()
-  const showSeedComposer = activeView === 'seeds' || 
-                          activeView === 'timeline' || 
-                          activeView === 'categories' || 
-                          activeView === 'tags'
+  const showComposerButton = activeView === 'seeds' || 
+                             activeView === 'timeline' || 
+                             activeView === 'categories' || 
+                             activeView === 'tags'
   const isSeedDetail = location.pathname.startsWith('/seeds/') && 
                        location.pathname !== '/seeds' &&
                        !location.pathname.startsWith('/seeds/tag/')
@@ -143,6 +146,8 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
     seedsViewRefreshRef.current?.()
     timelineViewRefreshRef.current?.()
     categoriesViewRefreshRef.current?.()
+    // Close composer after seed is created
+    setIsComposerOpen(false)
   }
 
   return (
@@ -231,7 +236,19 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
         </div>
       </div>
       
-      {showSeedComposer && !isSeedDetail && (
+      {/* Floating + button to open composer */}
+      {showComposerButton && !isSeedDetail && !isComposerOpen && (
+        <button
+          className="seed-composer-fab"
+          onClick={() => setIsComposerOpen(true)}
+          aria-label="Create new seed"
+        >
+          <Plus size={24} />
+        </button>
+      )}
+      
+      {/* Seed composer - only shown when opened */}
+      {isComposerOpen && !isSeedDetail && (
         <div 
           className="seed-composer-wrapper"
           style={{
@@ -241,7 +258,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
             right: 0,
             zIndex: 999,
           }}>
-          <SeedComposer onSeedCreated={handleSeedCreated} />
+          <SeedComposer 
+            onSeedCreated={handleSeedCreated}
+            onClose={() => setIsComposerOpen(false)}
+          />
         </div>
       )}
       {children}

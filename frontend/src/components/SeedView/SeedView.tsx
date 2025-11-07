@@ -57,37 +57,40 @@ export function SeedView({ seed, onTagClick, tagColors }: SeedViewProps) {
 
   return (
     <div className="seed-view">
-      {/* Date/time in top-right corner */}
-      <div className="seed-view-time">
-        {formatSeedTime(seed)}
+      <div className="seed-view-header">
+        {/* Category */}
+        {primaryCategory && (
+          <div className="seed-view-category">
+            {primaryCategory.path}
+          </div>
+        )}
+        {/* Date/time in top-right corner */}
+        <div className="seed-view-time">
+          {formatSeedTime(seed)}
+        </div>
       </div>
 
-      {/* Seed content */}
-      <div className="seed-view-content">
-        {content}
+      <div className="seed-view-body">
+        {/* Seed content */}
+        <div className="seed-view-content">
+          {content}
+        </div>
+
+        {/* Tags with truncation */}
+        {seedTags.length > 0 && (
+          <div className="seed-view-tags">
+            <TagList
+              tags={seedTags.map(tag => ({
+                id: tag.id,
+                name: tag.name,
+                color: tagColors?.get(tag.name.toLowerCase()) ?? null,
+              }))}
+              onTagClick={handleTagClick}
+              suppressTruncate={true}
+            />
+          </div>
+        )}
       </div>
-
-      {/* Tags with truncation */}
-      {seedTags.length > 0 && (
-        <div className="seed-view-tags">
-          <TagList
-            tags={seedTags.map(tag => ({
-              id: tag.id,
-              name: tag.name,
-              color: tagColors?.get(tag.name.toLowerCase()) ?? null,
-            }))}
-            onTagClick={handleTagClick}
-            suppressTruncate={true}
-          />
-        </div>
-      )}
-
-      {/* Category in brackets, bottom-center, italicized */}
-      {primaryCategory && (
-        <div className="seed-view-category">
-          [{primaryCategory.path}]
-        </div>
-      )}
     </div>
   )
 }

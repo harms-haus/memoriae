@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X } from 'lucide-react'
+import { X, Maximize, Check } from 'lucide-react'
 import { api } from '../../services/api'
 import { SeedComposerToolbar } from './SeedComposerToolbar'
 import './SeedComposer.css'
 
 interface SeedComposerProps {
   onSeedCreated?: () => void
+  onClose?: () => void
 }
 
-export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
+export function SeedComposer({ onSeedCreated, onClose }: SeedComposerProps) {
   const [markdown, setMarkdown] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [zenMode, setZenMode] = useState(false)
@@ -18,6 +19,7 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mouseMoveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isCreatingRef = useRef(false)
+  const isEnteringZenRef = useRef(false)
 
   // Update height dynamically
   const updateHeight = useCallback(() => {
@@ -51,15 +53,7 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
         }
       })
     }
-
-    // Check for zen mode threshold
-    const viewportHeight = window.innerHeight
-    if (newHeight >= viewportHeight * 0.5 && !zenMode) {
-      setZenMode(true)
-    } else if (zenMode && newHeight < viewportHeight * 0.5) {
-      setZenMode(false)
-    }
-  }, [isFocused, zenMode])
+  }, [isFocused])
 
   // Initialize height on mount
   useEffect(() => {
@@ -201,18 +195,25 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
         updateHeight()
       }
       onSeedCreated?.()
+      // Close composer after successful creation
+      onClose?.()
     } catch (error) {
       console.error('Failed to create seed:', error)
     } finally {
       isCreatingRef.current = false
     }
-  }, [onSeedCreated, updateHeight])
+  }, [onSeedCreated, onClose, updateHeight])
 
-  // Handle ESC key for zen mode
+  // Handle ESC key for zen mode and closing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && zenMode) {
-        setZenMode(false)
+      if (e.key === 'Escape') {
+        if (zenMode) {
+          setZenMode(false)
+        } else {
+          // Close composer if not in zen mode
+          onClose?.()
+        }
       }
       // Ctrl+Enter to submit
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -222,7 +223,7 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [zenMode, handleSubmit])
+  }, [zenMode, handleSubmit, onClose])
 
   // Handle input changes
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
@@ -235,10 +236,54 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
     setIsFocused(true)
   }
 
-  // Handle blur
-  const handleBlur = () => {
+  // Handle blur - close if empty (but not if clicking header buttons)
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
     setIsFocused(false)
+    // Check if focus is moving to a header button
+    const relatedTarget = e.relatedTarget as HTMLElement
+    const isClickingHeaderButton = relatedTarget?.closest('.seed-composer-header')
+    
+    // Don't close if zen mode is active or being activated
+    if (zenMode || isEnteringZenRef.current) {
+      return
+    }
+    
+    // Close composer if empty when blurred, but not if clicking header buttons
+    if (!markdown.trim() && !isClickingHeaderButton) {
+      onClose?.()
+    }
   }
+
+  // Focus editor when component mounts
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.focus()
+    }
+  }, [])
+
+  // Refocus editor when entering zen mode
+  useEffect(() => {
+    if (zenMode && editorRef.current) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.focus()
+        }
+      }, 10)
+    }
+  }, [zenMode])
+
+  // Add/remove class to body when zen mode is active to hide tabs
+  useEffect(() => {
+    if (zenMode) {
+      document.body.classList.add('zen-mode-active')
+    } else {
+      document.body.classList.remove('zen-mode-active')
+    }
+    return () => {
+      document.body.classList.remove('zen-mode-active')
+    }
+  }, [zenMode])
 
   // Handle paste (strip formatting)
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -255,6 +300,20 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
   // Handle zen mode exit
   const handleExitZen = () => {
     setZenMode(false)
+  }
+
+  // Handle zen mode entry
+  const handleEnterZen = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    isEnteringZenRef.current = true
+    setZenMode(true)
+    // Refocus editor after zen mode is set to prevent blur from closing
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.focus()
+      }
+    }, 0)
   }
 
   // Format functions for toolbar
@@ -412,6 +471,33 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
 
   const editorContent = (
     <div className="seed-composer-container" ref={containerRef}>
+      {/* Header with X and Maximize buttons */}
+      <div className="seed-composer-header">
+        {!zenMode && (
+          <button
+            className="seed-composer-zen-button grow-hover"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              handleEnterZen(e)
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+            aria-label="Enter zen mode"
+          >
+            <Maximize size={20} />
+          </button>
+        )}
+        <button
+          className="seed-composer-close-button grow-hover"
+          onClick={zenMode ? handleExitZen : onClose}
+          aria-label={zenMode ? "Exit zen mode" : "Close composer"}
+        >
+          <X size={20} />
+        </button>
+      </div>
+      
       <div
         ref={editorRef}
         className="seed-composer-editor"
@@ -420,7 +506,7 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
         onFocus={handleFocus}
         onBlur={handleBlur}
         onPaste={handlePaste}
-        data-placeholder="Start writing your seed..."
+        data-placeholder=""
       />
       
       {toolbarVisible && toolbarPosition && (
@@ -438,12 +524,12 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
       
       {(markdown.trim() || isFocused) && (
         <button
-          className="seed-composer-submit"
+          className="seed-composer-submit grow-hover"
           onClick={handleSubmit}
           disabled={!markdown.trim() || isCreatingRef.current}
           aria-label="Submit seed"
         >
-          Submit
+          <Check size={20} />
         </button>
       )}
     </div>
@@ -460,13 +546,6 @@ export function SeedComposer({ onSeedCreated }: SeedComposerProps) {
           onClick={(e) => e.stopPropagation()}
         >
           {editorContent}
-          <button
-            className="seed-composer-zen-close"
-            onClick={handleExitZen}
-            aria-label="Exit zen mode"
-          >
-            <X size={20} />
-          </button>
         </div>
       </div>
     )

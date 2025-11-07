@@ -22,12 +22,75 @@
   margin: 0;
   padding: 0;
   border-top: var(--border-medium) solid var(--border-primary);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* In zen mode, container expands to full size */
+.seed-composer-zen-overlay.active .seed-composer-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border-top: none;
+}
+
+/* Header with action buttons */
+.seed-composer-header {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  gap: var(--space-2);
+  z-index: 10;
+}
+
+/* In zen mode, adjust header positioning */
+.seed-composer-zen-overlay.active .seed-composer-header {
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+.seed-composer-close-button,
+.seed-composer-zen-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-base);
+}
+
+.seed-composer-close-button:hover,
+.seed-composer-zen-button:hover {
+  color: var(--text-primary);
+}
+
+.seed-composer-close-button:focus,
+.seed-composer-zen-button:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Touch-friendly header buttons */
+@media (hover: none) and (pointer: coarse) {
+  .seed-composer-close-button,
+  .seed-composer-zen-button {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .seed-composer-editor {
   width: 100%;
   min-height: 0;
   padding: var(--space-8);
+  padding-top: calc(var(--space-8) + 48px); /* Extra padding for header buttons */
   padding-bottom: calc(var(--space-8) + 48px); /* Extra padding for submit button */
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -41,7 +104,7 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   box-sizing: border-box;
-  height: 0;
+  height: 300px; /* Default height when opened */
 }
 
 .seed-composer-editor:focus {
@@ -49,7 +112,7 @@
 }
 
 .seed-composer-editor:empty:before {
-  content: attr(data-placeholder);
+  content: '';
   color: var(--text-secondary);
   pointer-events: none;
 }
@@ -163,7 +226,7 @@
   z-index: 2000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--transition-base), backdrop-filter var(--transition-base);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,10 +238,20 @@
 }
 
 .seed-composer-zen-content {
-  width: 100%;
-  max-width: 900px;
-  padding: var(--space-8);
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.seed-composer-zen-overlay.active .seed-composer-zen-content {
+  transform: scale(1);
+  opacity: 1;
 }
 
 .seed-composer-zen-close {
@@ -231,61 +304,107 @@
 .seed-composer-zen-overlay.active .seed-composer-editor {
   font-size: var(--text-xl);
   padding: var(--space-8);
+  padding-top: calc(var(--space-8) + 48px); /* Extra padding for header buttons */
   padding-bottom: calc(var(--space-8) + 48px); /* Extra padding for submit button */
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  transition: font-size 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Submit Button */
+/* Hide tabs when zen mode is active */
+body.zen-mode-active .tabs-container-top .tabs {
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Ensure tabs have transition when not in zen mode */
+.tabs-container-top .tabs {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Submit Button - Icon only, no border/background */
 .seed-composer-submit {
   position: absolute;
   bottom: var(--space-4);
   right: var(--space-4);
-  padding: var(--space-2) var(--space-4);
-  background: var(--accent-yellow);
-  color: var(--text-inverse);
-  border: var(--border-thick) solid var(--accent-yellow-dark);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-family: var(--font-primary);
-  font-weight: var(--weight-semibold);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background var(--transition-base), border-color var(--transition-base), opacity var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 10;
-  min-height: 36px;
-  box-shadow: var(--shadow-sm);
+  transition: color var(--transition-base);
 }
 
 .seed-composer-submit:hover:not(:disabled) {
-  background: var(--accent-yellow-dark);
-  border-color: var(--accent-yellow);
-  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
 }
 
 .seed-composer-submit:focus {
   outline: var(--border-thick) solid var(--focus-ring);
   outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .seed-composer-submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: var(--disabled-bg);
-  border-color: var(--disabled-border);
   color: var(--disabled-text);
 }
 
 /* Touch-friendly submit button */
 @media (hover: none) and (pointer: coarse) {
   .seed-composer-submit {
-    min-width: 44px;
-    min-height: 44px;
-    padding: var(--space-3) var(--space-4);
+    width: 44px;
+    height: 44px;
   }
 }
 
-/* Ensure toolbar is visible in zen mode */
-.seed-composer-zen-overlay.active .seed-composer-toolbar {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: all;
+/* Floating Action Button (FAB) */
+.seed-composer-fab {
+  position: fixed;
+  bottom: 88px; /* Above tabs (72px) + spacing */
+  right: var(--space-4);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--accent-yellow);
+  border: var(--border-thick) solid var(--accent-yellow-dark);
+  color: var(--text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1001;
+  box-shadow: var(--shadow-lg);
+  transition: background var(--transition-base), border-color var(--transition-base), transform var(--transition-base);
+}
+
+.seed-composer-fab:hover {
+  background: var(--accent-yellow-dark);
+  border-color: var(--accent-yellow);
+  transform: scale(1.05);
+}
+
+.seed-composer-fab:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Touch-friendly FAB */
+@media (hover: none) and (pointer: coarse) {
+  .seed-composer-fab {
+    bottom: 96px; /* Above taller tabs (80px) + spacing */
+    width: 56px;
+    height: 56px;
+  }
 }
 

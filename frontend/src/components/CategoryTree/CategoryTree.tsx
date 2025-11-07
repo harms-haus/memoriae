@@ -366,18 +366,26 @@ function CategoryTreeItem({
         {/* Expand/collapse button */}
         <div className="category-tree-expand">
           {hasChildren ? (
-            <button
+            <div
               className="category-tree-expand-btn"
               onClick={handleExpandClick}
+              role="button"
+              tabIndex={0}
               aria-label={isExpanded ? 'Collapse' : 'Expand'}
-              type="button"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleExpandClick(e as any)
+                }
+              }}
             >
               {isExpanded ? (
                 <ChevronDown size={14} />
               ) : (
                 <ChevronRight size={14} />
               )}
-            </button>
+            </div>
           ) : (
             <div className="category-tree-expand-spacer" />
           )}

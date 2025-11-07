@@ -1,7 +1,9 @@
 .categories-view-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
+
 
 .categories-view-header {
   margin-bottom: var(--space-4);
@@ -32,14 +34,6 @@
   flex-shrink: 0;
 }
 
-@media (min-width: 1024px) {
-  .categories-view-content {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: var(--space-6);
-  }
-}
-
 .categories-view-tree {
   flex: 0 0 auto;
   width: 100%;
@@ -50,11 +44,25 @@
 }
 
 @media (min-width: 1024px) {
+  .categories-view-container.no-selection {
+    max-width: none;
+  }
+
+  .categories-view-content {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-6);
+  }
+
   .categories-view-tree {
     width: auto;
     min-width: 300px;
     max-width: 400px;
     flex-shrink: 0;
+  }
+
+  .categories-view-content.no-selection .categories-view-seeds {
+    display: flex;
   }
 }
 
@@ -64,7 +72,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: 100%;
 }
 
 .categories-view-seeds-header {
@@ -98,7 +105,8 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-4);
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .categories-view-seeds-list {
