@@ -122,10 +122,40 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
       return
     }
 
-    // 7. Run the automation
+    // 7. Create RUN_AUTOMATION event to track that automation was executed
+    // For manual runs, the event is already created in the endpoint, so check if one exists
+    // For automatic runs, create it here
+    const isManual = job.data.metadata?.manual === true || false
+    
+    if (!isManual) {
+      // Only create RUN_AUTOMATION event for automatic runs
+      // Manual runs already have the event created in the endpoint
+      const automationRunEvent = await EventsService.create({
+        seed_id: seedId,
+        event_type: 'RUN_AUTOMATION',
+        patch_json: [
+          {
+            op: 'add',
+            path: '/metadata',
+            value: {
+              automation_id: automationId,
+              automation_name: automation.name,
+              automation_description: automation.description || null,
+              manual: false,
+            },
+          },
+        ],
+        automation_id: automationId,
+      })
+      console.log(`Created RUN_AUTOMATION event ${automationRunEvent.id} for automation ${automationId}`)
+    } else {
+      console.log(`Skipping RUN_AUTOMATION event creation for manual run (already created in endpoint)`)
+    }
+
+    // 8. Run the automation
     const result = await automation.process(seed, context)
 
-    // 8. Save events created by the automation
+    // 9. Save events created by the automation
     if (result.events.length > 0) {
       // Log first event's patch_json structure for debugging
       const firstEvent = result.events[0]

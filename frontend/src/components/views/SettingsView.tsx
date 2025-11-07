@@ -4,6 +4,7 @@ import { api } from '../../services/api'
 import { Button } from '@mother/components/Button'
 import { Input } from '@mother/components/Input'
 import { Loader2, Save, Check } from 'lucide-react'
+import { ModelSelector } from '../ModelSelector'
 import './Views.css'
 
 interface UserSettings {
@@ -236,32 +237,19 @@ export function SettingsView() {
           <div>
             <label className="label">AI Model</label>
             <div style={{ marginTop: 'var(--space-2)' }}>
-              <select
-                className="select"
+              <ModelSelector
+                options={models}
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                onChange={setSelectedModel}
                 onFocus={handleSelectFocus}
                 disabled={!apiKey.trim() || loadingModels}
-              >
-                <option value="">Select a model...</option>
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name || model.id}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select a model..."
+                loading={loadingModels}
+              />
               {selectedModel && models.length === 0 && settings.openrouter_model_name && (
                 <p className="text-sm" style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>
                   Selected: {settings.openrouter_model_name}
                 </p>
-              )}
-              {loadingModels && (
-                <div className="flex items-center gap-2" style={{ marginTop: 'var(--space-2)' }}>
-                  <Loader2 className="animate-spin" size={16} />
-                  <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                    Loading models...
-                  </span>
-                </div>
               )}
             </div>
             {!apiKey.trim() && (

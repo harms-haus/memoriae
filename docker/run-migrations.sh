@@ -57,3 +57,9 @@ fi
 
 echo -e "${GREEN}Migrations completed successfully!${NC}"
 
+# Start backend after migrations complete (if supervisorctl is available)
+if command -v supervisorctl > /dev/null 2>&1; then
+    echo -e "${YELLOW}Starting backend service...${NC}"
+    supervisorctl start backend || echo -e "${YELLOW}Note: Backend may already be running or will be started by supervisord${NC}"
+fi
+

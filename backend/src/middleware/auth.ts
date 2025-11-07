@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { config } from '../config'
+import { getUserById } from '../services/auth'
 
 // Extend Express Request type to include user
 declare global {
@@ -27,8 +28,9 @@ export interface JWTPayload {
 /**
  * Middleware to authenticate requests using JWT token
  * Expects token in Authorization header as "Bearer <token>"
+ * Also verifies that the user exists in the database
  */
-export function authenticate(req: Request, res: Response, next: NextFunction): void {
+export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -40,11 +42,19 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
   try {
     const payload = jwt.verify(token, config.jwt.secret) as JWTPayload
+    
+    // Verify user exists in database (handles cases where database was reset)
+    const user = await getUserById(payload.id)
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized - User not found. Please log in again.' })
+      return
+    }
+
     req.user = {
-      id: payload.id,
-      email: payload.email,
-      name: payload.name,
-      provider: payload.provider,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      provider: user.provider,
     }
     next()
   } catch (error) {
@@ -62,9 +72,9 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
 /**
  * Optional authentication middleware - doesn't fail if no token
- * Sets req.user if valid token is present
+ * Sets req.user if valid token is present and user exists in database
  */
-export function optionalAuth(req: Request, res: Response, next: NextFunction): void {
+export async function optionalAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -76,12 +86,18 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
 
   try {
     const payload = jwt.verify(token, config.jwt.secret) as JWTPayload
-    req.user = {
-      id: payload.id,
-      email: payload.email,
-      name: payload.name,
-      provider: payload.provider,
+    
+    // Verify user exists in database
+    const user = await getUserById(payload.id)
+    if (user) {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        provider: user.provider,
+      }
     }
+    // Silently ignore if user doesn't exist (optional auth)
   } catch (error) {
     // Silently ignore invalid tokens for optional auth
   }

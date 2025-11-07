@@ -4,6 +4,7 @@ import request from 'supertest'
 import express from 'express'
 import categoriesRoutes from '../../routes/categories'
 import { generateTestToken } from '../../test-helpers'
+import * as authService from '../../services/auth'
 
 // Mock the categories service
 vi.mock('../../services/categories', () => {
@@ -31,6 +32,11 @@ const mockCategories = [
   },
 ]
 
+// Mock auth service
+vi.mock('../../services/auth', () => ({
+  getUserById: vi.fn(),
+}))
+
 // Mock auth middleware - use real auth but mock at a higher level
 vi.mock('../../middleware/auth', async () => {
   const actual = await vi.importActual('../../middleware/auth')
@@ -47,6 +53,16 @@ describe('Categories Routes', () => {
     const categoriesModule = await import('../../services/categories')
     const mockGetAllCategories = (categoriesModule as any).__mockGetAllCategories
     mockGetAllCategories.mockResolvedValue(mockCategories)
+    
+    // Mock getUserById to return a user by default
+    vi.mocked(authService.getUserById).mockResolvedValue({
+      id: 'user-id',
+      email: 'test@example.com',
+      name: 'Test User',
+      provider: 'google',
+      provider_id: 'provider-123',
+      created_at: new Date(),
+    })
   })
 
   describe('GET /api/categories', () => {

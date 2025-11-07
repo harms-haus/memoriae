@@ -25,18 +25,16 @@ export class EventsService {
    * Create a new event
    */
   static async create(data: CreateEventDto): Promise<Event> {
-    const event = {
-      id: uuidv4(),
-      seed_id: data.seed_id,
-      event_type: data.event_type,
-      patch_json: data.patch_json,
-      enabled: true,
-      created_at: new Date(),
-      automation_id: data.automation_id || null,
-    }
-
     const [created] = await db('events')
-      .insert(event)
+      .insert({
+        id: uuidv4(),
+        seed_id: data.seed_id,
+        event_type: data.event_type,
+        patch_json: db.raw('?::jsonb', [JSON.stringify(data.patch_json)]), // Use raw SQL with explicit JSONB casting
+        enabled: true,
+        created_at: new Date(),
+        automation_id: data.automation_id || null,
+      })
       .returning('*')
 
     return {
@@ -50,36 +48,27 @@ export class EventsService {
    * Create multiple events in a transaction
    */
   static async createMany(events: CreateEventDto[]): Promise<Event[]> {
-    // Use raw SQL for JSONB to avoid double-encoding issues
-    // Insert events one by one to ensure proper JSONB handling
+    // Use Knex query builder with proper JSONB handling
+    // Use raw SQL with explicit JSONB casting to avoid double-encoding issues
     const created: Event[] = []
     
     for (const data of events) {
-      const id = uuidv4()
-      const patchJsonString = JSON.stringify(data.patch_json)
-      
-      // Use PostgreSQL parameterized query with $1, $2, etc.
-      const result = await db.raw(
-        `INSERT INTO events (id, seed_id, event_type, patch_json, enabled, created_at, automation_id)
-         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)
-         RETURNING *`,
-        [
-          id,
-          data.seed_id,
-          data.event_type,
-          patchJsonString,
-          true,
-          new Date(),
-          data.automation_id || null,
-        ]
-      )
+      const [result] = await db('events')
+        .insert({
+          id: uuidv4(),
+          seed_id: data.seed_id,
+          event_type: data.event_type,
+          patch_json: db.raw('?::jsonb', [JSON.stringify(data.patch_json)]), // Use raw SQL with explicit JSONB casting
+          enabled: true,
+          created_at: new Date(),
+          automation_id: data.automation_id || null,
+        })
+        .returning('*')
 
-      // PostgreSQL returns { rows: [...] }
-      const event = result.rows[0]
       created.push({
-        ...event,
-        patch_json: event.patch_json as Operation[],
-        created_at: new Date(event.created_at),
+        ...result,
+        patch_json: result.patch_json as Operation[],
+        created_at: new Date(result.created_at),
       })
     }
 

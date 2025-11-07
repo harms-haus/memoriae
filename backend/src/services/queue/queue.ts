@@ -10,6 +10,9 @@ export interface AutomationJobData {
   automationId: string
   userId: string
   priority?: number
+  metadata?: {
+    manual?: boolean
+  }
 }
 
 /**

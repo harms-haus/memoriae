@@ -1,0 +1,185 @@
+.model-selector {
+  position: relative;
+  width: 100%;
+}
+
+.model-selector-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.model-selector-input {
+  width: 100%;
+  background: var(--input-bg, var(--bg-secondary));
+  border: var(--border-thick) solid var(--input-border, var(--border-primary));
+  border-radius: var(--input-border-radius, var(--radius-md));
+  padding: var(--input-padding-y, var(--space-2)) var(--input-padding-x, var(--space-3));
+  font-size: var(--input-font-size, var(--text-base));
+  color: var(--input-color, var(--text-primary));
+  font-family: var(--input-font-family, var(--font-primary));
+  transition: var(--transition-base);
+  padding-right: 4rem; /* Space for action buttons */
+}
+
+.model-selector-input:focus {
+  outline: none;
+  border-color: var(--input-border-focus, var(--border-accent));
+  box-shadow: 0 0 0 3px var(--input-focus-ring, var(--focus-ring));
+}
+
+.model-selector-input:hover:not(:disabled) {
+  border-color: var(--input-border-hover, var(--border-secondary));
+}
+
+.model-selector-input:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.model-selector-actions {
+  position: absolute;
+  right: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.model-selector-clear,
+.model-selector-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
+}
+
+.model-selector-clear:hover,
+.model-selector-toggle:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.model-selector-clear:focus-visible,
+.model-selector-toggle:focus-visible {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.model-selector-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.model-selector-toggle svg {
+  transition: transform var(--transition-base);
+}
+
+.model-selector-toggle svg.open {
+  transform: rotate(180deg);
+}
+
+.model-selector-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  max-height: 20rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.model-selector-dropdown.open-upward {
+  top: auto;
+  bottom: calc(100% + var(--space-1));
+}
+
+.model-selector-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  max-height: 20rem;
+  background: var(--bg-elevated);
+}
+
+.model-selector-option {
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  transition: var(--transition-base);
+}
+
+.model-selector-option:hover,
+.model-selector-option.highlighted {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.model-selector-option.selected {
+  background: rgba(255, 212, 59, 0.15);
+}
+
+.model-selector-option-name {
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
+
+.model-selector-option.selected .model-selector-option-name {
+  color: var(--accent-yellow);
+}
+
+.model-selector-option.selected .model-selector-option-id {
+  color: var(--text-secondary);
+}
+
+.model-selector-option-id {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.model-selector-loading,
+.model-selector-empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  background: var(--bg-elevated);
+}
+
+/* Scrollbar styling */
+.model-selector-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.model-selector-list::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.model-selector-list::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.model-selector-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-primary);
+}
+

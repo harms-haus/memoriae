@@ -237,13 +237,21 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     }
   }
 
+  const extractTagName = (event: Event): string | null => {
+    if (event.event_type !== 'ADD_TAG') return null
+    const addTagOp = event.patch_json.find((op) => op.path.startsWith('/tags/'))
+    if (!addTagOp?.value) return null
+    if (typeof addTagOp.value === 'object' && addTagOp.value && 'name' in addTagOp.value) {
+      return addTagOp.value.name as string
+    }
+    return String(addTagOp.value)
+  }
+
   const formatEventDescription = (event: Event): string => {
     switch (event.event_type) {
       case 'ADD_TAG':
-        const addTagOp = event.patch_json.find((op) => op.path.startsWith('/tags/'))
-        return addTagOp?.value
-          ? `Added tag: ${typeof addTagOp.value === 'object' && addTagOp.value && 'name' in addTagOp.value ? addTagOp.value.name : addTagOp.value}`
-          : 'Added tag'
+        const tagName = extractTagName(event)
+        return tagName || 'Added tag'
       case 'REMOVE_TAG':
         return 'Removed tag'
       case 'SET_CATEGORY':
@@ -257,6 +265,96 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         return event.event_type
     }
   }
+
+  // Extract metadata from RUN_AUTOMATION events
+  const extractAutomationMetadata = (event: Event): { automation_name: string; manual: boolean } | null => {
+    if (event.event_type !== 'RUN_AUTOMATION') return null
+    const metadataOp = event.patch_json.find((op) => op.path === '/metadata')
+    if (!metadataOp?.value || typeof metadataOp.value !== 'object') return null
+    const metadata = metadataOp.value as { automation_name?: string; manual?: boolean }
+    return {
+      automation_name: metadata.automation_name || 'Unknown',
+      manual: metadata.manual === true,
+    }
+  }
+
+  // Format automation name for display (e.g., "tag" -> "Tag Extraction")
+  const formatAutomationName = (name: string): string => {
+    // Capitalize first letter
+    const capitalized = name.charAt(0).toUpperCase() + name.slice(1)
+    // Add "Extraction" or similar suffix based on automation type
+    if (name === 'tag') return 'Tag Extraction'
+    if (name === 'categorize') return 'Categorization'
+    return capitalized
+  }
+
+  // Group consecutive events of the same type
+  // RUN_AUTOMATION events are never grouped with other event types
+  interface EventGroup {
+    eventType: string
+    events: Event[]
+    hasAutomation: boolean
+    position: number
+  }
+
+  const groupedEvents: EventGroup[] = useMemo(() => {
+    if (events.length === 0) return []
+
+    const groups: EventGroup[] = []
+    let currentGroup: EventGroup | null = null
+
+    // Get date range for position calculation
+    const dates = events.map(event => new Date(event.created_at).getTime())
+    const minDate = Math.min(...dates)
+    const maxDate = Math.max(...dates)
+    const dateRange = maxDate - minDate
+
+    events.forEach((event) => {
+      // RUN_AUTOMATION events are never grouped with other types
+      // Other event types are grouped together if consecutive and same type
+      const shouldStartNewGroup = !currentGroup || 
+        currentGroup.eventType !== event.event_type ||
+        event.event_type === 'RUN_AUTOMATION' ||
+        currentGroup.eventType === 'RUN_AUTOMATION'
+
+      if (shouldStartNewGroup) {
+        if (currentGroup) {
+          groups.push(currentGroup)
+        }
+        
+        const eventDate = new Date(event.created_at).getTime()
+        const position = dateRange === 0 
+          ? 0 
+          : ((maxDate - eventDate) / dateRange) * 100
+
+        currentGroup = {
+          eventType: event.event_type,
+          events: [event],
+          hasAutomation: !!event.automation_id,
+          position: Math.max(0, Math.min(100, position)),
+        }
+      } else {
+        // Add to current group
+        currentGroup.events.push(event)
+        if (event.automation_id) {
+          currentGroup.hasAutomation = true
+        }
+        // Update position to the newest event in the group
+        const eventDate = new Date(event.created_at).getTime()
+        const position = dateRange === 0 
+          ? 0 
+          : ((maxDate - eventDate) / dateRange) * 100
+        currentGroup.position = Math.max(0, Math.min(100, position))
+      }
+    })
+
+    // Don't forget the last group
+    if (currentGroup) {
+      groups.push(currentGroup)
+    }
+
+    return groups
+  }, [events])
 
   const formatEventTime = (event: Event): string => {
     const date = new Date(event.created_at)
@@ -278,66 +376,108 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     })
   }
 
-  // Calculate timeline positions based on event dates
+  // Calculate timeline positions based on grouped events
   const timelineItems: TimelineItem[] = useMemo(() => {
-    if (events.length === 0) return []
-
-    // Get date range
-    const dates = events.map(event => new Date(event.created_at).getTime())
-    const minDate = Math.min(...dates)
-    const maxDate = Math.max(...dates)
-    const dateRange = maxDate - minDate
-
-    // If all events are from the same time, distribute evenly (newest at top = 0%)
-    if (dateRange === 0) {
-      return events.map((event, index) => ({
-        id: event.id,
-        position: (index / (events.length - 1 || 1)) * 100,
-      }))
-    }
-
-    // Calculate position based on date (newest at top = 0%, oldest at bottom = 100%)
-    return events.map((event) => {
-      const eventDate = new Date(event.created_at).getTime()
-      // Reverse: newest (maxDate) should be at 0%, oldest (minDate) at 100%
-      const position = ((maxDate - eventDate) / dateRange) * 100
-      return {
-        id: event.id,
-        position: Math.max(0, Math.min(100, position)), // Clamp to 0-100
-      }
-    })
-  }, [events])
+    return groupedEvents.map((group, index) => ({
+      id: `group-${index}-${group.eventType}`,
+      position: group.position,
+    }))
+  }, [groupedEvents])
 
   const renderPanel = (index: number, width: number): React.ReactNode => {
-    const event = events[index]
-    if (!event) return null
+    const group = groupedEvents[index]
+    if (!group) return null
+
+    // Handle RUN_AUTOMATION events - display as italicized text
+    if (group.eventType === 'RUN_AUTOMATION') {
+      const event = group.events[0] // RUN_AUTOMATION events are never grouped
+      const metadata = extractAutomationMetadata(event)
+      if (!metadata) return null
+
+      const automationDisplayName = formatAutomationName(metadata.automation_name)
+      const triggerType = metadata.manual ? 'manual' : 'automatic'
+
+      return (
+        <div className="event-automation-run">
+          <span className="event-automation-run-text">
+            {automationDisplayName}: {triggerType}
+          </span>
+        </div>
+      )
+    }
+
+    const allDisabled = group.events.every(e => !e.enabled)
+    const someDisabled = group.events.some(e => !e.enabled) && !allDisabled
+
+    // Extract tag names for ADD_TAG groups
+    const tagNames = group.eventType === 'ADD_TAG' 
+      ? group.events.map(e => extractTagName(e)).filter((name): name is string => name !== null)
+      : []
 
     return (
-      <div 
-        className="event-item-content"
-        onClick={() => handleToggleEvent(event.id, event.enabled)}
-      >
-        <div className="event-item-header">
-          <span className="event-type">{event.event_type}</span>
-          {event.automation_id && (
+      <div className="event-group-content">
+        <div className="event-group-header">
+          <span className="event-type">{group.eventType}</span>
+          {group.hasAutomation && (
             <Badge variant="primary">Auto</Badge>
           )}
+          {allDisabled && (
+            <Badge variant="warning" className="event-disabled-badge">Disabled</Badge>
+          )}
+          {someDisabled && (
+            <Badge variant="warning" className="event-disabled-badge">Some Disabled</Badge>
+          )}
         </div>
-        <p className="event-description">{formatEventDescription(event)}</p>
-        {!event.enabled && (
-          <Badge variant="warning" className="event-disabled-badge">Disabled</Badge>
-        )}
+        <div className="event-group-body">
+          {group.eventType === 'ADD_TAG' && tagNames.length > 0 ? (
+            <div className="event-group-tags">
+              {tagNames.map((tagName, tagIndex) => {
+                const event = group.events[tagIndex]
+                const isLast = tagIndex === tagNames.length - 1
+                return (
+                  <span key={`${event.id}-${tagIndex}`}>
+                    <span
+                      className={`event-group-tag ${!event.enabled ? 'event-group-tag-disabled' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleEvent(event.id, event.enabled)
+                      }}
+                    >
+                      {tagName}
+                    </span>
+                    {!isLast && <span className="event-group-tag-separator">, </span>}
+                  </span>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="event-group-items">
+              {group.events.map((event) => (
+                <div
+                  key={event.id}
+                  className={`event-group-item ${!event.enabled ? 'event-group-item-disabled' : ''}`}
+                  onClick={() => handleToggleEvent(event.id, event.enabled)}
+                >
+                  {formatEventDescription(event)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
 
   const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
-    const event = events[index]
-    if (!event) return null
+    const group = groupedEvents[index]
+    if (!group) return null
+
+    // Use the newest event's time for the group
+    const newestEvent = group.events[0] // Events are sorted newest first
 
     return (
       <div className="event-time-opposite">
-        <span className="event-time">{formatEventTime(event)}</span>
+        <span className="event-time">{formatEventTime(newestEvent)}</span>
       </div>
     )
   }
@@ -466,7 +606,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         ) : (
           <Timeline
             items={timelineItems}
-            mode="center"
+            mode="left"
             renderPanel={renderPanel}
             renderOpposite={renderOpposite}
             maxPanelWidth={400}

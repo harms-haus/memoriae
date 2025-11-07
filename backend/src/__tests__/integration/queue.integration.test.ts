@@ -8,6 +8,7 @@ import { generateTestToken } from '../../test-helpers'
 import { SeedsService } from '../../services/seeds'
 import { queueAutomationsForSeed } from '../../services/queue/queue'
 import { AutomationRegistry } from '../../services/automation/registry'
+import * as authService from '../../services/auth'
 
 // Mock BullMQ to prevent Redis connections
 vi.mock('bullmq', () => {
@@ -65,6 +66,11 @@ vi.mock('../../services/automation/registry', () => ({
   },
 }))
 
+// Mock auth service
+vi.mock('../../services/auth', () => ({
+  getUserById: vi.fn(),
+}))
+
 const app = express()
 app.use(express.json())
 app.use('/api/seeds', authenticate, seedsRoutes)
@@ -72,6 +78,16 @@ app.use('/api/seeds', authenticate, seedsRoutes)
 describe('Queue Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    
+    // Mock getUserById to return a user by default
+    vi.mocked(authService.getUserById).mockResolvedValue({
+      id: 'user-456',
+      email: 'test@example.com',
+      name: 'Test User',
+      provider: 'google',
+      provider_id: 'provider-123',
+      created_at: new Date(),
+    })
   })
 
   describe('Seed creation triggers automation queue', () => {

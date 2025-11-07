@@ -229,20 +229,107 @@ Return ONLY a JSON array of category paths, nothing else. Example: ["/work/proje
         }
       )
 
-      const content = response.choices[0]?.message?.content?.trim()
-      if (!content) {
-        throw new Error('OpenRouter returned empty response')
+      const message = response.choices[0]?.message
+      if (!message) {
+        throw new Error('OpenRouter response has no message')
+      }
+
+      // Some models (like reasoning models) put content in 'reasoning' field instead of 'content'
+      // Check both fields and extract JSON from whichever has it
+      let content = message.content?.trim() || ''
+      const reasoning = (message as any).reasoning?.trim() || ''
+      
+      // Helper function to extract JSON array from text
+      const extractJsonArray = (text: string): string | null => {
+        if (!text) return null
+        
+        // Pattern 1: JSON array in markdown code block
+        let jsonMatch = text.match(/```(?:json)?\s*(\[.*?\])\s*```/s)
+        if (jsonMatch && jsonMatch[1]) {
+          return jsonMatch[1]
+        }
+        
+        // Pattern 2: JSON array with double quotes (multiline)
+        jsonMatch = text.match(/\[(?:\s*"[^"]+"\s*,?\s*)+\]/s)
+        if (jsonMatch) {
+          return jsonMatch[0]
+        }
+        
+        // Pattern 3: JSON array with single quotes (less common but possible)
+        jsonMatch = text.match(/\[(?:\s*'[^']+'\s*,?\s*)+\]/s)
+        if (jsonMatch) {
+          return jsonMatch[0].replace(/'/g, '"') // Convert single quotes to double quotes
+        }
+        
+        // Pattern 4: Look for array-like structure at the end of text
+        const lines = text.split('\n')
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const line = lines[i]?.trim()
+          if (line && line.startsWith('[') && line.endsWith(']')) {
+            try {
+              JSON.parse(line) // Validate it's valid JSON
+              return line
+            } catch {
+              // Not valid JSON, continue
+            }
+          }
+        }
+        
+        // Pattern 5: Try to find JSON array anywhere in the text (more lenient)
+        const jsonArrayPattern = /\[[\s\S]*?\]/
+        const matches = text.match(jsonArrayPattern)
+        if (matches) {
+          for (const match of matches) {
+            try {
+              const parsed = JSON.parse(match.trim())
+              if (Array.isArray(parsed)) {
+                return match.trim()
+              }
+            } catch {
+              // Not valid JSON, continue
+            }
+          }
+        }
+        
+        return null
+      }
+      
+      // Try to extract JSON from content first
+      let jsonContent = extractJsonArray(content)
+      
+      // If not found in content, try reasoning
+      if (!jsonContent && reasoning) {
+        jsonContent = extractJsonArray(reasoning)
+      }
+      
+      // If still not found, combine both and try again
+      if (!jsonContent && (content || reasoning)) {
+        const combined = `${reasoning}\n${content}`.trim()
+        jsonContent = extractJsonArray(combined)
+      }
+      
+      // If we still don't have valid JSON, throw a helpful error
+      if (!jsonContent) {
+        const finishReason = response.choices[0]?.finish_reason
+        const debugInfo = {
+          hasContent: !!content,
+          contentLength: content.length,
+          hasReasoning: !!reasoning,
+          reasoningLength: reasoning.length,
+          finishReason,
+          contentPreview: content.substring(0, 200),
+          reasoningPreview: reasoning.substring(0, 200),
+        }
+        throw new Error(
+          `Could not extract JSON array from model response. ` +
+          `Content: ${content ? `"${content.substring(0, 100)}..."` : 'empty'}, ` +
+          `Reasoning: ${reasoning ? `"${reasoning.substring(0, 100)}..."` : 'empty'}, ` +
+          `Finish reason: ${finishReason || 'unknown'}. ` +
+          `Debug: ${JSON.stringify(debugInfo)}`
+        )
       }
 
       // Parse JSON array from response
-      let jsonContent = content
-      if (content.startsWith('```')) {
-        const match = content.match(/```(?:json)?\s*(\[.*?\])\s*```/s)
-        if (match && match[1]) {
-          jsonContent = match[1]
-        }
-      }
-
       const categoryPaths = JSON.parse(jsonContent) as string[]
 
       // Validate and normalize category paths

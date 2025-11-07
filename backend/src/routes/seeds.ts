@@ -217,6 +217,26 @@ router.post('/:id/automations/:automationId/run', async (req: Request, res: Resp
       return
     }
 
+    // Create RUN_AUTOMATION event immediately for manual runs (so it shows up right away)
+    const { EventsService } = await import('../services/events')
+    await EventsService.create({
+      seed_id: seedId,
+      event_type: 'RUN_AUTOMATION',
+      patch_json: [
+        {
+          op: 'add',
+          path: '/metadata',
+          value: {
+            automation_id: automationId,
+            automation_name: automation.name,
+            automation_description: automation.description || null,
+            manual: true,
+          },
+        },
+      ],
+      automation_id: automationId,
+    })
+
           // Queue the automation job with higher priority for manual triggers
           // Use makeUnique: true to allow re-running the same automation
           console.log(`[Manual Trigger] Queuing automation ${automationId} for seed ${seedId} (user ${userId})`)
@@ -225,6 +245,7 @@ router.post('/:id/automations/:automationId/run', async (req: Request, res: Resp
             automationId,
             userId,
             priority: 10, // Higher priority for manual triggers
+            metadata: { manual: true },
           }, { makeUnique: true }) // Make job ID unique to allow re-running
           console.log(`[Manual Trigger] Job queued with ID: ${jobId}`)
 

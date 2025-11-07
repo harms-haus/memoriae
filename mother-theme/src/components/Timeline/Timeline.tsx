@@ -24,8 +24,11 @@ export interface TimelineProps {
     width: number,
     styles?: React.CSSProperties
   ) => ReactNode;
-  // Render content on opposite side (center mode only)
+  // Render content on opposite side (tail column)
   // Called when panel is on one side, allows rendering on the other side
+  // In left mode: tail appears on left, content on right
+  // In right mode: tail appears on right, content on left
+  // In center mode: tail alternates based on panel side
   renderOpposite?: (
     index: number,
     width: number,
@@ -128,18 +131,19 @@ export function Timeline({
     );
   };
 
+  const showTail = renderOpposite !== undefined;
+
   return (
-    <div className={`timeline timeline-mode-${mode} ${className}`}>
+    <div className={`timeline timeline-mode-${mode} ${showTail ? 'timeline-has-tail' : ''} ${className}`}>
       {items.map((item, index) => {
         const isTop = index === 0;
         const isBottom = index === items.length - 1;
         const side = getPanelSide(index);
-        const showTail = mode === 'center' && renderOpposite;
 
         return (
           <div
             key={item.id}
-            className={`timeline-item timeline-item-${side}`}
+            className={`timeline-item timeline-item-${side}${showTail ? ' timeline-item-with-tail' : ''}`}
             style={{
               '--timeline-position': `${item.position}%`,
             } as React.CSSProperties}
@@ -158,7 +162,7 @@ export function Timeline({
               <div className={`timeline-line timeline-line-bottom ${isBottom ? 'timeline-line-bottom-invisible' : ''}`} />
             </div>
 
-            {/* Tail column (center mode only) */}
+            {/* Tail column */}
             {showTail && (
               <div className="timeline-tail">
                 {renderOpposite(index, maxPanelWidth, side)}

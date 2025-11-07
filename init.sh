@@ -9,6 +9,30 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}Starting Memoriae container initialization...${NC}"
 
+# Check if volume contains PostgreSQL 14 data (from previous version)
+if [ -f /var/lib/postgresql/16/main/PG_VERSION ]; then
+    PG_VERSION=$(cat /var/lib/postgresql/16/main/PG_VERSION 2>/dev/null || echo "")
+    if [ "$PG_VERSION" = "14" ]; then
+        echo -e "${YELLOW}WARNING: Volume contains PostgreSQL 14 data, but we're using PostgreSQL 16${NC}"
+        echo -e "${YELLOW}PostgreSQL 16 cannot use PostgreSQL 14 data directly.${NC}"
+        echo -e "${YELLOW}Backing up old data and initializing fresh PostgreSQL 16 database...${NC}"
+        
+        # Backup old data
+        BACKUP_DIR="/var/lib/postgresql/backup-14-$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "$BACKUP_DIR"
+        mv /var/lib/postgresql/16/main "$BACKUP_DIR/main" 2>/dev/null || true
+        echo -e "${GREEN}Old data backed up to: $BACKUP_DIR${NC}"
+    fi
+fi
+
+# Check for any postgresql.conf files that reference PostgreSQL 14 paths
+if [ -f /var/lib/postgresql/16/main/postgresql.conf ]; then
+    if grep -q "/var/lib/postgresql/14" /var/lib/postgresql/16/main/postgresql.conf; then
+        echo -e "${YELLOW}Found PostgreSQL 14 path references in config, fixing...${NC}"
+        sudo -u postgres sed -i 's|/var/lib/postgresql/14|/var/lib/postgresql/16|g' /var/lib/postgresql/16/main/postgresql.conf
+    fi
+fi
+
 # Initialize PostgreSQL if data directory is empty or doesn't exist
 if [ ! -f /var/lib/postgresql/16/main/PG_VERSION ]; then
     echo -e "${YELLOW}Initializing PostgreSQL database...${NC}"
@@ -34,18 +58,36 @@ if [ ! -f /var/lib/postgresql/16/main/PG_VERSION ]; then
     fi
 else
     echo -e "${GREEN}PostgreSQL data directory already exists, skipping initialization${NC}"
+    
+    # Always ensure correct permissions (volume mounts may have wrong ownership)
+    echo -e "${YELLOW}Ensuring PostgreSQL directory permissions...${NC}"
+    chown -R postgres:postgres /var/lib/postgresql/16/main
+    chmod 700 /var/lib/postgresql/16/main
 fi
 
 # Start PostgreSQL temporarily to set up database
 echo -e "${YELLOW}Starting PostgreSQL for initialization...${NC}"
-# Check if PostgreSQL config file exists before starting
-if [ -f /var/lib/postgresql/16/main/postgresql.conf ]; then
-    sudo -u postgres /usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/16/main -w start || {
-        echo -e "${YELLOW}PostgreSQL may already be running or failed to start. Continuing...${NC}"
-    }
-else
+
+# Ensure permissions are correct before starting (in case volume was mounted with wrong ownership)
+chown -R postgres:postgres /var/lib/postgresql/16/main
+chmod 700 /var/lib/postgresql/16/main
+
+# Check if PostgreSQL config file exists
+if [ ! -f /var/lib/postgresql/16/main/postgresql.conf ]; then
     echo -e "${RED}PostgreSQL configuration file not found. Initialization may have failed.${NC}"
     exit 1
+fi
+
+# Check if PostgreSQL is already running
+if sudo -u postgres /usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/16/main status > /dev/null 2>&1; then
+    echo -e "${GREEN}PostgreSQL is already running${NC}"
+else
+    # Start PostgreSQL
+    sudo -u postgres /usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/16/main -w start || {
+        echo -e "${RED}Failed to start PostgreSQL. Checking logs...${NC}"
+        sudo -u postgres tail -n 50 /var/lib/postgresql/16/main/log/*.log 2>/dev/null || true
+        exit 1
+    }
 fi
 
 # Wait for PostgreSQL to be ready

@@ -4,6 +4,7 @@ import request from 'supertest'
 import express from 'express'
 import tagsRoutes from '../../routes/tags'
 import { generateTestToken } from '../../test-helpers'
+import * as authService from '../../services/auth'
 
 // Mock the tags service
 vi.mock('../../services/tags', () => {
@@ -27,6 +28,11 @@ const mockTags = [
   },
 ]
 
+// Mock auth service
+vi.mock('../../services/auth', () => ({
+  getUserById: vi.fn(),
+}))
+
 // Mock auth middleware - use real auth but mock at a higher level
 vi.mock('../../middleware/auth', async () => {
   const actual = await vi.importActual('../../middleware/auth')
@@ -43,6 +49,16 @@ describe('Tags Routes', () => {
     const tagsModule = await import('../../services/tags')
     const mockGetAllTags = (tagsModule as any).__mockGetAllTags
     mockGetAllTags.mockResolvedValue(mockTags)
+    
+    // Mock getUserById to return a user by default
+    vi.mocked(authService.getUserById).mockResolvedValue({
+      id: 'user-id',
+      email: 'test@example.com',
+      name: 'Test User',
+      provider: 'google',
+      provider_id: 'provider-123',
+      created_at: new Date(),
+    })
   })
 
   describe('GET /api/tags', () => {

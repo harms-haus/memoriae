@@ -5,11 +5,13 @@ import express from 'express'
 import authRoutes from '../../routes/auth'
 import { authenticate } from '../../middleware/auth'
 import { generateTestToken } from '../../test-helpers'
+import * as authService from '../../services/auth'
 
 // Mock auth service
 vi.mock('../../services/auth', () => ({
   findOrCreateUser: vi.fn(),
   generateToken: vi.fn((user) => `mock-token-${user.id}`),
+  getUserById: vi.fn(),
 }))
 
 // Mock axios for OAuth provider calls
@@ -31,11 +33,20 @@ describe('Auth Routes', () => {
 
   describe('GET /api/auth/status', () => {
     it('should return user info with valid token', async () => {
-      const token = generateTestToken({
+      const userPayload = {
         id: 'user-id',
         email: 'test@example.com',
         name: 'Test User',
         provider: 'google',
+      }
+      const token = generateTestToken(userPayload)
+
+      // Mock getUserById to return the user
+      vi.mocked(authService.getUserById).mockResolvedValue({
+        ...userPayload,
+        provider: 'google',
+        provider_id: 'provider-123',
+        created_at: new Date(),
       })
 
       const response = await request(app)
@@ -93,7 +104,21 @@ describe('Auth Routes', () => {
 
   describe('POST /api/auth/logout', () => {
     it('should return success with valid token', async () => {
-      const token = generateTestToken()
+      const userPayload = {
+        id: 'user-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        provider: 'google',
+      }
+      const token = generateTestToken(userPayload)
+
+      // Mock getUserById to return the user
+      vi.mocked(authService.getUserById).mockResolvedValue({
+        ...userPayload,
+        provider: 'google',
+        provider_id: 'provider-123',
+        created_at: new Date(),
+      })
 
       const response = await request(app)
         .post('/api/auth/logout')

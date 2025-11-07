@@ -38,9 +38,6 @@ RUN curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyri
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
-# Install supervisord
-RUN pip3 install supervisor
-
 # Set up PostgreSQL
 RUN service postgresql stop || true
 RUN mkdir -p /var/lib/postgresql/16/main
