@@ -27,7 +27,7 @@ podman run -d \
   -v "$(pwd)/backend:/app/backend:rw" \
   -v "$(pwd)/frontend:/app/frontend:rw" \
   -v "$(pwd)/mother-theme:/app/mother-theme:ro" \
-  -v memoriae-postgres-data:/var/lib/postgresql/14/main \
+  -v memoriae-postgres-data:/var/lib/postgresql/16/main \
   -v memoriae-redis-data:/var/lib/redis \
   -v /app/backend/node_modules \
   -v /app/frontend/node_modules \

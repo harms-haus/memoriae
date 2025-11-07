@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import axios from 'axios'
 import { api } from '../../services/api'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Button } from '@mother/components/Button'
@@ -102,19 +103,92 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const handleRunAutomation = async (automationId: string) => {
     if (!seedId || runningAutomations.has(automationId)) return
 
+    // Store initial event count to detect when new events are added
+    const initialEventCount = events.length
+    let lastEventCount = initialEventCount
+
     try {
       setRunningAutomations((prev) => new Set(prev).add(automationId))
+      setError(null) // Clear any previous errors
 
-      await api.post(`/seeds/${seedId}/automations/${automationId}/run`)
+      const response = await api.post<{ message: string; jobId: string; automation: { id: string; name: string } }>(
+        `/seeds/${seedId}/automations/${automationId}/run`
+      )
 
-      // Wait a bit for the automation to process, then reload seed data and timeline
-      setTimeout(() => {
-        loadSeedData()
-      }, 2000)
+      console.log('Automation queued:', response)
+
+      // Poll for completion - check every 2 seconds for up to 20 seconds
+      let attempts = 0
+      const maxAttempts = 10
+      const pollInterval = 2000
+
+      const pollForCompletion = async () => {
+        attempts++
+        
+        try {
+          // Reload seed data to check if new events were created
+          const [seedData, eventsData, stateData] = await Promise.all([
+            api.get<Seed>(`/seeds/${seedId}`),
+            api.get<Event[]>(`/seeds/${seedId}/timeline`),
+            api.get<SeedStateResponse>(`/seeds/${seedId}/state`),
+          ])
+
+          const sortedEvents = eventsData.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+          const currentEventCount = sortedEvents.length
+
+          // Update state
+          setSeed(seedData)
+          setEvents(sortedEvents)
+          setCurrentState(stateData.current_state)
+          
+          // Check if new events were created (automation completed)
+          if (currentEventCount > lastEventCount) {
+            // New events detected - automation completed
+            console.log('Automation completed - new events detected')
+            setRunningAutomations((prev) => {
+              const next = new Set(prev)
+              next.delete(automationId)
+              return next
+            })
+            return
+          }
+          
+          lastEventCount = currentEventCount
+          
+          // Check if we should continue polling
+          if (attempts < maxAttempts) {
+            setTimeout(pollForCompletion, pollInterval)
+          } else {
+            // Stop polling after max attempts (automation may have completed without creating events, or failed silently)
+            console.log('Polling stopped - max attempts reached')
+            setRunningAutomations((prev) => {
+              const next = new Set(prev)
+              next.delete(automationId)
+              return next
+            })
+          }
+        } catch (err) {
+          console.error('Error polling for automation completion:', err)
+          setRunningAutomations((prev) => {
+            const next = new Set(prev)
+            next.delete(automationId)
+            return next
+          })
+        }
+      }
+
+      // Start polling after a short delay to give the job time to start
+      setTimeout(pollForCompletion, pollInterval)
     } catch (err) {
       console.error('Error running automation:', err)
-      setError(err instanceof Error ? err.message : 'Failed to run automation')
-    } finally {
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : axios.isAxiosError(err) && err.response?.data?.error
+          ? err.response.data.error
+          : 'Failed to run automation'
+      setError(errorMessage)
       setRunningAutomations((prev) => {
         const next = new Set(prev)
         next.delete(automationId)

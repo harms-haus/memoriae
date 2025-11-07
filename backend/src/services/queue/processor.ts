@@ -1,5 +1,6 @@
 // Queue processor/worker - executes automation jobs from the queue
 import { Worker, Job, ConnectionOptions } from 'bullmq'
+import Redis from 'ioredis'
 import { config } from '../../config'
 import { type AutomationJobData } from './queue'
 import { AutomationRegistry } from '../automation/registry'
@@ -64,7 +65,7 @@ async function getUserSettings(userId: string): Promise<UserSettings> {
 export async function processAutomationJob(job: Job<AutomationJobData>): Promise<void> {
   const { seedId, automationId, userId } = job.data
 
-  console.log(`Processing automation job: ${automationId} for seed: ${seedId}`)
+  console.log(`[Worker] Processing automation job ${job.id}: ${automationId} for seed: ${seedId} (user: ${userId})`)
 
   try {
     // 1. Get the automation from registry
@@ -126,11 +127,18 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
 
     // 8. Save events created by the automation
     if (result.events.length > 0) {
+      // Log first event's patch_json structure for debugging
+      const firstEvent = result.events[0]
+      if (firstEvent) {
+        console.log(`[Worker] First event patch_json type: ${typeof firstEvent.patch_json}, isArray: ${Array.isArray(firstEvent.patch_json)}`)
+        console.log(`[Worker] First event patch_json:`, JSON.stringify(firstEvent.patch_json, null, 2))
+      }
+      
       await EventsService.createMany(
         result.events.map(event => ({
           seed_id: event.seed_id,
           event_type: event.event_type,
-          patch_json: event.patch_json,
+          patch_json: event.patch_json, // Should be Operation[] array
           automation_id: event.automation_id,
         }))
       )
@@ -172,16 +180,100 @@ export const automationWorker = new Worker<AutomationJobData>(
 
 // Worker event handlers for logging and monitoring
 automationWorker.on('completed', (job) => {
-  console.log(`Job ${job.id} completed successfully`)
+  console.log(`[Worker] Job ${job.id} completed successfully`)
 })
 
 automationWorker.on('failed', (job, error) => {
-  console.error(`Job ${job?.id} failed:`, error)
+  console.error(`[Worker] Job ${job?.id} failed:`, error)
+  if (error instanceof Error) {
+    console.error(`[Worker] Error stack:`, error.stack)
+  }
 })
 
 automationWorker.on('error', (error) => {
-  console.error('Worker error:', error)
+  console.error('[Worker] Worker error:', error)
+  if (error instanceof Error) {
+    console.error('[Worker] Error message:', error.message)
+    console.error('[Worker] Error stack:', error.stack)
+  }
 })
+
+automationWorker.on('active', (job) => {
+  console.log(`[Worker] Job ${job.id} is now active (processing)`)
+})
+
+automationWorker.on('stalled', (jobId) => {
+  console.warn(`[Worker] Job ${jobId} stalled (taking too long)`)
+})
+
+automationWorker.on('ready', () => {
+  console.log('[Worker] ✓ Worker is ready and listening for jobs')
+})
+
+automationWorker.on('closing', () => {
+  console.log('[Worker] Worker is closing...')
+})
+
+// Check if worker is actually running after a short delay
+setTimeout(() => {
+  console.log(`[Worker] Worker status check - isRunning: ${automationWorker.isRunning()}, isPaused: ${automationWorker.isPaused()}`)
+  if (!automationWorker.isRunning()) {
+    console.error('[Worker] ⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
+  }
+}, 2000)
+
+// Log worker initialization
+console.log('[Worker] Automation worker created, connecting to Redis...')
+console.log(`[Worker] Queue name: automation`)
+// Type guard to check if connection has host/port (not ClusterOptions)
+const hasHostPort = (conn: ConnectionOptions): conn is { host: string; port: number; password?: string } => {
+  return 'host' in conn && 'port' in conn
+}
+if (hasHostPort(queueConnection)) {
+  console.log(`[Worker] Connection: ${queueConnection.host}:${queueConnection.port}`)
+} else {
+  console.log(`[Worker] Connection: cluster mode`)
+}
+
+// Test Redis connection
+if (hasHostPort(queueConnection)) {
+  const redisOptions: {
+    host: string
+    port: number
+    password?: string
+    retryStrategy: () => null
+    maxRetriesPerRequest: number
+    lazyConnect: boolean
+  } = {
+    host: queueConnection.host,
+    port: queueConnection.port,
+    retryStrategy: () => null, // Don't retry for test
+    maxRetriesPerRequest: 1,
+    lazyConnect: true,
+  }
+  
+  // Only include password if it's defined
+  if (queueConnection.password) {
+    redisOptions.password = queueConnection.password
+  }
+  
+  const testConnection = new Redis(redisOptions)
+
+  testConnection.connect()
+    .then(() => testConnection.ping())
+    .then(() => {
+      console.log('[Worker] ✓ Redis connection test successful')
+      testConnection.quit()
+    })
+    .catch((error) => {
+      console.error('[Worker] ✗ Redis connection test failed:', error.message)
+      console.error('[Worker] Make sure Redis is running and accessible')
+      testConnection.quit().catch(() => {}) // Ignore quit errors
+    })
+} else {
+  console.log('[Worker] Skipping Redis connection test (cluster mode)')
+}
+
 
 /**
  * Clean up worker on shutdown

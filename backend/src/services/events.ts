@@ -50,25 +50,40 @@ export class EventsService {
    * Create multiple events in a transaction
    */
   static async createMany(events: CreateEventDto[]): Promise<Event[]> {
-    const eventRecords = events.map(data => ({
-      id: uuidv4(),
-      seed_id: data.seed_id,
-      event_type: data.event_type,
-      patch_json: data.patch_json,
-      enabled: true,
-      created_at: new Date(),
-      automation_id: data.automation_id || null,
-    }))
+    // Use raw SQL for JSONB to avoid double-encoding issues
+    // Insert events one by one to ensure proper JSONB handling
+    const created: Event[] = []
+    
+    for (const data of events) {
+      const id = uuidv4()
+      const patchJsonString = JSON.stringify(data.patch_json)
+      
+      // Use PostgreSQL parameterized query with $1, $2, etc.
+      const result = await db.raw(
+        `INSERT INTO events (id, seed_id, event_type, patch_json, enabled, created_at, automation_id)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)
+         RETURNING *`,
+        [
+          id,
+          data.seed_id,
+          data.event_type,
+          patchJsonString,
+          true,
+          new Date(),
+          data.automation_id || null,
+        ]
+      )
 
-    const created = await db('events')
-      .insert(eventRecords)
-      .returning('*')
+      // PostgreSQL returns { rows: [...] }
+      const event = result.rows[0]
+      created.push({
+        ...event,
+        patch_json: event.patch_json as Operation[],
+        created_at: new Date(event.created_at),
+      })
+    }
 
-    return created.map(e => ({
-      ...e,
-      patch_json: e.patch_json as Operation[],
-      created_at: new Date(e.created_at),
-    }))
+    return created
   }
 
   /**
@@ -126,7 +141,7 @@ export class EventsService {
   static async toggle(id: string, enabled: boolean): Promise<Event | null> {
     const [updated] = await db('events')
       .where({ id })
-      .update({ enabled, updated_at: new Date() })
+      .update({ enabled })
       .returning('*')
 
     if (!updated) {

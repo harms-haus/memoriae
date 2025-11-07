@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -16,14 +16,25 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     supervisor \
-    postgresql-14 \
-    postgresql-contrib-14 \
-    redis-server \
     sudo \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 22+ from NodeSource
+# Install PostgreSQL 16 from official PostgreSQL repository
+RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y postgresql-16 postgresql-contrib-16 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Redis 7.x from official Redis repository
+RUN curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" > /etc/apt/sources.list.d/redis.list \
+    && apt-get update \
+    && apt-get install -y redis \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22 LTS from NodeSource
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
@@ -32,8 +43,8 @@ RUN pip3 install supervisor
 
 # Set up PostgreSQL
 RUN service postgresql stop || true
-RUN mkdir -p /var/lib/postgresql/14/main
-RUN chown -R postgres:postgres /var/lib/postgresql/14/main
+RUN mkdir -p /var/lib/postgresql/16/main
+RUN chown -R postgres:postgres /var/lib/postgresql/16/main
 
 # Set up Redis
 RUN mkdir -p /var/lib/redis
@@ -68,14 +79,14 @@ RUN chmod +x /run-migrations.sh
 # Create necessary directories
 RUN mkdir -p /var/log/supervisor \
     && mkdir -p /var/run/postgresql \
-    && mkdir -p /var/lib/postgresql/14/main \
+    && mkdir -p /var/lib/postgresql/16/main \
     && mkdir -p /var/lib/redis \
     && mkdir -p /app/backend \
     && mkdir -p /app/frontend \
     && mkdir -p /app/mother-theme
 
 # Set up PostgreSQL data directory permissions
-RUN chown -R postgres:postgres /var/lib/postgresql/14/main \
+RUN chown -R postgres:postgres /var/lib/postgresql/16/main \
     && chown -R postgres:postgres /var/run/postgresql
 
 # Set up Redis data directory permissions

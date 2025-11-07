@@ -18,7 +18,7 @@ services:
       - ../frontend:/app/frontend:rw
       - ../mother-theme:/app/mother-theme:ro
       # Persist database and Redis data
-      - memoriae-postgres-data:/var/lib/postgresql/14/main
+      - memoriae-postgres-data:/var/lib/postgresql/16/main
       - memoriae-redis-data:/var/lib/redis
       # Exclude node_modules from volume mount (use container's node_modules)
       - /app/backend/node_modules

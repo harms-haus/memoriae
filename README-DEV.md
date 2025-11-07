@@ -18,7 +18,7 @@ podman run -d \
   -p 9229:9229 \
   -v $(pwd)/backend:/app/backend:rw \
   -v $(pwd)/frontend:/app/frontend:rw \
-  -v memoriae-postgres-data:/var/lib/postgresql/14/main \
+  -v memoriae-postgres-data:/var/lib/postgresql/16/main \
   -v memoriae-redis-data:/var/lib/redis \
   -v /app/backend/node_modules \
   -v /app/frontend/node_modules \

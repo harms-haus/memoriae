@@ -5,7 +5,7 @@ import { db } from './db/connection'
 import { AutomationRegistry } from './services/automation/registry'
 import { TagAutomation } from './services/automation/tag'
 import { CategorizeAutomation } from './services/automation/categorize'
-import { automationWorker, getPressureEvaluationScheduler } from './services/queue'
+import { automationWorker, automationQueue, getPressureEvaluationScheduler } from './services/queue'
 
 const PORT = config.port
 
@@ -80,6 +80,18 @@ async function initializeServices() {
     // Queue worker is already started when imported
     // It will process jobs as they come in
     console.log('Queue worker initialized')
+    console.log(`Worker isRunning: ${automationWorker.isRunning()}`)
+    
+    // Test queue connection by checking if we can get queue info
+    try {
+      const waiting = await automationQueue.getWaitingCount()
+      const active = await automationQueue.getActiveCount()
+      const completed = await automationQueue.getCompletedCount()
+      const failed = await automationQueue.getFailedCount()
+      console.log(`Queue status - Waiting: ${waiting}, Active: ${active}, Completed: ${completed}, Failed: ${failed}`)
+    } catch (error) {
+      console.error('Failed to get queue status:', error)
+    }
     
     // Start pressure evaluation scheduler
     const scheduler = getPressureEvaluationScheduler()

@@ -45,6 +45,18 @@ function getQueueConnection(): ConnectionOptions {
 
 const queueConnection = getQueueConnection()
 
+// Log queue initialization
+console.log('[Queue] Initializing automation queue...')
+// Type guard to check if connection has host/port (not ClusterOptions)
+const hasHostPort = (conn: ConnectionOptions): conn is { host: string; port: number; password?: string } => {
+  return 'host' in conn && 'port' in conn
+}
+if (hasHostPort(queueConnection)) {
+  console.log(`[Queue] Connection: ${queueConnection.host}:${queueConnection.port}`)
+} else {
+  console.log(`[Queue] Connection: cluster mode`)
+}
+
 /**
  * Automation queue instance
  * This is the main queue for processing automation jobs
@@ -71,18 +83,29 @@ export const automationQueue = new Queue<AutomationJobData>('automation', {
  * Add an automation job to the queue
  * 
  * @param data - Job data (seedId, automationId, userId, optional priority)
+ * @param options - Optional settings (makeUnique: if true, adds timestamp to job ID to allow re-running)
  * @returns The created job ID
  */
-export async function addAutomationJob(data: AutomationJobData): Promise<string> {
+export async function addAutomationJob(
+  data: AutomationJobData,
+  options?: { makeUnique?: boolean }
+): Promise<string> {
+  console.log(`[Queue] Adding job: automation=${data.automationId}, seed=${data.seedId}, user=${data.userId}, priority=${data.priority || 0}`)
+  
+  // Generate job ID - if makeUnique is true, add timestamp to allow re-running same automation
+  const baseJobId = `${data.automationId}-${data.seedId}`
+  const jobId = options?.makeUnique ? `${baseJobId}-${Date.now()}` : baseJobId
+  
   const job = await automationQueue.add(
     'process-automation',
     data,
     {
       priority: data.priority || 0,
-      jobId: `${data.automationId}-${data.seedId}`, // Unique job ID per automation+seed combo
+      jobId,
     }
   )
 
+  console.log(`[Queue] Job added with ID: ${job.id}`)
   return job.id!
 }
 

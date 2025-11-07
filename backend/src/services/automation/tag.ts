@@ -183,13 +183,70 @@ Return ONLY a JSON array of tag names, nothing else. Example: ["work", "programm
         ],
         {
           temperature: 0.3, // Lower temperature for more consistent tag extraction
-          max_tokens: 200,
+          max_tokens: 500, // Increased to handle reasoning models and prevent truncation
         }
       )
 
-      const content = response.choices[0]?.message?.content?.trim()
+      const message = response.choices[0]?.message
+      if (!message) {
+        throw new Error('OpenRouter response has no message')
+      }
+
+      // Some models (like reasoning models) put content in 'reasoning' field instead of 'content'
+      // Check both fields and use whichever has content
+      let content = message.content?.trim() || ''
+      const reasoning = (message as any).reasoning?.trim() || ''
+      
+      // If content is empty but reasoning exists, try to extract JSON array from reasoning
+      if (!content && reasoning) {
+        // Try multiple patterns to find JSON array in reasoning text
+        // Pattern 1: JSON array in markdown code block
+        let jsonMatch = reasoning.match(/```(?:json)?\s*(\[.*?\])\s*```/s)
+        if (jsonMatch && jsonMatch[1]) {
+          content = jsonMatch[1]
+        } else {
+          // Pattern 2: JSON array with double quotes
+          jsonMatch = reasoning.match(/\[(?:\s*"[^"]+"\s*,?\s*)+\]/)
+          if (jsonMatch) {
+            content = jsonMatch[0]
+          } else {
+            // Pattern 3: JSON array with single quotes (less common but possible)
+            jsonMatch = reasoning.match(/\[(?:\s*'[^']+'\s*,?\s*)+\]/)
+            if (jsonMatch) {
+              content = jsonMatch[0].replace(/'/g, '"') // Convert single quotes to double quotes
+            } else {
+              // Pattern 4: Look for array-like structure at the end of reasoning
+              // Some models put the answer at the end
+              const lines = reasoning.split('\n')
+              for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i].trim()
+                if (line.startsWith('[') && line.endsWith(']')) {
+                  try {
+                    JSON.parse(line) // Validate it's valid JSON
+                    content = line
+                    break
+                  } catch {
+                    // Not valid JSON, continue
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // If we still don't have valid JSON, throw a helpful error
+        if (!content) {
+          throw new Error(`Could not extract JSON array from reasoning model response. Reasoning text: ${reasoning.substring(0, 200)}...`)
+        }
+      }
+      
+      // If content is still empty, check if finish_reason indicates truncation
       if (!content) {
-        throw new Error('OpenRouter returned empty response')
+        const finishReason = response.choices[0]?.finish_reason
+        if (finishReason === 'length') {
+          throw new Error(`OpenRouter response was truncated (max_tokens limit reached). Finish reason: ${finishReason}`)
+        }
+        throw new Error(`OpenRouter returned empty response. Finish reason: ${finishReason || 'unknown'}`)
       }
 
       // Parse JSON array from response
@@ -203,7 +260,13 @@ Return ONLY a JSON array of tag names, nothing else. Example: ["work", "programm
         }
       }
 
-      const tags = JSON.parse(jsonContent) as string[]
+      // Try to parse JSON, with better error handling
+      let tags: string[]
+      try {
+        tags = JSON.parse(jsonContent) as string[]
+      } catch (parseError) {
+        throw new Error(`Failed to parse JSON from response. Content: ${jsonContent.substring(0, 200)}... Error: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+      }
 
       // Validate and normalize tags
       if (!Array.isArray(tags)) {

@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { SeedsService } from '../services/seeds'
 import { authenticate } from '../middleware/auth'
-import { queueAutomationsForSeed, addAutomationJob } from '../services/queue'
+import { queueAutomationsForSeed, addAutomationJob, automationQueue } from '../services/queue'
 import { AutomationRegistry } from '../services/automation/registry'
 
 const router = Router()
@@ -217,22 +217,43 @@ router.post('/:id/automations/:automationId/run', async (req: Request, res: Resp
       return
     }
 
-    // Queue the automation job with higher priority for manual triggers
-    const jobId = await addAutomationJob({
-      seedId,
-      automationId,
-      userId,
-      priority: 10, // Higher priority for manual triggers
-    })
+          // Queue the automation job with higher priority for manual triggers
+          // Use makeUnique: true to allow re-running the same automation
+          console.log(`[Manual Trigger] Queuing automation ${automationId} for seed ${seedId} (user ${userId})`)
+          const jobId = await addAutomationJob({
+            seedId,
+            automationId,
+            userId,
+            priority: 10, // Higher priority for manual triggers
+          }, { makeUnique: true }) // Make job ID unique to allow re-running
+          console.log(`[Manual Trigger] Job queued with ID: ${jobId}`)
 
-    res.status(202).json({
-      message: 'Automation queued',
-      jobId,
-      automation: {
-        id: automation.id,
-        name: automation.name,
-      },
-    })
+          // Diagnostic: Check queue status immediately after adding job
+          const waiting = await automationQueue.getWaitingCount()
+          const active = await automationQueue.getActiveCount()
+          console.log(`[Manual Trigger] Queue status after adding job - Waiting: ${waiting}, Active: ${active}`)
+          
+          // Try to get the job to verify it exists
+          try {
+            const job = await automationQueue.getJob(jobId)
+            if (job) {
+              const state = await job.getState()
+              console.log(`[Manual Trigger] Job ${jobId} state: ${state}`)
+            } else {
+              console.warn(`[Manual Trigger] ⚠️ Job ${jobId} not found in queue!`)
+            }
+          } catch (err) {
+            console.error(`[Manual Trigger] Error checking job ${jobId}:`, err)
+          }
+
+          res.status(202).json({
+            message: 'Automation queued',
+            jobId,
+            automation: {
+              id: automation.id,
+              name: automation.name,
+            },
+          })
   } catch (error) {
     next(error)
   }

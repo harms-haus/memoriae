@@ -178,7 +178,7 @@ if docker run -d \
     -p "${BACKEND_PORT}:3000" \
     -p "${POSTGRES_PORT}:5432" \
     -p "${REDIS_PORT}:6379" \
-    -v "${POSTGRES_VOLUME}:/var/lib/postgresql/14/main" \
+    -v "${POSTGRES_VOLUME}:/var/lib/postgresql/16/main" \
     -v "${REDIS_VOLUME}:/var/lib/redis" \
     --env-file "${ENV_FILE}" \
     "${IMAGE_NAME}:latest"; then
