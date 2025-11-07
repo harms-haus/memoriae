@@ -1,5 +1,5 @@
 // Categorize automation - assigns categories to seeds using OpenRouter AI
-// Creates add_category transactions when processing seeds
+// Creates set_category transactions when processing seeds
 
 import { v4 as uuidv4 } from 'uuid'
 import db from '../../db/connection'
@@ -22,7 +22,7 @@ interface CategoryRow {
  * CategorizeAutomation - Analyzes seed content and assigns categories
  * 
  * Uses OpenRouter AI to determine appropriate categories for seeds,
- * then creates add_category transactions. Handles hierarchical category structure.
+ * then creates set_category transaction (seeds can only have one category). Handles hierarchical category structure.
  */
 export class CategorizeAutomation extends Automation {
   readonly name = 'categorize'
@@ -35,7 +35,7 @@ export class CategorizeAutomation extends Automation {
    * 1. Gets existing user categories from database
    * 2. Calls OpenRouter to analyze seed and suggest categories
    * 3. Creates categories if they don't exist (with proper hierarchy)
-   * 4. Creates add_category transactions to assign categories to seed
+   * 4. Creates set_category transaction to assign category to seed (seeds can only have one category)
    */
   async process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult> {
     // Get all existing categories for the user
@@ -50,8 +50,8 @@ export class CategorizeAutomation extends Automation {
       categoriesByName.set(cat.name.toLowerCase(), cat)
     }
 
-    // Get existing categories from seed state to avoid duplicates
-    const existingCategoryIds = new Set((seed.currentState.categories || []).map(c => c.id))
+    // Get existing category from seed state (seeds can only have one category)
+    const existingCategory = (seed.currentState.categories || [])[0]
 
     // Generate category suggestions using OpenRouter
     const suggestedCategories = await this.generateCategories(seed, context, Array.from(categoriesByName.keys()))
@@ -60,48 +60,42 @@ export class CategorizeAutomation extends Automation {
       return { transactions: [] }
     }
 
-    // Ensure all suggested categories exist, creating them if needed
-    const categoryRecords: CategoryRow[] = []
-    for (const categoryPath of suggestedCategories) {
-      const category = await this.ensureCategoryExists(categoryPath, existingCategories)
-      categoryRecords.push(category)
-
-      // Update our maps
-      categoriesByPath.set(category.path, category)
-      categoriesByName.set(category.name.toLowerCase(), category)
-      existingCategories.push(category)
+    // Use the first suggested category (seeds can only have one category)
+    const categoryPath = suggestedCategories[0]
+    if (!categoryPath) {
+      return { transactions: [] }
     }
+    
+    const category = await this.ensureCategoryExists(categoryPath, existingCategories)
 
-    // Filter out categories already assigned to seed
-    const newCategories = categoryRecords.filter(cat => !existingCategoryIds.has(cat.id))
+    // Update our maps
+    categoriesByPath.set(category.path, category)
+    categoriesByName.set(category.name.toLowerCase(), category)
+    existingCategories.push(category)
 
-    if (newCategories.length === 0) {
+    // If seed already has this category, no need to create a transaction
+    if (existingCategory && existingCategory.id === category.id) {
       return { transactions: [] }
     }
 
-    // Create add_category transactions for each new category
-    const transactions: SeedTransaction[] = []
-
-    for (const category of newCategories) {
-      transactions.push({
-        id: uuidv4(),
-        seed_id: seed.id,
-        transaction_type: 'add_category',
-        transaction_data: {
-          category_id: category.id,
-          category_name: category.name,
-          category_path: category.path,
-        },
-        created_at: new Date(),
-        automation_id: this.id || null,
-      })
+    // Create set_category transaction (replaces any existing category)
+    const transaction: SeedTransaction = {
+      id: uuidv4(),
+      seed_id: seed.id,
+      transaction_type: 'set_category',
+      transaction_data: {
+        category_id: category.id,
+        category_name: category.name,
+        category_path: category.path,
+      },
+      created_at: new Date(),
+      automation_id: this.id || null,
     }
 
     return {
-      transactions,
+      transactions: [transaction],
       metadata: {
-        categoriesAssigned: categoryRecords.length,
-        categoryPaths: categoryRecords.map(c => c.path),
+        categoryAssigned: category.path,
       },
     }
   }
@@ -192,7 +186,7 @@ export class CategorizeAutomation extends Automation {
       ? `\n\nExisting categories you can use:\n${existingCategoryNames.slice(0, 20).join(', ')}${existingCategoryNames.length > 20 ? `\n(and ${existingCategoryNames.length - 20} more...)` : ''}`
       : ''
 
-    const systemPrompt = `You are a categorization assistant. Analyze the given text and assign it to 1-3 relevant categories.
+    const systemPrompt = `You are a categorization assistant. Analyze the given text and assign it to the MOST relevant category.
 
 Categories should be hierarchical paths like "/work/projects" or "/personal/notes".
 - Use forward slashes to separate levels (e.g., "/work/projects/web")
@@ -201,7 +195,7 @@ Categories should be hierarchical paths like "/work/projects" or "/personal/note
 
 If you see similar existing categories, prefer to use those.
 
-Return ONLY a JSON array of category paths, nothing else. Example: ["/work/projects", "/personal"]`
+Return ONLY a JSON array with ONE category path, nothing else. Example: ["/work/projects"]`
 
     const userPrompt = `Assign categories to this text:\n\n${seed.currentState.seed}${existingCategoriesText}`
 
@@ -361,7 +355,7 @@ Return ONLY a JSON array of category paths, nothing else. Example: ["/work/proje
           return normalized
         })
         .filter((path): path is string => path !== null && path.length > 0)
-        .slice(0, 3) // Limit to 3 categories
+        .slice(0, 1) // Only use the first category (seeds can only have one)
     } catch (error) {
       console.error('CategorizeAutomation: Failed to generate categories:', error)
       return []

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { CategoryTree } from '../CategoryTree'
+import { SeedView } from '../SeedView'
 import { api } from '../../services/api'
 import { Panel } from '@mother/components/Panel'
 import { Button } from '@mother/components/Button'
-import { Badge } from '@mother/components/Badge'
 import { X } from 'lucide-react'
 import type { Seed, Category, Tag as TagType } from '../../types'
 import './Views.css'
@@ -16,12 +16,38 @@ interface CategoriesViewProps {
 
 export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [tags, setTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+
+  // Load categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await api.get<Category[]>('/categories')
+        setCategories(categoriesData)
+      } catch (err) {
+        console.error('Error loading categories:', err)
+      }
+    }
+    loadCategories()
+  }, [])
+
+  // Auto-select category from URL path
+  useEffect(() => {
+    if (location.pathname.startsWith('/category/')) {
+      const categoryPath = '/' + location.pathname.replace('/category/', '').split('/').filter(Boolean).join('/')
+      const category = categories.find(c => c.path === categoryPath)
+      if (category && category.id !== selectedCategoryId) {
+        setSelectedCategoryId(category.id)
+      }
+    }
+  }, [location.pathname, categories, selectedCategoryId])
 
   useEffect(() => {
     if (selectedCategoryId) {
@@ -66,7 +92,6 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
     if (!selectedCategoryId) return
 
     try {
-      const categories = await api.get<Category[]>('/categories')
       const category = categories.find(c => c.id === selectedCategoryId)
       setSelectedCategory(category || null)
     } catch (err) {
@@ -78,38 +103,19 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
     // Toggle selection - if same category clicked, deselect
     if (selectedCategoryId === categoryId) {
       setSelectedCategoryId(null)
+      navigate('/categories')
     } else {
       setSelectedCategoryId(categoryId)
+      const category = categories.find(c => c.id === categoryId)
+      if (category) {
+        navigate(`/category${category.path}`)
+      }
     }
   }
 
   const clearSelection = () => {
     setSelectedCategoryId(null)
-  }
-
-  const formatSeedTime = (seed: Seed): string => {
-    const date = new Date(seed.created_at)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    })
-  }
-
-  const truncateContent = (content: string, maxLength: number = 200): string => {
-    if (content.length <= maxLength) return content
-    return content.substring(0, maxLength).trim() + '...'
+    navigate('/categories')
   }
 
   // Expose refresh function via ref
@@ -190,83 +196,24 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
               {!error && !loading && seeds.length > 0 && (
                 <div className="categories-view-seeds-list">
                   {seeds.map((seed) => {
-                    const content = seed.currentState?.seed || ''
-                    const seedTags = seed.currentState?.tags || []
-                    const seedCategories = seed.currentState?.categories || []
+                    // Create tag color map: tag name (lowercase) -> color
+                    const tagColorMap = new Map<string, string>()
+                    tags.forEach(tag => {
+                      if (tag.color) {
+                        tagColorMap.set(tag.name.toLowerCase(), tag.color)
+                      }
+                    })
 
                     return (
                       <div key={seed.id} className="categories-view-seed-item">
                         <Panel variant="elevated" className="categories-view-seed-panel">
-                          <div className="categories-view-seed-header">
-                            <p className="categories-view-seed-content">
-                              {truncateContent(content)}
-                            </p>
-                            <span className="categories-view-seed-time">
-                              {formatSeedTime(seed)}
-                            </span>
-                          </div>
-
-                          {(seedTags.length > 0 || seedCategories.length > 0) && (
-                            <div className="categories-view-seed-meta">
-                              {seedTags.length > 0 && (
-                                <div className="tag-list categories-view-seed-tags">
-                                  {seedTags.slice(0, 5).map((tag) => {
-                                    // Find the full tag object to get color
-                                    const fullTag = tags.find(t => t.id === tag.id)
-                                    const tagColor = fullTag?.color || 'var(--text-primary)'
-                                    return (
-                                      <a
-                                        key={tag.id}
-                                        href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          navigate(`/seeds/tag/${encodeURIComponent(tag.name)}`)
-                                        }}
-                                        style={{
-                                          textDecoration: 'none',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          e.currentTarget.style.textDecoration = 'underline'
-                                          e.currentTarget.style.setProperty('color', tagColor, 'important')
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          e.currentTarget.style.textDecoration = 'none'
-                                          e.currentTarget.style.setProperty('color', tagColor, 'important')
-                                        }}
-                                        ref={(el) => {
-                                          if (el) {
-                                            el.style.setProperty('color', tagColor, 'important')
-                                          }
-                                        }}
-                                        className="tag-item-small"
-                                      >
-                                        #{tag.name}
-                                      </a>
-                                    )
-                                  })}
-                                  {seedTags.length > 5 && (
-                                    <span className="tag-item-small" style={{ color: 'var(--text-secondary)' }}>
-                                      +{seedTags.length - 5}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                              {seedCategories.length > 0 && (
-                                <div className="categories-view-seed-categories">
-                                  {seedCategories.map((category) => (
-                                    <Badge
-                                      key={category.id}
-                                      variant={category.id === selectedCategoryId ? 'primary' : 'primary'}
-                                      className={category.id === selectedCategoryId ? '' : 'categories-view-badge-unselected'}
-                                    >
-                                      {category.path}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          <SeedView
+                            seed={seed}
+                            tagColors={tagColorMap}
+                            onTagClick={(tagId, tagName) => {
+                              navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                            }}
+                          />
                         </Panel>
                       </div>
                     )

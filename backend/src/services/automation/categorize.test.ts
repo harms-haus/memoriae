@@ -98,7 +98,7 @@ describe('CategorizeAutomation', () => {
             index: 0,
             message: {
               role: 'assistant',
-              content: '["/work", "/work/projects"]',
+              content: '["/work"]',
             },
             finish_reason: 'stop',
           },
@@ -116,37 +116,21 @@ describe('CategorizeAutomation', () => {
       // Mock: no existing categories
       mockSelect.mockResolvedValue([])
 
-      // Mock: category creation - create /work first, then /work/projects
-      let insertCallCount = 0
-      mockReturning.mockImplementation(() => {
-        insertCallCount++
-        if (insertCallCount === 1) {
-          // First call: create /work
-          return Promise.resolve([{
-            id: 'cat-work',
-            parent_id: null,
-            name: 'Work',
-            path: '/work',
-            created_at: new Date(),
-          }])
-        } else {
-          // Second call: create /work/projects
-          return Promise.resolve([{
-            id: 'cat-projects',
-            parent_id: 'cat-work',
-            name: 'Projects',
-            path: '/work/projects',
-            created_at: new Date(),
-          }])
-        }
-      })
+      // Mock: category creation - create /work
+      mockReturning.mockResolvedValue([{
+        id: 'cat-work',
+        parent_id: null,
+        name: 'Work',
+        path: '/work',
+        created_at: new Date(),
+      }])
 
       mockFirst.mockResolvedValue(undefined) // Categories don't exist
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.transactions.length).toBe(2)
-      expect(result.transactions[0].transaction_type).toBe('add_category')
+      expect(result.transactions.length).toBe(1)
+      expect(result.transactions[0].transaction_type).toBe('set_category')
       expect(result.transactions[0].seed_id).toBe('seed-123')
       expect(result.transactions[0].automation_id).toBe('automation-categorize-123')
       expect(result.transactions[0].transaction_data).toMatchObject({
@@ -154,8 +138,7 @@ describe('CategorizeAutomation', () => {
         category_name: 'Work',
         category_path: '/work',
       })
-      expect(result.metadata?.categoriesAssigned).toBeDefined()
-      expect(result.metadata?.categoryPaths).toBeDefined()
+      expect(result.metadata?.categoryAssigned).toBeDefined()
     })
 
     it('should skip categories that already exist on seed', async () => {
@@ -171,7 +154,7 @@ describe('CategorizeAutomation', () => {
             index: 0,
             message: {
               role: 'assistant',
-              content: '["/work", "/personal"]',
+              content: '["/work"]',
             },
             finish_reason: 'stop',
           },
@@ -192,33 +175,16 @@ describe('CategorizeAutomation', () => {
       }
       mockSelect.mockResolvedValue([existingWorkCategory])
       
-      // When checking if /work exists, return it (already in DB)
-      // When checking if /personal exists, return undefined (needs creation)
-      let firstCallCount = 0
-      mockFirst.mockImplementation(() => {
-        firstCallCount++
-        // First call is for /work - it exists
-        if (firstCallCount === 1) {
-          return Promise.resolve(existingWorkCategory)
-        }
-        // Second call is for /personal - doesn't exist
-        return Promise.resolve(undefined)
-      })
+      // When checking if /work exists, return it (already in DB, so no creation needed)
+      mockFirst.mockResolvedValue(existingWorkCategory)
       
-      // Only /personal needs to be created
-      mockReturning.mockResolvedValue([{
-        id: 'cat-personal',
-        parent_id: null,
-        name: 'Personal',
-        path: '/personal',
-        created_at: new Date(),
-      }])
+      // Should not need to create anything
+      mockReturning.mockResolvedValue([])
 
       const result = await automation.process(mockSeed, mockContext)
 
-      // Should only create transaction for /personal
-      expect(result.transactions.length).toBe(1)
-      expect((result.transactions[0].transaction_data as any).category_path).toBe('/personal')
+      // Should return 0 transactions since seed already has /work category
+      expect(result.transactions.length).toBe(0)
     })
 
     it('should return empty events when no new categories generated', async () => {

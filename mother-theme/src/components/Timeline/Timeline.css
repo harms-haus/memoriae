@@ -17,13 +17,16 @@
 
 .timeline {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: max-content auto max-content;
+  grid-auto-rows: min-content;
   position: relative;
   width: 100%;
   min-height: 200px;
   overflow: auto;
   gap: 0;
   align-items: start;
+  justify-content: start;
+  justify-items: start;
 }
 
 .timeline-item {
@@ -31,10 +34,12 @@
   display: grid;
   grid-template-columns: subgrid;
   grid-template-areas: 'content timeline tail';
-  align-items: center;
+  align-items: start;
+  justify-items: start;
   position: relative;
   min-height: 100px;
   margin-bottom: var(--space-6);
+  width: 100%;
 }
 
 .timeline-item:last-child {
@@ -70,7 +75,8 @@
 
 /* Left mode: timeline on left, panels on right */
 .timeline-mode-left {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto max-content;
+  justify-content: start;
 }
 
 .timeline-mode-left .timeline-item {
@@ -82,7 +88,7 @@
 
 /* Left mode with tail: tail on left (minimal), timeline in middle, content on right (fills) */
 .timeline-mode-left.timeline-has-tail {
-  grid-template-columns: max-content auto 1fr;
+  grid-template-columns: max-content auto max-content;
 }
 
 .timeline-mode-left .timeline-item-with-tail {
@@ -94,7 +100,8 @@
 
 /* Right mode: timeline on right, panels on left */
 .timeline-mode-right {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: max-content auto;
+  justify-content: start;
 }
 
 .timeline-mode-right .timeline-item {
@@ -106,7 +113,7 @@
 
 /* Right mode with tail: content on left (fills), timeline in middle, tail on right (minimal) */
 .timeline-mode-right.timeline-has-tail {
-  grid-template-columns: 1fr auto max-content;
+  grid-template-columns: max-content auto max-content;
 }
 
 .timeline-mode-right .timeline-item-with-tail {
@@ -118,7 +125,8 @@
 
 /* Center mode: timeline in center, panels alternate */
 .timeline-mode-center {
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: max-content auto max-content;
+  justify-content: start;
 }
 
 .timeline-mode-center.timeline-has-tail {
@@ -144,8 +152,11 @@
   grid-area: content;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   position: relative;
   padding: var(--space-2);
+  width: max-content;
+  max-width: 100%;
 }
 
 .timeline-item-left .timeline-content {

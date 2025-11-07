@@ -110,7 +110,7 @@
 }
 
 .categories-view-seed-panel {
-  padding: var(--space-4);
+  padding: var(--space-2);
   transition: all var(--transition-base);
 }
 
@@ -191,7 +191,7 @@
   }
 
   .categories-view-seed-panel {
-    padding: var(--space-3);
+    padding: var(--space-2);
   }
 
   .categories-view-seed-content {
@@ -211,7 +211,7 @@
   }
 
   .categories-view-seed-panel {
-    padding: var(--space-4);
+    padding: var(--space-2);
   }
 }
 
@@ -222,7 +222,7 @@
   }
 
   .categories-view-seed-panel {
-    padding: var(--space-5);
+    padding: var(--space-2);
   }
 }
 

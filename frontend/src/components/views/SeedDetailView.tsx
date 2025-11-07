@@ -5,10 +5,8 @@ import { api } from '../../services/api'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
-import { ExpandingPanel } from '@mother/components/ExpandingPanel'
 import { Badge } from '@mother/components/Badge'
-import { renderHashTags } from '../../utils/renderHashTags'
-import { TagList } from '../TagList'
+import { SeedView } from '../SeedView'
 import { FollowupsPanel } from '../FollowupsPanel'
 import type { SeedTransaction, Seed, SeedState, Tag as TagType } from '../../types'
 import './Views.css'
@@ -322,12 +320,12 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         return 'Tag added'
       case 'remove_tag':
         return 'Tag removed'
-      case 'add_category':
+      case 'set_category':
         const catData = transaction.transaction_data
         if ('category_name' in catData) {
-          return `Category added: ${catData.category_name}`
+          return `Category set: ${catData.category_name}`
         }
-        return 'Category added'
+        return 'Category set'
       case 'remove_category':
         return 'Category removed'
       case 'add_followup':
@@ -452,115 +450,97 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         <h2 className="seed-detail-title">Seed Detail</h2>
       </div>
 
-      {/* Current State Display */}
-      <Panel variant="elevated" className="seed-detail-state">
-        <h3 className="panel-header">Current State</h3>
-        <div className="seed-content-display">
-          <p className="seed-text">
-            {(() => {
-              // Create tag color map: tag name (lowercase) -> color
-              const tagColorMap = new Map<string, string>()
-              tags.forEach(tag => {
-                if (tag.color) {
-                  tagColorMap.set(tag.name.toLowerCase(), tag.color)
-                }
-              })
-              return renderHashTags(currentState?.seed || '', (tagName) => {
-                navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
-              }, tagColorMap)
-            })()}
-          </p>
+      <div className="seed-detail-content">
+        {/* Left Column: SeedView + Timeline */}
+        <div className="seed-detail-left-column">
+          {/* Current State Display */}
+          <Panel variant="elevated" className="seed-detail-state">
+            {currentState && seed && (
+              <SeedView
+                seed={{
+                  ...seed,
+                  currentState,
+                }}
+                tagColors={(() => {
+                  // Create tag color map: tag name (lowercase) -> color
+                  const tagColorMap = new Map<string, string>()
+                  tags.forEach(tag => {
+                    if (tag.color) {
+                      tagColorMap.set(tag.name.toLowerCase(), tag.color)
+                    }
+                  })
+                  return tagColorMap
+                })()}
+                onTagClick={(tagId, tagName) => {
+                  navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                }}
+              />
+            )}
+          </Panel>
+
+          {/* Timeline of Transactions */}
+          <Panel variant="elevated" className="seed-detail-timeline">
+            <h3 className="panel-header">Timeline</h3>
+            <div className="seed-detail-timeline-wrapper">
+              {transactions.length === 0 ? (
+                <p className="text-secondary">No transactions yet.</p>
+              ) : (
+                <Timeline
+                  items={timelineItems}
+                  mode="left"
+                  renderPanel={renderPanel}
+                  renderOpposite={renderOpposite}
+                  maxPanelWidth={400}
+                  panelSpacing={16}
+                  panelClickable={true}
+                />
+              )}
+            </div>
+          </Panel>
         </div>
-        {currentState?.tags && currentState.tags.length > 0 && (
-          <TagList
-            tags={currentState.tags.map((tag) => {
-              // Find the full tag object to get color
-              const fullTag = tags.find(t => t.id === tag.id)
-              return {
-                id: tag.id,
-                name: tag.name,
-                color: fullTag?.color ?? null,
-              }
-            })}
-            className="seed-tags"
-            onTagClick={(tag) => {
-              navigate(`/seeds/tag/${encodeURIComponent(tag.name)}`)
-            }}
-            suppressTruncate={true}
-          />
-        )}
-        {currentState?.categories && currentState.categories.length > 0 && (
-          <div className="seed-categories">
-            <p className="label">Categories:</p>
-            <ul>
-              {currentState.categories.map((cat) => (
-                <li key={cat.id}>{cat.name}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </Panel>
 
-      {/* Follow-ups Panel */}
-      <FollowupsPanel seedId={seedId} />
+        {/* Right Column: Followups + Automations */}
+        <div className="seed-detail-right-column">
+          {/* Follow-ups Panel */}
+          <FollowupsPanel seedId={seedId} />
 
-      {/* Automations Section */}
-      <ExpandingPanel
-        variant="elevated"
-        title="Run Automations"
-        className="seed-detail-automations"
-        defaultExpanded={false}
-      >
-        {loadingAutomations ? (
-          <p className="text-secondary">Loading automations...</p>
-        ) : automations.length === 0 ? (
-          <p className="text-secondary">No automations available.</p>
-        ) : (
-          <div className="automations-list">
-            {automations.map((automation) => (
-              <div key={automation.id} className="automation-item">
-                <div className="automation-info">
-                  <div className="automation-header">
-                    <span className="automation-name">{automation.name}</span>
-                    {!automation.enabled && (
-                      <Badge variant="warning">Disabled</Badge>
-                    )}
+          {/* Automations Section */}
+          <Panel variant="elevated" className="seed-detail-automations">
+            <h3 className="panel-header">Run Automations</h3>
+            {loadingAutomations ? (
+              <p className="text-secondary">Loading automations...</p>
+            ) : automations.length === 0 ? (
+              <p className="text-secondary">No automations available.</p>
+            ) : (
+              <div className="automations-list">
+                {automations.map((automation) => (
+                  <div key={automation.id} className="automation-item">
+                    <div className="automation-info">
+                      <div className="automation-header">
+                        <span className="automation-name">{automation.name}</span>
+                        {!automation.enabled && (
+                          <Badge variant="warning">Disabled</Badge>
+                        )}
+                      </div>
+                      {automation.description && (
+                        <p className="automation-description">{automation.description}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleRunAutomation(automation.id)}
+                      disabled={!automation.enabled || runningAutomations.has(automation.id)}
+                      aria-label={`Run ${automation.name} automation`}
+                    >
+                      {runningAutomations.has(automation.id) ? 'Running...' : 'Run'}
+                    </Button>
                   </div>
-                  {automation.description && (
-                    <p className="automation-description">{automation.description}</p>
-                  )}
-                </div>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleRunAutomation(automation.id)}
-                  disabled={!automation.enabled || runningAutomations.has(automation.id)}
-                  aria-label={`Run ${automation.name} automation`}
-                >
-                  {runningAutomations.has(automation.id) ? 'Running...' : 'Run'}
-                </Button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </ExpandingPanel>
-
-      {/* Timeline of Transactions */}
-      <Panel variant="elevated" className="seed-detail-timeline">
-        <h3 className="panel-header">Timeline</h3>
-        {transactions.length === 0 ? (
-          <p className="text-secondary">No transactions yet.</p>
-        ) : (
-          <Timeline
-            items={timelineItems}
-            mode="left"
-            renderPanel={renderPanel}
-            renderOpposite={renderOpposite}
-            maxPanelWidth={400}
-            panelSpacing={16}
-            panelClickable={true}
-          />
-        )}
-      </Panel>
+            )}
+          </Panel>
+        </div>
+      </div>
     </div>
   )
 }

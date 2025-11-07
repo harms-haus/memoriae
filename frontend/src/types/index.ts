@@ -38,7 +38,7 @@ export type SeedTransactionType =
   | 'edit_content'
   | 'add_tag'
   | 'remove_tag'
-  | 'add_category'
+  | 'set_category'
   | 'remove_category'
   | 'add_followup'
 
@@ -59,7 +59,7 @@ export interface RemoveTagTransactionData {
   tag_id: string
 }
 
-export interface AddCategoryTransactionData {
+export interface SetCategoryTransactionData {
   category_id: string
   category_name: string
   category_path: string
@@ -78,7 +78,7 @@ export type SeedTransactionData =
   | EditContentTransactionData
   | AddTagTransactionData
   | RemoveTagTransactionData
-  | AddCategoryTransactionData
+  | SetCategoryTransactionData
   | RemoveCategoryTransactionData
   | AddFollowupTransactionData
 

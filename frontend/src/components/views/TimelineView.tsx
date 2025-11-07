@@ -2,10 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Panel } from '@mother/components/Panel'
-import { Badge } from '@mother/components/Badge'
 import { Button } from '@mother/components/Button'
 import { api } from '../../services/api'
-import { renderHashTags } from '../../utils/renderHashTags'
+import { SeedView } from '../SeedView'
 import type { Seed, Tag as TagType } from '../../types'
 import './Views.css'
 import './TimelineView.css'
@@ -115,33 +114,6 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
     })
   }, [seeds])
 
-  const formatSeedTime = (seed: Seed): string => {
-    const date = new Date(seed.created_at)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
-
-  const truncateContent = (content: string, maxLength: number = 200): string => {
-    if (content.length <= maxLength) return content
-    return content.substring(0, maxLength).trim() + '...'
-  }
-
   const handleSeedClick = (seedId: string) => {
     onSeedSelect?.(seedId)
   }
@@ -150,99 +122,33 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
     const seed = seeds[index]
     if (!seed) return null
 
-    const content = seed.currentState?.seed || ''
-    const seedTags = seed.currentState?.tags || []
-    const categories = seed.currentState?.categories || []
+    // Create tag color map: tag name (lowercase) -> color
+    const tagColorMap = new Map<string, string>()
+    allTags.forEach(tag => {
+      if (tag.color) {
+        tagColorMap.set(tag.name.toLowerCase(), tag.color)
+      }
+    })
 
     return (
       <div 
         className="timeline-seed-content"
         onClick={() => handleSeedClick(seed.id)}
       >
-        <div className="timeline-seed-text-wrapper">
-          <p className="timeline-seed-text">
-            {(() => {
-              // Create tag color map: tag name (lowercase) -> color
-              const tagColorMap = new Map<string, string>()
-              allTags.forEach(tag => {
-                if (tag.color) {
-                  tagColorMap.set(tag.name.toLowerCase(), tag.color)
-                }
-              })
-              return renderHashTags(truncateContent(content), (tagName) => {
-                navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
-              }, tagColorMap)
-            })()}
-          </p>
-        </div>
-
-        {seedTags.length > 0 && (
-          <div className="timeline-seed-tags">
-            {seedTags.slice(0, 5).map((tag) => {
-              // Find the full tag object to get color
-              const fullTag = allTags.find(t => t.id === tag.id)
-              const tagColor = fullTag?.color || 'var(--text-primary)'
-              return (
-                <a
-                  key={tag.id}
-                  href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    navigate(`/seeds/tag/${encodeURIComponent(tag.name)}`)
-                  }}
-                  style={{
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.textDecoration = 'underline'
-                    e.currentTarget.style.setProperty('color', tagColor, 'important')
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.textDecoration = 'none'
-                    e.currentTarget.style.setProperty('color', tagColor, 'important')
-                  }}
-                  ref={(el) => {
-                    if (el) {
-                      el.style.setProperty('color', tagColor, 'important')
-                    }
-                  }}
-                  className="timeline-seed-tag"
-                >
-                  #{tag.name}
-                </a>
-              )
-            })}
-            {seedTags.length > 5 && (
-              <span className="timeline-seed-tag" style={{ color: 'var(--text-secondary)' }}>
-                +{seedTags.length - 5}
-              </span>
-            )}
-          </div>
-        )}
-
-        {categories.length > 0 && (
-          <div className="timeline-seed-categories">
-            {categories.map((cat) => (
-              <Badge key={cat.id} variant="primary" className="timeline-seed-category">
-                {cat.name}
-              </Badge>
-            ))}
-          </div>
-        )}
+        <SeedView
+          seed={seed}
+          tagColors={tagColorMap}
+          onTagClick={(tagId, tagName) => {
+            navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+          }}
+        />
       </div>
     )
   }
 
   const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
-    const seed = seeds[index]
-    if (!seed) return null
-
-    return (
-      <div className="timeline-seed-time-opposite">
-        <span className="timeline-seed-time">{formatSeedTime(seed)}</span>
-      </div>
-    )
+    // Time is now displayed in SeedView, so we don't need to show it here
+    return null
   }
 
   if (loading) {

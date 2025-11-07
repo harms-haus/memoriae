@@ -111,10 +111,10 @@ describe('validateTransaction', () => {
     })
   })
 
-  describe('add_category transaction', () => {
-    it('should validate add_category with valid data', () => {
+  describe('set_category transaction', () => {
+    it('should validate set_category with valid data', () => {
       expect(() => {
-        validateTransaction('add_category', {
+        validateTransaction('set_category', {
           category_id: 'cat-1',
           category_name: 'Work',
           category_path: '/work',
@@ -122,13 +122,13 @@ describe('validateTransaction', () => {
       }).not.toThrow()
     })
 
-    it('should reject add_category with missing fields', () => {
+    it('should reject set_category with missing fields', () => {
       expect(() => {
-        validateTransaction('add_category', {
+        validateTransaction('set_category', {
           category_id: 'cat-1',
           category_name: 'Work',
         } as any)
-      }).toThrow('add_category transaction requires category_id, category_name, and category_path strings')
+      }).toThrow('set_category transaction requires category_id, category_name, and category_path strings')
     })
   })
 
@@ -297,6 +297,42 @@ describe('computeSeedState', () => {
 
     expect(state.tags).toHaveLength(2)
     expect(state.tags?.map(t => t.id)).toEqual(['tag-1', 'tag-2'])
+  })
+
+  it('should replace category with set_category (seeds can only have one category)', () => {
+    const now = new Date()
+    const transactions: SeedTransaction[] = [
+      {
+        id: 'txn-1',
+        seed_id: 'seed-1',
+        transaction_type: 'create_seed',
+        transaction_data: { content: 'Initial' },
+        created_at: new Date(now.getTime() - 3000),
+        automation_id: null,
+      },
+      {
+        id: 'txn-2',
+        seed_id: 'seed-1',
+        transaction_type: 'set_category',
+        transaction_data: { category_id: 'cat-1', category_name: 'Work', category_path: '/work' },
+        created_at: new Date(now.getTime() - 2000),
+        automation_id: null,
+      },
+      {
+        id: 'txn-3',
+        seed_id: 'seed-1',
+        transaction_type: 'set_category',
+        transaction_data: { category_id: 'cat-2', category_name: 'Personal', category_path: '/personal' },
+        created_at: new Date(now.getTime() - 1000),
+        automation_id: null,
+      },
+    ]
+
+    const state = computeSeedState(transactions)
+
+    expect(state.categories).toHaveLength(1)
+    expect(state.categories?.[0].id).toBe('cat-2')
+    expect(state.categories?.[0].name).toBe('Personal')
   })
 })
 

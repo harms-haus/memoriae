@@ -1,14 +1,30 @@
-.seed-detail-container {
+.view-container.seed-detail-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-4);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .seed-detail-header {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.seed-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.seed-detail-left-column,
+.seed-detail-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .seed-detail-title {
@@ -17,11 +33,7 @@
 }
 
 .seed-detail-state {
-  margin-bottom: var(--space-6);
-}
-
-.seed-detail-automations {
-  margin-bottom: var(--space-6);
+  padding: var(--space-2);
 }
 
 .seed-content-display {
@@ -44,6 +56,21 @@
 
 .seed-categories {
   margin-top: var(--space-4);
+  text-align: center;
+  padding-top: var(--space-4);
+}
+
+.seed-category-link {
+  font-style: italic;
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: text-decoration var(--transition-base);
+}
+
+.seed-category-link:hover {
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .seed-categories ul {
@@ -98,14 +125,32 @@
 }
 
 .seed-detail-timeline {
-  min-height: 400px;
-  max-height: 70vh;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
-.seed-detail-timeline .panel-header {
+.seed-detail-timeline > .panel-header-light,
+.seed-detail-timeline > h3.panel-header {
   margin-bottom: var(--space-4);
+  flex-shrink: 0;
+}
+
+.seed-detail-timeline-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Make Timeline fill remaining space and scroll */
+.seed-detail-timeline-wrapper > .timeline {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Automation run event styles (italicized text, not in panel) */
@@ -268,12 +313,6 @@
     font-size: var(--text-xl);
   }
 
-  .seed-detail-state,
-  .seed-detail-automations,
-  .seed-detail-timeline {
-    margin-bottom: var(--space-4);
-  }
-
   .automation-item {
     flex-direction: column;
     align-items: flex-start;
@@ -294,7 +333,7 @@
   }
 
   .seed-detail-timeline {
-    max-height: 60vh; /* More space on mobile */
+    height: 600px; /* Fixed height on mobile too */
   }
 }
 
@@ -305,7 +344,7 @@
   }
 
   .seed-detail-timeline {
-    max-height: 65vh;
+    height: 600px;
   }
 }
 
@@ -315,7 +354,21 @@
     padding: var(--space-8);
   }
 
+  .seed-detail-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .seed-detail-left-column,
+  .seed-detail-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
   .seed-detail-timeline {
-    max-height: 70vh;
+    height: 600px;
   }
 }

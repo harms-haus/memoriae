@@ -34,6 +34,8 @@
 .timeline-seed-content {
   padding: 0;
   transition: all var(--transition-base);
+  /* Reduce effective padding to compensate for SeedView margin */
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) calc(-1 * var(--space-2));
 }
 
 .timeline-seed-content:hover {

@@ -5,7 +5,7 @@ import type {
   EditContentTransactionData,
   AddTagTransactionData,
   RemoveTagTransactionData,
-  AddCategoryTransactionData,
+  SetCategoryTransactionData,
   RemoveCategoryTransactionData,
 } from '../types/seed-transactions'
 
@@ -56,14 +56,14 @@ export function validateTransaction(
       }
       break
     }
-    case 'add_category': {
-      const d = data as AddCategoryTransactionData
+    case 'set_category': {
+      const d = data as SetCategoryTransactionData
       if (
         typeof d.category_id !== 'string' ||
         typeof d.category_name !== 'string' ||
         typeof d.category_path !== 'string'
       ) {
-        throw new Error('add_category transaction requires category_id, category_name, and category_path strings')
+        throw new Error('set_category transaction requires category_id, category_name, and category_path strings')
       }
       break
     }
@@ -161,19 +161,14 @@ export function computeSeedState(transactions: SeedTransaction[]): SeedState {
         break
       }
 
-      case 'add_category': {
-        const data = transaction.transaction_data as AddCategoryTransactionData
-        if (!state.categories) {
-          state.categories = []
-        }
-        // Check if category already exists (idempotent)
-        if (!state.categories.some(c => c.id === data.category_id)) {
-          state.categories.push({
-            id: data.category_id,
-            name: data.category_name,
-            path: data.category_path,
-          })
-        }
+      case 'set_category': {
+        const data = transaction.transaction_data as SetCategoryTransactionData
+        // Replace any existing category with the new one (seeds can only have one category)
+        state.categories = [{
+          id: data.category_id,
+          name: data.category_name,
+          path: data.category_path,
+        }]
         break
       }
 

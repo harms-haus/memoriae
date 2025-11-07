@@ -103,7 +103,7 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
       return 'seeds'
     }
     if (path === '/timeline') return 'timeline'
-    if (path === '/categories') return 'categories'
+    if (path === '/categories' || path.startsWith('/category/')) return 'categories'
     if (path === '/tags') return 'tags'
     if (path === '/settings') return 'settings'
     return 'seeds' // default
@@ -307,6 +307,7 @@ function AppContent() {
       <Route path="/seeds/:id" element={<SeedDetailWrapper />} />
       <Route path="/timeline" element={<TabNavigation />} />
       <Route path="/categories" element={<TabNavigation />} />
+      <Route path="/category/*" element={<TabNavigation />} />
       <Route path="/tags" element={<TabNavigation />} />
       <Route path="/settings" element={<TabNavigation />} />
     </Routes>

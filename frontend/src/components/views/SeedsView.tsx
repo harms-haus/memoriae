@@ -6,7 +6,7 @@ import { Panel } from '@mother/components/Panel'
 import { Input } from '@mother/components/Input'
 import { Badge } from '@mother/components/Badge'
 import { Search, X, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
-import { renderHashTags } from '../../utils/renderHashTags'
+import { SeedView } from '../SeedView'
 import type { Seed, Category, Tag as TagType } from '../../types'
 import './Views.css'
 import './SeedsView.css'
@@ -162,31 +162,6 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
   }
 
   const hasActiveFilters = searchQuery.trim() !== '' || selectedTags.size > 0 || selectedCategories.size > 0
-
-  const formatSeedTime = (seed: Seed): string => {
-    const date = new Date(seed.created_at)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    })
-  }
-
-  const truncateContent = (content: string, maxLength: number = 200): string => {
-    if (content.length <= maxLength) return content
-    return content.substring(0, maxLength).trim() + '...'
-  }
 
   if (loading) {
     return (
@@ -373,9 +348,13 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
       ) : (
         <div className="seeds-view-list">
           {filteredAndSortedSeeds.map((seed) => {
-            const content = seed.currentState?.seed || ''
-            const seedTags = seed.currentState?.tags || []
-            const seedCategories = seed.currentState?.categories || []
+            // Create tag color map: tag name (lowercase) -> color
+            const tagColorMap = new Map<string, string>()
+            tags.forEach(tag => {
+              if (tag.color) {
+                tagColorMap.set(tag.name.toLowerCase(), tag.color)
+              }
+            })
 
             return (
               <div
@@ -387,97 +366,13 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
                   variant="elevated"
                   className="seeds-view-item"
                 >
-                  <div className="seeds-view-item-header">
-                    <p className="seeds-view-item-content">
-                      {(() => {
-                        // Create tag color map: tag name (lowercase) -> color
-                        const tagColorMap = new Map<string, string>()
-                        tags.forEach(tag => {
-                          if (tag.color) {
-                            tagColorMap.set(tag.name.toLowerCase(), tag.color)
-                          }
-                        })
-                        return renderHashTags(truncateContent(content), (tagName) => {
-                          navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
-                        }, tagColorMap)
-                      })()}
-                    </p>
-                    <span className="seeds-view-item-time">
-                      {formatSeedTime(seed)}
-                    </span>
-                  </div>
-
-                  {(seedTags.length > 0 || seedCategories.length > 0) && (
-                    <div className="seeds-view-item-meta">
-                      {seedTags.length > 0 && (
-                        <div className="tag-list seeds-view-item-tags">
-                          {seedTags.slice(0, 5).map((tag) => {
-                            // Find the full tag object to get color
-                            const fullTag = tags.find(t => t.id === tag.id)
-                            const tagColor = fullTag?.color || 'var(--text-primary)'
-                            
-                            return (
-                              <a
-                                key={tag.id}
-                                href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  toggleTag(tag.id)
-                                }}
-                                style={{
-                                  textDecoration: 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.textDecoration = 'underline'
-                                  e.currentTarget.style.setProperty('color', tagColor, 'important')
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.textDecoration = 'none'
-                                  e.currentTarget.style.setProperty('color', tagColor, 'important')
-                                }}
-                                ref={(el) => {
-                                  if (el) {
-                                    el.style.setProperty('color', tagColor, 'important')
-                                  }
-                                }}
-                              >
-                                #{tag.name}
-                              </a>
-                            )
-                          })}
-                          {seedTags.length > 5 && (
-                            <span style={{ color: 'var(--text-secondary)' }}>
-                              +{seedTags.length - 5}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {seedCategories.length > 0 && (
-                        <div className="seeds-view-item-categories">
-                          {seedCategories.slice(0, 3).map((category) => (
-                            <div
-                              key={category.id}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleCategory(category.id)
-                              }}
-                              className="seeds-view-category-clickable"
-                            >
-                              <Badge variant="primary" className="badge-small">
-                                {category.path}
-                              </Badge>
-                            </div>
-                          ))}
-                          {seedCategories.length > 3 && (
-                            <Badge variant="primary" className="badge-small">
-                              +{seedCategories.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <SeedView
+                    seed={seed}
+                    tagColors={tagColorMap}
+                    onTagClick={(tagId, tagName) => {
+                      navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                    }}
+                  />
                 </Panel>
               </div>
             )
