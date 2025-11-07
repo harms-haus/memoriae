@@ -73,7 +73,7 @@ export function MusingItem({ musing, onUpdate, tagColors }: MusingItemProps) {
         <div className="musing-item-seed">
           <SeedView
             seed={musing.seed}
-            tagColors={tagColors}
+            tagColors={tagColors ?? new Map()}
           />
         </div>
         <div className="musing-item-actions">

@@ -4,6 +4,7 @@ alwaysApply: false
 ---
 # Before considering any medium to large tasks complete
 
+- run `./build.sh` to build and test all 3 major components with 1 command
 - iteratively fix build errors
-- iteratively resolve test failures (using any plan or documentation as the ground-truth, if any)
+- iteratively resolve test failures (using the plan or documentation as the ground-truth, if any)
 - repeat until all are resolved

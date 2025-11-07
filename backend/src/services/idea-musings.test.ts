@@ -13,17 +13,19 @@ vi.mock('./seeds', () => ({
   },
 }))
 
-// Mock the database
-const mockWhere = vi.fn()
-const mockWhereIn = vi.fn()
-const mockOrderBy = vi.fn()
-const mockSelect = vi.fn()
-const mockInsert = vi.fn()
-const mockReturning = vi.fn()
-const mockFirst = vi.fn()
-const mockUpdate = vi.fn()
-
+// Mock the database - define mocks inside factory to avoid hoisting issues
 vi.mock('../db/connection', () => {
+  const mockRaw = vi.fn((sql: string, bindings: any[]) => ({ sql, bindings }))
+  const mockWhere = vi.fn()
+  const mockWhereIn = vi.fn()
+  const mockOrderBy = vi.fn()
+  const mockSelect = vi.fn()
+  const mockInsert = vi.fn()
+  const mockReturning = vi.fn()
+  const mockFirst = vi.fn()
+  const mockUpdate = vi.fn()
+  const mockCount = vi.fn()
+
   const mockDb = vi.fn((table: string) => {
     const queryBuilder = {
       where: mockWhere.mockReturnThis(),
@@ -35,12 +37,27 @@ vi.mock('../db/connection', () => {
       }),
       first: mockFirst,
       update: mockUpdate.mockReturnThis(),
+      count: mockCount.mockReturnThis(),
     }
     return queryBuilder
   })
 
+  mockDb.raw = mockRaw
+
   return {
     default: mockDb,
+    __mocks: {
+      raw: mockRaw,
+      where: mockWhere,
+      whereIn: mockWhereIn,
+      orderBy: mockOrderBy,
+      select: mockSelect,
+      insert: mockInsert,
+      returning: mockReturning,
+      first: mockFirst,
+      update: mockUpdate,
+      count: mockCount,
+    },
   }
 })
 
@@ -72,8 +89,25 @@ describe('IdeaMusingsService', () => {
     dismissed_at: null,
   }
 
-  beforeEach(() => {
+  // Get mocks from the module
+  let mocks: {
+    raw: ReturnType<typeof vi.fn>
+    where: ReturnType<typeof vi.fn>
+    whereIn: ReturnType<typeof vi.fn>
+    orderBy: ReturnType<typeof vi.fn>
+    select: ReturnType<typeof vi.fn>
+    insert: ReturnType<typeof vi.fn>
+    returning: ReturnType<typeof vi.fn>
+    first: ReturnType<typeof vi.fn>
+    update: ReturnType<typeof vi.fn>
+    count: ReturnType<typeof vi.fn>
+  }
+
+  beforeEach(async () => {
     vi.clearAllMocks()
+    // Get mocks from the module
+    const dbModule = await import('../db/connection')
+    mocks = (dbModule as any).__mocks
   })
 
   describe('getDailyMusings', () => {
@@ -82,7 +116,7 @@ describe('IdeaMusingsService', () => {
       today.setHours(0, 0, 0, 0)
 
       vi.mocked(SeedsService.SeedsService.getByUser).mockResolvedValue([mockSeed])
-      mockSelect.mockResolvedValue([mockMusingRow])
+      mocks.select.mockResolvedValue([mockMusingRow])
 
       const result = await IdeaMusingsService.getDailyMusings(mockUserId)
 
@@ -94,7 +128,7 @@ describe('IdeaMusingsService', () => {
 
     it('should return empty array when no musings exist', async () => {
       vi.mocked(SeedsService.SeedsService.getByUser).mockResolvedValue([mockSeed])
-      mockSelect.mockResolvedValue([])
+      mocks.select.mockResolvedValue([])
 
       const result = await IdeaMusingsService.getDailyMusings(mockUserId)
 
@@ -107,7 +141,7 @@ describe('IdeaMusingsService', () => {
       const result = await IdeaMusingsService.getDailyMusings(mockUserId)
 
       expect(result).toHaveLength(0)
-      expect(mockSelect).not.toHaveBeenCalled()
+      expect(mocks.select).not.toHaveBeenCalled()
     })
 
     it('should handle missing table gracefully', async () => {
@@ -115,7 +149,7 @@ describe('IdeaMusingsService', () => {
       ;(error as any).code = '42P01'
 
       vi.mocked(SeedsService.SeedsService.getByUser).mockResolvedValue([mockSeed])
-      mockSelect.mockRejectedValue(error)
+      mocks.select.mockRejectedValue(error)
 
       const result = await IdeaMusingsService.getDailyMusings(mockUserId)
 
@@ -124,7 +158,7 @@ describe('IdeaMusingsService', () => {
 
     it('should include seed data when available', async () => {
       vi.mocked(SeedsService.SeedsService.getByUser).mockResolvedValue([mockSeed])
-      mockSelect.mockResolvedValue([mockMusingRow])
+      mocks.select.mockResolvedValue([mockMusingRow])
 
       const result = await IdeaMusingsService.getDailyMusings(mockUserId)
 
@@ -135,17 +169,17 @@ describe('IdeaMusingsService', () => {
 
   describe('getBySeedId', () => {
     it('should return musings for specific seed', async () => {
-      mockSelect.mockResolvedValue([mockMusingRow])
+      mocks.select.mockResolvedValue([mockMusingRow])
 
       const result = await IdeaMusingsService.getBySeedId(mockSeedId)
 
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe(mockMusingId)
-      expect(mockWhere).toHaveBeenCalledWith({ seed_id: mockSeedId })
+      expect(mocks.where).toHaveBeenCalledWith({ seed_id: mockSeedId })
     })
 
     it('should return empty array when no musings exist', async () => {
-      mockSelect.mockResolvedValue([])
+      mocks.select.mockResolvedValue([])
 
       const result = await IdeaMusingsService.getBySeedId(mockSeedId)
 
@@ -155,7 +189,7 @@ describe('IdeaMusingsService', () => {
     it('should handle missing table gracefully', async () => {
       const error = new Error('relation "idea_musings" does not exist')
       ;(error as any).code = '42P01'
-      mockSelect.mockRejectedValue(error)
+      mocks.select.mockRejectedValue(error)
 
       const result = await IdeaMusingsService.getBySeedId(mockSeedId)
 
@@ -165,7 +199,7 @@ describe('IdeaMusingsService', () => {
 
   describe('getById', () => {
     it('should return musing by ID', async () => {
-      mockFirst.mockResolvedValue(mockMusingRow)
+      mocks.first.mockResolvedValue(mockMusingRow)
 
       const result = await IdeaMusingsService.getById(mockMusingId)
 
@@ -174,7 +208,7 @@ describe('IdeaMusingsService', () => {
     })
 
     it('should return null when musing not found', async () => {
-      mockFirst.mockResolvedValue(undefined)
+      mocks.first.mockResolvedValue(undefined)
 
       const result = await IdeaMusingsService.getById(mockMusingId)
 
@@ -189,22 +223,22 @@ describe('IdeaMusingsService', () => {
         ideas: ['Idea 1', 'Idea 2'],
       }
 
-      mockReturning.mockResolvedValue([{ id: mockMusingId }])
-      mockFirst.mockResolvedValue(mockMusingRow)
+      mocks.returning.mockResolvedValue([{ id: mockMusingId }])
+      mocks.first.mockResolvedValue(mockMusingRow)
 
       const result = await IdeaMusingsService.create(mockSeedId, templateType, content)
 
       expect(result).toBeDefined()
       expect(result.id).toBe(mockMusingId)
-      expect(mockInsert).toHaveBeenCalled()
+      expect(mocks.insert).toHaveBeenCalled()
     })
   })
 
   describe('dismiss', () => {
     it('should mark musing as dismissed', async () => {
       const updatedRow = { ...mockMusingRow, dismissed: true, dismissed_at: new Date() }
-      mockFirst.mockResolvedValueOnce(mockMusingRow) // For getById
-      mockFirst.mockResolvedValueOnce(updatedRow) // For getById after update
+      mocks.first.mockResolvedValueOnce(mockMusingRow) // For getById
+      mocks.first.mockResolvedValueOnce(updatedRow) // For getById after update
 
       vi.mocked(SeedsService.SeedsService.getById).mockResolvedValue(mockSeed)
 
@@ -212,7 +246,7 @@ describe('IdeaMusingsService', () => {
 
       expect(result.dismissed).toBe(true)
       expect(result.dismissed_at).toBeDefined()
-      expect(mockUpdate).toHaveBeenCalled()
+      expect(mocks.update).toHaveBeenCalled()
     })
 
     it('should verify user ownership', async () => {
@@ -221,12 +255,12 @@ describe('IdeaMusingsService', () => {
         user_id: 'other-user',
       }
 
-      mockFirst.mockResolvedValue(mockMusingRow)
-      vi.mocked(SeedsService.SeedsService.getById).mockResolvedValue(otherUserSeed)
+      mocks.first.mockResolvedValue(mockMusingRow)
+      vi.mocked(SeedsService.SeedsService.getById).mockResolvedValue(null) // Seed not found for this user
 
       await expect(
         IdeaMusingsService.dismiss(mockMusingId, mockUserId)
-      ).rejects.toThrow('Musing not found or access denied')
+      ).rejects.toThrow('Musing does not belong to user')
     })
   })
 
@@ -235,11 +269,13 @@ describe('IdeaMusingsService', () => {
       const shownDate = new Date()
       shownDate.setUTCHours(0, 0, 0, 0)
 
-      mockReturning.mockResolvedValue([{ id: 'history-1' }])
+      // Mock: first check returns null (doesn't exist), then insert succeeds
+      mocks.first.mockResolvedValueOnce(null) // For the existing check
+      mocks.returning.mockResolvedValue([{ id: 'history-1' }])
 
       await IdeaMusingsService.recordShown(mockSeedId, shownDate)
 
-      expect(mockInsert).toHaveBeenCalled()
+      expect(mocks.insert).toHaveBeenCalled()
     })
   })
 
@@ -250,7 +286,7 @@ describe('IdeaMusingsService', () => {
         { seed_id: 'seed-2' },
         { seed_id: 'seed-1' }, // Duplicate
       ]
-      mockSelect.mockResolvedValue(rows)
+      mocks.select.mockResolvedValue(rows)
 
       const result = await IdeaMusingsService.getSeedsShownInLastDays(2)
 
@@ -262,7 +298,7 @@ describe('IdeaMusingsService', () => {
     it('should handle missing table gracefully', async () => {
       const error = new Error('relation "idea_musing_shown_history" does not exist')
       ;(error as any).code = '42P01'
-      mockSelect.mockRejectedValue(error)
+      mocks.select.mockRejectedValue(error)
 
       const result = await IdeaMusingsService.getSeedsShownInLastDays(2)
 
@@ -272,19 +308,23 @@ describe('IdeaMusingsService', () => {
 
   describe('wasShownInLastDays', () => {
     it('should return true if shown recently', async () => {
-      mockFirst.mockResolvedValue({ count: 1 })
+      mocks.count.mockReturnThis()
+      mocks.first.mockResolvedValue({ count: '1' })
 
       const result = await IdeaMusingsService.wasShownInLastDays(mockSeedId, 2)
 
       expect(result).toBe(true)
+      expect(mocks.count).toHaveBeenCalledWith('* as count')
     })
 
     it('should return false if not shown recently', async () => {
-      mockFirst.mockResolvedValue({ count: 0 })
+      mocks.count.mockReturnThis()
+      mocks.first.mockResolvedValue({ count: '0' })
 
       const result = await IdeaMusingsService.wasShownInLastDays(mockSeedId, 2)
 
       expect(result).toBe(false)
+      expect(mocks.count).toHaveBeenCalledWith('* as count')
     })
   })
 })

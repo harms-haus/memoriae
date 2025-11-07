@@ -179,8 +179,16 @@ router.post('/:id/dismiss', async (req: Request, res: Response, next: NextFuncti
       return
     }
 
-    const musing = await IdeaMusingsService.dismiss(id, userId)
-    res.json(musing)
+    try {
+      const musing = await IdeaMusingsService.dismiss(id, userId)
+      res.json(musing)
+    } catch (error: any) {
+      if (error.message === 'Musing not found' || error.message === 'Musing does not belong to user') {
+        res.status(404).json({ error: 'Musing not found' })
+        return
+      }
+      throw error
+    }
   } catch (error) {
     next(error)
   }
@@ -297,7 +305,7 @@ router.post('/:id/apply-idea', async (req: Request, res: Response, next: NextFun
     }
 
     if (ideaIndex < 0 || ideaIndex >= content.ideas.length) {
-      res.status(400).json({ error: 'Invalid ideaIndex' })
+      res.status(400).json({ error: 'Invalid idea index' })
       return
     }
 

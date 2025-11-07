@@ -277,7 +277,11 @@ export class IdeaMusingsService {
       .count('* as count')
       .first()
 
-    return ((count as any)?.count as number) > 0
+    const countValue = (count as any)?.count
+    if (typeof countValue === 'string') {
+      return parseInt(countValue, 10) > 0
+    }
+    return (countValue as number) > 0
   }
 }
 

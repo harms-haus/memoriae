@@ -10,6 +10,8 @@ import { SeedsService } from '../../services/seeds'
 import { SettingsService } from '../../services/settings'
 import { IdeaMusingAutomation } from '../../services/automation/idea-musing'
 import { addAutomationJob } from '../../services/queue/queue'
+import { createOpenRouterClient } from '../../services/openrouter/client'
+import { SeedTransactionsService } from '../../services/seed-transactions'
 import db from '../../db/connection'
 
 // Mock the services
@@ -45,6 +47,16 @@ vi.mock('../../services/automation/idea-musing', () => ({
 
 vi.mock('../../services/queue/queue', () => ({
   addAutomationJob: vi.fn(),
+}))
+
+vi.mock('../../services/openrouter/client', () => ({
+  createOpenRouterClient: vi.fn(),
+}))
+
+vi.mock('../../services/seed-transactions', () => ({
+  SeedTransactionsService: {
+    create: vi.fn(),
+  },
 }))
 
 // Mock database
@@ -361,7 +373,7 @@ describe('Idea Musings Routes', () => {
     it('should return 404 if musing not found', async () => {
       const token = generateTestToken({ id: mockUserId })
 
-      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(null)
+      vi.mocked(IdeaMusingsService.dismiss).mockRejectedValue(new Error('Musing not found'))
 
       const response = await request(app)
         .post(`/api/idea-musings/${mockMusingId}/dismiss`)
@@ -400,6 +412,26 @@ describe('Idea Musings Routes', () => {
 
       vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
       vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: 'test-key',
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const mockOpenRouterClient = {
+        createChatCompletion: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'Original content\n\nIdea 1',
+            },
+          }],
+        }),
+      }
+      vi.mocked(createOpenRouterClient).mockReturnValue(mockOpenRouterClient as any)
 
       const response = await request(app)
         .post(`/api/idea-musings/${mockMusingId}/apply-idea`)
@@ -439,7 +471,34 @@ describe('Idea Musings Routes', () => {
 
       vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
       vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
-      vi.mocked(SeedsService.update).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: 'test-key',
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const mockOpenRouterClient = {
+        createChatCompletion: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'Original content\n\nIdea 1',
+            },
+          }],
+        }),
+      }
+      vi.mocked(createOpenRouterClient).mockReturnValue(mockOpenRouterClient as any)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue({
+        id: 'transaction-1',
+        seed_id: mockSeedId,
+        transaction_type: 'edit_content',
+        transaction_data: { content: 'Original content\n\nIdea 1' },
+        created_at: new Date(),
+        automation_id: null,
+      } as any)
 
       const response = await request(app)
         .post(`/api/idea-musings/${mockMusingId}/apply-idea`)
@@ -448,7 +507,7 @@ describe('Idea Musings Routes', () => {
         .expect(200)
 
       expect(response.body.applied).toBe(true)
-      expect(SeedsService.update).toHaveBeenCalled()
+      expect(SeedTransactionsService.create).toHaveBeenCalled()
     })
 
     it('should return 400 for invalid idea index', async () => {
