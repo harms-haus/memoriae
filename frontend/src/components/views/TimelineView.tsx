@@ -139,7 +139,7 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
           seed={seed}
           tagColors={tagColorMap}
           onTagClick={(tagId, tagName) => {
-            navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+            navigate(`/tags/${tagId}`)
           }}
         />
       </div>

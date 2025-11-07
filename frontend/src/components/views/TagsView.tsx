@@ -53,7 +53,7 @@ export function TagsView() {
             {selectedCount} tag{selectedCount !== 1 ? 's' : ''} selected
           </p>
           <p className="text-secondary">
-            Click tags to filter seeds, or click again to deselect.
+            Ctrl/Cmd+Click tags to filter seeds, or click to view tag details.
           </p>
         </Panel>
       )}

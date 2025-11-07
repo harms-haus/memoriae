@@ -210,7 +210,7 @@ Do not include any reasoning or explanation - only the JSON array.`
         ],
         {
           temperature: 0.4, // Slightly higher for more creative categorization
-          max_tokens: 2000, // Increased to handle reasoning models that output reasoning before content
+          max_tokens: 8000, // Increased significantly to handle reasoning models that output long reasoning before content
         }
       )
 
@@ -234,22 +234,61 @@ Do not include any reasoning or explanation - only the JSON array.`
           return jsonMatch[1]
         }
         
-        // Pattern 2: JSON array with double quotes (multiline)
+        // Pattern 2: JSON array with double quotes (multiline) - more lenient
         jsonMatch = text.match(/\[(?:\s*"[^"]+"\s*,?\s*)+\]/s)
         if (jsonMatch) {
-          return jsonMatch[0]
+          try {
+            JSON.parse(jsonMatch[0]) // Validate
+            return jsonMatch[0]
+          } catch {
+            // Not valid JSON, continue
+          }
         }
         
         // Pattern 3: JSON array with single quotes (less common but possible)
         jsonMatch = text.match(/\[(?:\s*'[^']+'\s*,?\s*)+\]/s)
         if (jsonMatch) {
-          return jsonMatch[0].replace(/'/g, '"') // Convert single quotes to double quotes
+          const converted = jsonMatch[0].replace(/'/g, '"')
+          try {
+            JSON.parse(converted) // Validate
+            return converted
+          } catch {
+            // Not valid JSON, continue
+          }
         }
         
-        // Pattern 4: Look for array-like structure at the end of text
-        const lines = text.split('\n')
+        // Pattern 4: Look for array-like structure at the end of text (most important for reasoning models)
+        // Check last 500 characters first (reasoning models often put answer at the end)
+        const endText = text.slice(-500)
+        const lines = endText.split('\n')
         for (let i = lines.length - 1; i >= 0; i--) {
           const line = lines[i]?.trim()
+          if (line && line.startsWith('[')) {
+            // Try to find complete JSON array starting from this line
+            const startIdx = text.lastIndexOf(line)
+            if (startIdx !== -1) {
+              // Try to extract from here to end, or find closing bracket
+              const remaining = text.substring(startIdx)
+              const closingBracket = remaining.indexOf(']')
+              if (closingBracket !== -1) {
+                const candidate = remaining.substring(0, closingBracket + 1)
+                try {
+                  const parsed = JSON.parse(candidate.trim())
+                  if (Array.isArray(parsed)) {
+                    return candidate.trim()
+                  }
+                } catch {
+                  // Not valid JSON, continue
+                }
+              }
+            }
+          }
+        }
+        
+        // Pattern 5: Look for array-like structure anywhere in the text (check all lines)
+        const allLines = text.split('\n')
+        for (let i = allLines.length - 1; i >= 0; i--) {
+          const line = allLines[i]?.trim()
           if (line && line.startsWith('[') && line.endsWith(']')) {
             try {
               JSON.parse(line) // Validate it's valid JSON
@@ -260,15 +299,18 @@ Do not include any reasoning or explanation - only the JSON array.`
           }
         }
         
-        // Pattern 5: Try to find JSON array anywhere in the text (more lenient)
-        const jsonArrayPattern = /\[[\s\S]*?\]/
-        const matches = text.match(jsonArrayPattern)
-        if (matches) {
-          for (const match of matches) {
+        // Pattern 6: Try to find JSON array anywhere in the text (more lenient, greedy)
+        // Look for [ followed by content and ending with ]
+        const jsonArrayPattern = /\[[\s\S]{0,500}?\]/g
+        const matches = Array.from(text.matchAll(jsonArrayPattern))
+        // Check matches from end to start (most recent first)
+        for (let i = matches.length - 1; i >= 0; i--) {
+          const match = matches[i]
+          if (match && match[0]) {
             try {
-              const parsed = JSON.parse(match.trim())
-              if (Array.isArray(parsed)) {
-                return match.trim()
+              const parsed = JSON.parse(match[0].trim())
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                return match[0].trim()
               }
             } catch {
               // Not valid JSON, continue
@@ -282,9 +324,15 @@ Do not include any reasoning or explanation - only the JSON array.`
       // Try to extract JSON from content first
       let jsonContent = extractJsonArray(content)
       
-      // If not found in content, try reasoning
+      // If not found in content, try reasoning (reasoning models often put answer here)
       if (!jsonContent && reasoning) {
         jsonContent = extractJsonArray(reasoning)
+      }
+      
+      // If still not found, try the last portion of reasoning (where answer often appears)
+      if (!jsonContent && reasoning && reasoning.length > 500) {
+        const lastPortion = reasoning.slice(-1000) // Last 1000 chars
+        jsonContent = extractJsonArray(lastPortion)
       }
       
       // If still not found, combine both and try again

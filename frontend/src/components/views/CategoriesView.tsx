@@ -46,6 +46,9 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
       if (category && category.id !== selectedCategoryId) {
         setSelectedCategoryId(category.id)
       }
+    } else if (location.pathname === '/categories' && selectedCategoryId !== null) {
+      // Clear selection when navigating to /categories
+      setSelectedCategoryId(null)
     }
   }, [location.pathname, categories, selectedCategoryId])
 
@@ -211,7 +214,7 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
                             seed={seed}
                             tagColors={tagColorMap}
                             onTagClick={(tagId, tagName) => {
-                              navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                              navigate(`/tags/${tagId}`)
                             }}
                           />
                         </Panel>

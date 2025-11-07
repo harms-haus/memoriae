@@ -201,6 +201,19 @@ class ApiClient {
   async getSeedTransaction(transactionId: string): Promise<SeedTransaction> {
     return this.get<SeedTransaction>(`/transactions/${transactionId}`)
   }
+
+  // Tag endpoints
+  async getTagDetail(tagId: string): Promise<any> {
+    return this.get(`/tags/${tagId}`)
+  }
+
+  async updateTag(tagId: string, data: { name?: string; color?: string | null }): Promise<any> {
+    return this.put(`/tags/${tagId}`, data)
+  }
+
+  async getTagSeeds(tagId: string): Promise<any[]> {
+    return this.get<any[]>(`/tags/${tagId}/seeds`)
+  }
 }
 
 // Export singleton instance

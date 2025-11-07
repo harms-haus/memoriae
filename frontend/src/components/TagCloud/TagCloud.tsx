@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Panel } from '@mother/components/Panel'
 import { Badge } from '@mother/components/Badge'
 import { api } from '../../services/api'
@@ -12,6 +13,7 @@ export interface TagCloudProps {
 }
 
 interface TagData {
+  id: string
   name: string
   count: number
   color?: string
@@ -22,6 +24,7 @@ interface TagData {
  * Tags are sized based on their usage frequency across all seeds
  */
 export function TagCloud({ onTagSelect, selectedTags = new Set(), className = '' }: TagCloudProps) {
+  const navigate = useNavigate()
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [tags, setTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,22 +55,29 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
 
   // Process seeds to extract tag frequency data
   const tagData = useMemo(() => {
-    const tagMap = new Map<string, number>()
+    const tagMap = new Map<string, { id: string; name: string; count: number }>()
     
     // Count tag occurrences across all seeds
     for (const seed of seeds) {
       const seedTags = seed.currentState?.tags || []
       for (const tag of seedTags) {
-        // Skip tags without names
-        if (!tag.name) continue
-        const count = tagMap.get(tag.name) || 0
-        tagMap.set(tag.name, count + 1)
+        // Skip tags without names or IDs
+        if (!tag.name || !tag.id) continue
+        const existing = tagMap.get(tag.name.toLowerCase())
+        if (existing) {
+          existing.count += 1
+        } else {
+          tagMap.set(tag.name.toLowerCase(), {
+            id: tag.id,
+            name: tag.name,
+            count: 1,
+          })
+        }
       }
     }
 
     // Convert to array and sort by frequency (descending)
-    const tags: TagData[] = Array.from(tagMap.entries())
-      .map(([name, count]) => ({ name, count }))
+    const tags: TagData[] = Array.from(tagMap.values())
       .sort((a, b) => b.count - a.count)
 
     return tags
@@ -90,8 +100,18 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
     return tag?.color || 'var(--text-primary)'
   }
 
-  const handleTagClick = (tagName: string) => {
-    onTagSelect?.(tagName)
+  const handleTagClick = (tagId: string, tagName: string, e: React.MouseEvent) => {
+    // If onTagSelect is provided and user is holding a modifier key, use it for filtering
+    if (onTagSelect && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+      e.preventDefault()
+      e.stopPropagation()
+      onTagSelect(tagName)
+      return
+    }
+    
+    // Otherwise, navigate to tag detail view
+    e.preventDefault()
+    navigate(`/tags/${tagId}`)
   }
 
   const maxCount = Math.max(...tagData.map(t => t.count), 1)
@@ -153,12 +173,9 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
               
               return (
                 <a
-                  key={tag.name}
-                  href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleTagClick(tag.name)
-                  }}
+                  key={tag.id}
+                  href={`/tags/${tag.id}`}
+                  onClick={(e) => handleTagClick(tag.id, tag.name, e)}
                   className={`
                     tag-cloud-item
                     ${sizeClass}
@@ -176,7 +193,7 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
                       el.style.setProperty('color', tagColor, 'important')
                     }
                   }}
-                  title={`${tag.name} (${tag.count} seed${tag.count !== 1 ? 's' : ''})`}
+                  title={`${tag.name} (${tag.count} seed${tag.count !== 1 ? 's' : ''}) - Click to view details, Ctrl/Cmd+Click to filter`}
                 >
                   #{tag.name}
                   <span className="tag-cloud-count">{tag.count}</span>

@@ -6,6 +6,7 @@ import db from '../../db/connection'
 import { Automation, type AutomationContext, type AutomationProcessResult, type CategoryChange } from './base'
 import type { Seed } from '../seeds'
 import type { SeedTransaction } from '../../types/seed-transactions'
+import { create, setColor } from '../tags'
 
 /**
  * Tag record from database
@@ -250,7 +251,7 @@ Do not include any reasoning or explanation - only the JSON array.`
         ],
         {
           temperature: 0.3, // Lower temperature for more consistent tag extraction
-          max_tokens: 2000, // Increased to handle reasoning models that output reasoning before content
+          max_tokens: 8000, // Increased significantly to handle reasoning models that output long reasoning before content
         }
       )
 
@@ -274,23 +275,61 @@ Do not include any reasoning or explanation - only the JSON array.`
           return jsonMatch[1]
         }
         
-        // Pattern 2: JSON array with double quotes (multiline)
+        // Pattern 2: JSON array with double quotes (multiline) - more lenient
         jsonMatch = text.match(/\[(?:\s*"[^"]+"\s*,?\s*)+\]/s)
         if (jsonMatch) {
-          return jsonMatch[0]
+          try {
+            JSON.parse(jsonMatch[0]) // Validate
+            return jsonMatch[0]
+          } catch {
+            // Not valid JSON, continue
+          }
         }
         
         // Pattern 3: JSON array with single quotes (less common but possible)
         jsonMatch = text.match(/\[(?:\s*'[^']+'\s*,?\s*)+\]/s)
         if (jsonMatch) {
-          return jsonMatch[0].replace(/'/g, '"') // Convert single quotes to double quotes
+          const converted = jsonMatch[0].replace(/'/g, '"')
+          try {
+            JSON.parse(converted) // Validate
+            return converted
+          } catch {
+            // Not valid JSON, continue
+          }
         }
         
-        // Pattern 4: Look for array-like structure at the end of text
-        // Some models put the answer at the end
-        const lines = text.split('\n')
+        // Pattern 4: Look for array-like structure at the end of text (most important for reasoning models)
+        // Check last 500 characters first (reasoning models often put answer at the end)
+        const endText = text.slice(-500)
+        const lines = endText.split('\n')
         for (let i = lines.length - 1; i >= 0; i--) {
           const line = lines[i]?.trim()
+          if (line && line.startsWith('[')) {
+            // Try to find complete JSON array starting from this line
+            const startIdx = text.lastIndexOf(line)
+            if (startIdx !== -1) {
+              // Try to extract from here to end, or find closing bracket
+              const remaining = text.substring(startIdx)
+              const closingBracket = remaining.indexOf(']')
+              if (closingBracket !== -1) {
+                const candidate = remaining.substring(0, closingBracket + 1)
+                try {
+                  const parsed = JSON.parse(candidate.trim())
+                  if (Array.isArray(parsed)) {
+                    return candidate.trim()
+                  }
+                } catch {
+                  // Not valid JSON, continue
+                }
+              }
+            }
+          }
+        }
+        
+        // Pattern 5: Look for array-like structure anywhere in the text (check all lines)
+        const allLines = text.split('\n')
+        for (let i = allLines.length - 1; i >= 0; i--) {
+          const line = allLines[i]?.trim()
           if (line && line.startsWith('[') && line.endsWith(']')) {
             try {
               JSON.parse(line) // Validate it's valid JSON
@@ -301,16 +340,18 @@ Do not include any reasoning or explanation - only the JSON array.`
           }
         }
         
-        // Pattern 5: Try to find JSON array anywhere in the text (more lenient)
+        // Pattern 6: Try to find JSON array anywhere in the text (more lenient, greedy)
         // Look for [ followed by content and ending with ]
-        const jsonArrayPattern = /\[[\s\S]*?\]/
-        const matches = text.match(jsonArrayPattern)
-        if (matches) {
-          for (const match of matches) {
+        const jsonArrayPattern = /\[[\s\S]{0,500}?\]/g
+        const matches = Array.from(text.matchAll(jsonArrayPattern))
+        // Check matches from end to start (most recent first)
+        for (let i = matches.length - 1; i >= 0; i--) {
+          const match = matches[i]
+          if (match && match[0]) {
             try {
-              const parsed = JSON.parse(match.trim())
-              if (Array.isArray(parsed)) {
-                return match.trim()
+              const parsed = JSON.parse(match[0].trim())
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                return match[0].trim()
               }
             } catch {
               // Not valid JSON, continue
@@ -321,18 +362,22 @@ Do not include any reasoning or explanation - only the JSON array.`
         return null
       }
       
-      // Combine content and reasoning for processing
-      const combined = `${reasoning}\n${content}`.trim()
-      
       // Try to extract JSON from content first
       let jsonContent = extractJsonArray(content)
       
-      // If not found in content, try reasoning
+      // If not found in content, try reasoning (reasoning models often put answer here)
       if (!jsonContent && reasoning) {
         jsonContent = extractJsonArray(reasoning)
       }
       
+      // If still not found, try the last portion of reasoning (where answer often appears)
+      if (!jsonContent && reasoning && reasoning.length > 500) {
+        const lastPortion = reasoning.slice(-1000) // Last 1000 chars
+        jsonContent = extractJsonArray(lastPortion)
+      }
+      
       // If still not found, try combined text
+      let combined = `${reasoning}\n${content}`.trim()
       if (!jsonContent) {
         jsonContent = extractJsonArray(combined)
       }
@@ -384,7 +429,7 @@ Do not include any reasoning or explanation - only the JSON array.`
               // Try to extract tags from incomplete JSON manually using regex
               const tagMatches = partialJson.match(/"([^"]+)"/g)
               if (tagMatches && tagMatches.length > 0) {
-                const extractedTags = tagMatches.map(m => m.replace(/"/g, ''))
+                const extractedTags = tagMatches.map((m: string) => m.replace(/"/g, ''))
                 console.warn('TagExtractionAutomation: Response was truncated, extracted tags from partial JSON:', extractedTags)
                 // Return early with extracted tags (no colors for truncated responses)
                 const result: Array<{ name: string; color: string | null }> = []
@@ -487,44 +532,46 @@ Do not include any reasoning or explanation - only the JSON array.`
   /**
    * Ensure a tag exists in the database
    * Creates the tag if it doesn't exist, otherwise returns existing tag
-   * If tag exists but has no color and color is provided, updates it
+   * If tag exists but has no color and color is provided, updates it via transaction
    */
-  private async ensureTagExists(tagName: string, color: string | null = null): Promise<TagRow> {
+  private async ensureTagExists(tagName: string, color: string | null = null, automationId?: string): Promise<TagRow> {
     // Normalize tag name for lookup (lowercase, trimmed)
     const normalizedName = tagName.toLowerCase().trim()
 
-    // Try to find existing tag
+    // Try to find existing tag by name
     const existing = await db<TagRow>('tags')
       .where({ name: normalizedName })
       .first()
 
     if (existing) {
-      // If tag exists but has no color and color is provided, update it
+      // If tag exists but has no color and color is provided, update it via transaction
       if (!existing.color && color) {
-        await db<TagRow>('tags')
-          .where({ id: existing.id })
-          .update({ color })
-        
+        try {
+          await setColor(existing.id, color)
+        } catch (error) {
+          console.warn(`Failed to set color for tag ${existing.id}:`, error)
+        }
         return { ...existing, color }
       }
       return existing
     }
 
-    // Create new tag
-    const [created] = await db<TagRow>('tags')
-      .insert({
-        id: uuidv4(),
+    // Create new tag with creation transaction
+    try {
+      const createdTag = await create({
         name: normalizedName,
         color: color || null,
-        created_at: new Date(),
       })
-      .returning('*')
-
-    if (!created) {
-      throw new Error(`Failed to create tag: ${tagName}`)
+      
+      return {
+        id: createdTag.id,
+        name: createdTag.name,
+        color: createdTag.color || null,
+        created_at: createdTag.currentState.timestamp,
+      }
+    } catch (error) {
+      throw new Error(`Failed to create tag: ${tagName}`, { cause: error })
     }
-
-    return created
   }
 }
 

@@ -207,3 +207,52 @@ export interface DueFollowup {
   due_time: string // ISO string
   message: string
 }
+
+// Tag transaction types
+export type TagTransactionType = 
+  | 'creation'      // Initial tag creation
+  | 'edit'          // Name edits
+  | 'set_color'     // Color changes
+
+export interface CreationTransactionData {
+  name: string
+  color: string | null
+}
+
+export interface EditTransactionData {
+  name: string  // New name
+}
+
+export interface SetColorTransactionData {
+  color: string | null  // New color (can be null to remove color)
+}
+
+export type TagTransactionData =
+  | CreationTransactionData
+  | EditTransactionData
+  | SetColorTransactionData
+
+export interface TagTransaction {
+  id: string
+  tag_id: string
+  transaction_type: TagTransactionType
+  transaction_data: TagTransactionData
+  created_at: string  // ISO string
+  automation_id: string | null
+}
+
+export interface Tag {
+  id: string
+  name: string
+  color: string
+}
+
+export interface TagDetail extends Tag {
+  currentState: {
+    name: string
+    color: string | null
+    timestamp: string  // ISO string
+    metadata: Record<string, unknown>
+  }
+  transactions: TagTransaction[]
+}

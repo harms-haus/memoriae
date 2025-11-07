@@ -5,6 +5,13 @@ import type { Seed, SeedState } from '../seeds'
 import type { OpenRouterClient, OpenRouterChatCompletionResponse } from '../openrouter/client'
 import type { AutomationContext, CategoryChange } from './base'
 import db from '../../db/connection'
+import * as tagsService from '../tags'
+
+// Mock the tags service
+vi.mock('../tags', () => ({
+  create: vi.fn(),
+  setColor: vi.fn(),
+}))
 
 // Mock the database
 const mockWhere = vi.fn()
@@ -15,6 +22,8 @@ const mockSelect = vi.fn()
 const mockOrderBy = vi.fn()
 
 vi.mock('../../db/connection', () => {
+  const mockTransaction = vi.fn()
+  
   const mockDb = vi.fn((table: string) => {
     const queryBuilder = {
       where: mockWhere.mockReturnThis(),
@@ -27,6 +36,8 @@ vi.mock('../../db/connection', () => {
     }
     return queryBuilder
   })
+
+  mockDb.transaction = mockTransaction
 
   return {
     default: mockDb,
@@ -53,6 +64,72 @@ describe('TagExtractionAutomation', () => {
     mockWhere.mockReturnThis()
     mockSelect.mockReturnThis()
     mockOrderBy.mockResolvedValue([])
+    
+    // Mock tags service create function to return a tag with transactions
+    vi.mocked(tagsService.create).mockImplementation(async (data: { name: string; color?: string | null }) => {
+      const tagId = `tag-${data.name.toLowerCase().trim()}`
+      return {
+        id: tagId,
+        name: data.name.toLowerCase().trim(),
+        color: data.color || '',
+        currentState: {
+          name: data.name.toLowerCase().trim(),
+          color: data.color || null,
+          timestamp: new Date(),
+          metadata: {},
+        },
+        transactions: [{
+          id: `tx-${tagId}`,
+          tag_id: tagId,
+          transaction_type: 'creation',
+          transaction_data: { name: data.name.toLowerCase().trim(), color: data.color || null },
+          created_at: new Date(),
+          automation_id: null,
+        }],
+      }
+    })
+    
+    // Mock tags service setColor function
+    vi.mocked(tagsService.setColor).mockImplementation(async (tagId: string, color: string | null) => {
+      return {
+        id: tagId,
+        name: 'test',
+        color: color || '',
+        currentState: {
+          name: 'test',
+          color: color,
+          timestamp: new Date(),
+          metadata: {},
+        },
+        transactions: [],
+      }
+    })
+    
+    // Mock database queries for tag lookups (used by ensureTagExists)
+    // When a tag exists, return it; when it doesn't, return null
+    const existingTags = new Map<string, any>()
+    mockFirst.mockImplementation(async () => {
+      // Check if we're looking up a tag by name
+      const whereCall = mockWhere.mock.calls[mockWhere.mock.calls.length - 1]
+      if (whereCall && whereCall[0] && typeof whereCall[0] === 'object' && 'name' in whereCall[0]) {
+        const tagName = (whereCall[0] as any).name.toLowerCase().trim()
+        return existingTags.get(tagName) || null
+      }
+      return null
+    })
+    
+    // Track created tags
+    const originalCreate = vi.mocked(tagsService.create).getMockImplementation()
+    vi.mocked(tagsService.create).mockImplementation(async (data: { name: string; color?: string | null }) => {
+      const result = await originalCreate!(data)
+      existingTags.set(data.name.toLowerCase().trim(), {
+        id: result.id,
+        name: result.name,
+        color: result.color || null,
+        created_at: result.currentState.timestamp,
+      })
+      return result
+    })
     
     automation = new TagExtractionAutomation()
     automation.id = 'automation-tag-123'
@@ -187,7 +264,7 @@ describe('TagExtractionAutomation', () => {
       expect(result.transactions[0].seed_id).toBe('seed-123')
       expect(result.transactions[0].automation_id).toBe('automation-tag-123')
       expect(result.transactions[0].transaction_data).toMatchObject({
-        tag_id: 'tag-123',
+        tag_id: expect.stringMatching(/^tag-/),
         tag_name: 'programming',
       })
       expect(result.metadata?.tagsGenerated).toBeDefined()

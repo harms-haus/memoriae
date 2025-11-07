@@ -1,0 +1,449 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api } from '../../services/api'
+import { Timeline, type TimelineItem } from '@mother/components/Timeline'
+import { Button } from '@mother/components/Button'
+import { Panel } from '@mother/components/Panel'
+import { Input } from '@mother/components/Input'
+import { SeedView } from '../SeedView'
+import { HexColorPicker, HexColorInput } from 'react-colorful'
+import type { TagTransaction, Seed, Tag } from '../../types'
+import './Views.css'
+import './TagDetailView.css'
+
+interface TagDetail {
+  id: string
+  name: string
+  color: string
+  currentState: {
+    name: string
+    color: string | null
+    timestamp: Date
+    metadata: Record<string, unknown>
+  }
+  transactions: TagTransaction[]
+}
+
+interface TagDetailViewProps {
+  tagId: string
+  onBack: () => void
+}
+
+/**
+ * TagDetailView displays:
+ * - Current tag state (computed from transactions)
+ * - Timeline of all transactions (immutable)
+ * - List of seeds using this tag
+ */
+export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
+  const navigate = useNavigate()
+  const [tag, setTag] = useState<TagDetail | null>(null)
+  const [seeds, setSeeds] = useState<Seed[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [editingColor, setEditingColor] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const [colorInput, setColorInput] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!tagId) {
+      setError('Tag ID is required')
+      setLoading(false)
+      return
+    }
+
+    loadTagData()
+    loadSeeds()
+    loadTags()
+  }, [tagId])
+
+  const loadTagData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const tagData = await api.get<TagDetail>(`/tags/${tagId}`)
+      setTag(tagData)
+      setNameInput(tagData.name)
+      setColorInput(tagData.color || '')
+    } catch (err) {
+      console.error('Error loading tag:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load tag')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadSeeds = async () => {
+    try {
+      const seedsData = await api.get<Seed[]>(`/tags/${tagId}/seeds`)
+      setSeeds(seedsData)
+    } catch (err) {
+      console.error('Error loading seeds:', err)
+    }
+  }
+
+  const loadTags = async () => {
+    try {
+      const tagsData = await api.get<Tag[]>('/tags').catch(() => [])
+      setTags(tagsData)
+    } catch (err) {
+      console.error('Error loading tags:', err)
+    }
+  }
+
+  const handleSaveName = async () => {
+    if (!nameInput.trim() || !tag) return
+    
+    setSaving(true)
+    try {
+      const updatedTag = await api.put<TagDetail>(`/tags/${tag.id}`, { name: nameInput.trim() })
+      setTag(updatedTag)
+      setEditingName(false)
+    } catch (err) {
+      console.error('Error updating tag name:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveColor = async () => {
+    if (!tag) return
+    
+    setSaving(true)
+    try {
+      // Convert empty string to null for clearing color
+      const colorValue = colorInput.trim() === '' ? null : colorInput.trim()
+      const updatedTag = await api.put<TagDetail>(`/tags/${tag.id}`, { 
+        color: colorValue
+      })
+      setTag(updatedTag)
+      setEditingColor(false)
+    } catch (err) {
+      console.error('Error updating tag color:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSeedClick = (seedId: string) => {
+    navigate(`/seeds/${seedId}`)
+  }
+
+  // Build tag color map for SeedView
+  const tagColorMap = new Map<string, string>()
+  tags.forEach(tag => {
+    if (tag.color) {
+      tagColorMap.set(tag.name.toLowerCase(), tag.color)
+    }
+  })
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const getTransactionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'creation': return 'Created'
+      case 'edit': return 'Name changed'
+      case 'set_color': return 'Color changed'
+      default: return type
+    }
+  }
+
+  const getTransactionDescription = (transaction: TagTransaction) => {
+    switch (transaction.transaction_type) {
+      case 'creation': {
+        const data = transaction.transaction_data as { name: string; color: string | null }
+        return `Created with name "${data.name}"${data.color ? ` and color` : ''}`
+      }
+      case 'edit': {
+        const data = transaction.transaction_data as { name: string }
+        return `Name changed to "${data.name}"`
+      }
+      case 'set_color': {
+        const data = transaction.transaction_data as { color: string | null }
+        return `Color ${data.color ? `changed to ${data.color}` : 'removed'}`
+      }
+      default:
+        return 'Unknown transaction'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="view-container tag-detail-container">
+        <div className="tag-detail-header">
+          <Button variant="secondary" onClick={onBack}>
+            ← Back
+          </Button>
+        </div>
+        <p className="text-secondary">Loading tag...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="view-container tag-detail-container">
+        <div className="tag-detail-header">
+          <Button variant="secondary" onClick={onBack}>
+            ← Back
+          </Button>
+        </div>
+        <p className="text-error">{error}</p>
+      </div>
+    )
+  }
+
+  if (!tag) {
+    return (
+      <div className="view-container tag-detail-container">
+        <div className="tag-detail-header">
+          <Button variant="secondary" onClick={onBack}>
+            ← Back
+          </Button>
+        </div>
+        <p className="text-secondary">Tag not found.</p>
+      </div>
+    )
+  }
+
+  const timelineItems: TimelineItem[] = tag.transactions.map((transaction, index) => {
+    // Calculate position evenly distributed (0-100)
+    const position = tag.transactions.length > 1 
+      ? (index / (tag.transactions.length - 1)) * 100 
+      : 50
+    
+    return {
+      id: transaction.id,
+      position,
+    }
+  })
+
+  const renderPanel = (index: number, width: number): React.ReactNode => {
+    const transaction = tag.transactions[index]
+    if (!transaction) return null
+
+    return (
+      <div className="timeline-panel">
+        <h4 className="timeline-panel-title">{getTransactionTypeLabel(transaction.transaction_type)}</h4>
+        <p className="timeline-panel-description">{getTransactionDescription(transaction)}</p>
+      </div>
+    )
+  }
+
+  const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
+    const transaction = tag.transactions[index]
+    if (!transaction) return null
+
+    return (
+      <span className="timeline-timestamp">
+        {formatDate(transaction.created_at.toString())}
+      </span>
+    )
+  }
+
+  return (
+    <div className="view-container tag-detail-container">
+      {/* Header */}
+      <div className="tag-detail-header">
+        <Button variant="secondary" onClick={onBack}>
+          ← Back
+        </Button>
+        <div className="tag-detail-title-section">
+          <h1 className="tag-detail-title">Tag Details</h1>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="tag-detail-content">
+        {/* Left Column: Tag Info + Timeline */}
+        <div className="tag-detail-left-column">
+          {/* Tag Info Panel */}
+          <Panel variant="elevated" className="tag-detail-info">
+            <h3 className="panel-header">Tag Information</h3>
+            
+            <div className="tag-info-content">
+              <div className="tag-name-section">
+                <label className="label">Name</label>
+                {editingName ? (
+                  <div className="tag-name-edit">
+                    <Input
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      placeholder="Tag name"
+                      disabled={saving}
+                    />
+                    <div className="tag-edit-actions">
+                      <Button 
+                        variant="primary" 
+                        onClick={handleSaveName}
+                        disabled={saving || !nameInput.trim()}
+                      >
+                        Save
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        onClick={() => {
+                          setEditingName(false)
+                          setNameInput(tag.name)
+                        }}
+                        disabled={saving}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="tag-name-display">
+                    <span className="tag-name-text">{tag.name}</span>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => setEditingName(true)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="tag-color-section">
+                <label className="label">Color</label>
+                {editingColor ? (
+                  <div className="tag-color-edit">
+                    <div className="tag-color-picker-wrapper">
+                      <HexColorPicker
+                        color={colorInput && colorInput.trim() !== '' ? colorInput : '#000000'}
+                        onChange={setColorInput}
+                      />
+                      <div className="tag-color-input-wrapper">
+                        <HexColorInput
+                          color={colorInput && colorInput.trim() !== '' ? colorInput : '#000000'}
+                          onChange={setColorInput}
+                          prefixed
+                          className="tag-color-hex-input"
+                          placeholder="#000000"
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setColorInput('')
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="tag-edit-actions">
+                      <Button 
+                        variant="primary" 
+                        onClick={handleSaveColor}
+                        disabled={saving}
+                      >
+                        Save
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        onClick={() => {
+                          setEditingColor(false)
+                          setColorInput(tag.color || '')
+                        }}
+                        disabled={saving}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="tag-color-display">
+                    <div className="tag-color-preview" style={{ backgroundColor: tag.color || 'transparent' }} />
+                    <span className="tag-color-text">{tag.color || 'No color'}</span>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => {
+                        setEditingColor(true)
+                        setColorInput(tag.color || '#000000')
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="tag-usage-stats">
+                <div className="usage-stat">
+                  <span className="stat-label">Used by</span>
+                  <span className="stat-value">{seeds.length} seeds</span>
+                </div>
+                <div className="usage-stat">
+                  <span className="stat-label">Created</span>
+                  <span className="stat-value">{formatDate(tag.currentState.timestamp.toString())}</span>
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          {/* Timeline Panel */}
+          <Panel variant="elevated" className="tag-detail-timeline">
+            <h3 className="panel-header">Timeline</h3>
+            <div className="tag-detail-timeline-wrapper">
+              {tag.transactions.length === 0 ? (
+                <p className="text-secondary">No transactions yet.</p>
+              ) : (
+                <Timeline
+                  items={timelineItems}
+                  mode="left"
+                  renderPanel={renderPanel}
+                  renderOpposite={renderOpposite}
+                  maxPanelWidth={400}
+                  panelSpacing={16}
+                  panelClickable={true}
+                />
+              )}
+            </div>
+          </Panel>
+        </div>
+
+        {/* Right Column: Seeds */}
+        <div className="tag-detail-right-column">
+          <Panel variant="elevated" className="tag-detail-seeds">
+            <h3 className="panel-header">Seeds Using This Tag</h3>
+            <div className="tag-detail-seeds-list">
+              {seeds.length === 0 ? (
+                <p className="text-secondary">No seeds are using this tag yet.</p>
+              ) : (
+                <div className="seeds-list">
+                  {seeds.map((seed) => (
+                    <div 
+                      key={seed.id} 
+                      className="seed-item"
+                      onClick={() => handleSeedClick(seed.id)}
+                    >
+                      <SeedView
+                        seed={seed}
+                        tagColors={tagColorMap}
+                        onTagClick={(tagId, tagName) => {
+                          navigate(`/tags/${tagId}`)
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Panel>
+        </div>
+      </div>
+    </div>
+  )
+}

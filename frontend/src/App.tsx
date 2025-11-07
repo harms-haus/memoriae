@@ -11,6 +11,7 @@ import {
   TagsView,
   SettingsView,
   SeedDetailView,
+  TagDetailView,
 } from './components/views'
 import { SeedComposer } from './components/SeedComposer'
 import { useFollowupNotifications } from './hooks/useFollowupNotifications'
@@ -101,6 +102,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
       }
       // Seed detail view - show seeds tab as active
       return 'seeds'
+    }
+    if (path.startsWith('/tags/') && path !== '/tags') {
+      // Tag detail view - show tags tab as active
+      return 'tags'
     }
     if (path === '/timeline') return 'timeline'
     if (path === '/categories' || path.startsWith('/category/')) return 'categories'
@@ -277,6 +282,39 @@ function SeedDetailWrapper() {
   )
 }
 
+function TagDetailWrapper() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+
+  if (!id) {
+    navigate('/tags')
+    return null
+  }
+
+  return (
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
+      overflow: 'hidden',
+    }}>
+      <div className="tab-content-wrapper" style={{
+        flex: '1 1 auto',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        <TagDetailView
+          tagId={id}
+          onBack={() => navigate('/tags')}
+        />
+      </div>
+    </div>
+  )
+}
+
 function AppContent() {
   const { authenticated, loading } = useAuth()
   
@@ -309,6 +347,7 @@ function AppContent() {
       <Route path="/categories" element={<TabNavigation />} />
       <Route path="/category/*" element={<TabNavigation />} />
       <Route path="/tags" element={<TabNavigation />} />
+      <Route path="/tags/:id" element={<TagDetailWrapper />} />
       <Route path="/settings" element={<TabNavigation />} />
     </Routes>
   )

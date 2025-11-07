@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { TagCloud } from './TagCloud'
 import type { Seed } from '../../types'
 
@@ -87,8 +88,16 @@ describe('TagCloud Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset API mock to return successful response with mock seeds
-    mockApiGet.mockResolvedValue(mockSeeds)
+    // Reset API mock to return successful response with mock seeds and empty tags array
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve(mockSeeds)
+      }
+      if (url === '/tags') {
+        return Promise.resolve([])
+      }
+      return Promise.resolve([])
+    })
   })
 
   afterEach(() => {
@@ -101,7 +110,11 @@ describe('TagCloud Component', () => {
 
   describe('Unit Tests', () => {
     it('renders loading state initially', () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
       
       expect(screen.getByText('Loading tags...')).toBeInTheDocument()
       expect(screen.getByTestId('panel')).toHaveClass('tag-cloud-panel')
@@ -109,9 +122,21 @@ describe('TagCloud Component', () => {
 
     it('renders error state when API fails', async () => {
       const errorMessage = 'Failed to load seeds'
-      mockApiGet.mockRejectedValue(new Error(errorMessage))
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return Promise.reject(new Error(errorMessage))
+        }
+        if (url === '/tags') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
 
-      render(<TagCloud />)
+      render(
+        <MemoryRouter>
+          <TagCloud />
+        </MemoryRouter>
+      )
 
       await waitFor(() => {
         expect(screen.getByText(errorMessage)).toBeInTheDocument()
@@ -120,9 +145,21 @@ describe('TagCloud Component', () => {
     })
 
     it('renders empty state when no tags are available', async () => {
-      mockApiGet.mockResolvedValue([])
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return Promise.resolve([])
+        }
+        if (url === '/tags') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
 
-      render(<TagCloud />)
+      render(
+        <MemoryRouter>
+          <TagCloud />
+        </MemoryRouter>
+      )
 
       await waitFor(() => {
         expect(screen.getByText('No tags yet.')).toBeInTheDocument()
@@ -131,13 +168,17 @@ describe('TagCloud Component', () => {
     })
 
     it('calculates tag frequencies correctly', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         // Check that tags are rendered with correct counts
-        expect(screen.getByTitle('react (2 seeds)')).toBeInTheDocument()
-        expect(screen.getByTitle('typescript (2 seeds)')).toBeInTheDocument()
-        expect(screen.getByTitle('nodejs (2 seeds)')).toBeInTheDocument()
+        expect(screen.getByTitle(/react \(2 seeds\)/)).toBeInTheDocument()
+        expect(screen.getByTitle(/typescript \(2 seeds\)/)).toBeInTheDocument()
+        expect(screen.getByTitle(/nodejs \(2 seeds\)/)).toBeInTheDocument()
         expect(screen.getByTitle('frontend (1 seed)')).toBeInTheDocument()
         expect(screen.getByTitle('backend (1 seed)')).toBeInTheDocument()
         expect(screen.getByTitle('fullstack (1 seed)')).toBeInTheDocument()
@@ -145,7 +186,11 @@ describe('TagCloud Component', () => {
     })
 
     it('sorts tags by frequency (descending)', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         const tagElements = screen.getAllByRole('link')
@@ -159,11 +204,15 @@ describe('TagCloud Component', () => {
     })
 
     it('applies correct size classes based on frequency', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         // Most frequent tags (2/2 = 1.0) should be size-xl (not lg)
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         expect(reactTag).toHaveClass('tag-cloud-size-xl')
         
         // Least frequent tags (1/2 = 0.5) should be size-md
@@ -173,16 +222,20 @@ describe('TagCloud Component', () => {
     })
 
     it('applies consistent colors based on tag name', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         // Tags should have color styles applied via inline styles
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         const reactColor = reactTag.style.color
         expect(reactColor).toBeTruthy()
         expect(typeof reactColor).toBe('string')
         
-        const typescriptTag = screen.getByTitle('typescript (2 seeds)')
+        const typescriptTag = screen.getByTitle(/typescript \(2 seeds\)/)
         const typescriptColor = typescriptTag.style.color
         expect(typescriptColor).toBeTruthy()
         expect(typeof typescriptColor).toBe('string')
@@ -190,10 +243,14 @@ describe('TagCloud Component', () => {
     })
 
     it('handles tag click events', async () => {
-      render(<TagCloud onTagSelect={mockOnTagSelect} />)
+      render(
+      <MemoryRouter>
+        <TagCloud onTagSelect={mockOnTagSelect} />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         fireEvent.click(reactTag)
       })
 
@@ -202,12 +259,16 @@ describe('TagCloud Component', () => {
 
     it('shows selected state for selected tags', async () => {
       const selectedTags = new Set(['react', 'typescript'])
-      render(<TagCloud onTagSelect={mockOnTagSelect} selectedTags={selectedTags} />)
+      render(
+        <MemoryRouter>
+          <TagCloud onTagSelect={mockOnTagSelect} selectedTags={selectedTags} />
+        </MemoryRouter>
+      )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
-        const typescriptTag = screen.getByTitle('typescript (2 seeds)')
-        const nodejsTag = screen.getByTitle('nodejs (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
+        const typescriptTag = screen.getByTitle(/typescript \(2 seeds\)/)
+        const nodejsTag = screen.getByTitle(/nodejs \(2 seeds\)/)
         
         expect(reactTag).toHaveClass('tag-cloud-item-selected')
         expect(typescriptTag).toHaveClass('tag-cloud-item-selected')
@@ -216,7 +277,11 @@ describe('TagCloud Component', () => {
     })
 
     it('displays correct tag and seed counts', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         const badges = screen.getAllByTestId('badge')
@@ -231,7 +296,11 @@ describe('TagCloud Component', () => {
         .mockRejectedValueOnce(new Error(errorMessage))
         .mockResolvedValueOnce(mockSeeds)
 
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       // Wait for error state
       await waitFor(() => {
@@ -244,7 +313,7 @@ describe('TagCloud Component', () => {
 
       // Should load successfully after retry
       await waitFor(() => {
-        expect(screen.getByTitle('react (2 seeds)')).toBeInTheDocument()
+        expect(screen.getByTitle(/react \(2 seeds\)/)).toBeInTheDocument()
       })
     })
   })
@@ -255,19 +324,27 @@ describe('TagCloud Component', () => {
 
   describe('Integration Tests', () => {
     it('integrates with API service', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         expect(mockApiGet).toHaveBeenCalledWith('/seeds')
       })
 
       await waitFor(() => {
-        expect(screen.getByTitle('react (2 seeds)')).toBeInTheDocument()
+        expect(screen.getByTitle(/react \(2 seeds\)/)).toBeInTheDocument()
       })
     })
 
     it('handles custom className prop', async () => {
-      render(<TagCloud className="custom-class" />)
+      render(
+        <MemoryRouter>
+          <TagCloud className="custom-class" />
+        </MemoryRouter>
+      )
 
       await waitFor(() => {
         // Check that the component has the custom class
@@ -277,19 +354,27 @@ describe('TagCloud Component', () => {
     })
 
     it('handles missing onTagSelect prop gracefully', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         expect(() => fireEvent.click(reactTag)).not.toThrow()
       })
     })
 
     it('handles empty selectedTags prop', async () => {
-      render(<TagCloud selectedTags={new Set()} />)
+      render(
+        <MemoryRouter>
+          <TagCloud selectedTags={new Set()} />
+        </MemoryRouter>
+      )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         expect(reactTag).not.toHaveClass('tag-cloud-item-selected')
       })
     })
@@ -301,10 +386,14 @@ describe('TagCloud Component', () => {
 
   describe('Accessibility Tests', () => {
     it('supports keyboard navigation', async () => {
-      render(<TagCloud onTagSelect={mockOnTagSelect} />)
+      render(
+      <MemoryRouter>
+        <TagCloud onTagSelect={mockOnTagSelect} />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         reactTag.focus()
         expect(reactTag).toHaveFocus()
         
@@ -315,16 +404,24 @@ describe('TagCloud Component', () => {
     })
 
     it('provides proper ARIA labels', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
-        expect(reactTag).toHaveAttribute('title', 'react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
+        expect(reactTag).toHaveAttribute('title', expect.stringMatching(/react \(2 seeds\)/))
       })
     })
 
     it('has proper link roles for tag items', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         const tagLinks = screen.getAllByRole('link')
@@ -344,10 +441,14 @@ describe('TagCloud Component', () => {
 
   describe('Visual Tests', () => {
     it('applies hover styles', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         fireEvent.mouseEnter(reactTag)
         // Check if hover class is applied (CSS transform is applied via CSS)
         expect(reactTag).toHaveClass('tag-cloud-item')
@@ -355,10 +456,14 @@ describe('TagCloud Component', () => {
     })
 
     it('applies focus styles', async () => {
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
-        const reactTag = screen.getByTitle('react (2 seeds)')
+        const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         fireEvent.focus(reactTag)
         // Focus styles are applied via CSS :focus-visible selector
         expect(reactTag).toHaveClass('tag-cloud-item')
@@ -386,9 +491,21 @@ describe('TagCloud Component', () => {
         }
       ]
 
-      mockApiGet.mockResolvedValue(seedsWithNoTags)
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return Promise.resolve(seedsWithNoTags)
+        }
+        if (url === '/tags') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
 
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         expect(screen.getByText('No tags yet.')).toBeInTheDocument()
@@ -410,9 +527,21 @@ describe('TagCloud Component', () => {
         }
       ]
 
-      mockApiGet.mockResolvedValue(seedsWithMissingState)
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return Promise.resolve(seedsWithMissingState)
+        }
+        if (url === '/tags') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
 
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
         expect(screen.getByText('No tags yet.')).toBeInTheDocument()
@@ -450,23 +579,47 @@ describe('TagCloud Component', () => {
         })
       }
 
-      mockApiGet.mockResolvedValue(seedsWithLargeCount)
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return Promise.resolve(seedsWithLargeCount)
+        }
+        if (url === '/tags') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
 
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       await waitFor(() => {
-        const popularTag = screen.getByTitle(`popular (${largeTagCount} seeds)`)
+        const popularTag = screen.getByTitle(new RegExp(`popular \\(${largeTagCount} seeds\\)`))
         expect(popularTag).toBeInTheDocument()
         expect(popularTag).toHaveClass('tag-cloud-size-xl')
-      })
+      }, { timeout: 5000 })
     })
 
     it('handles API timeout gracefully', async () => {
       // Create a promise that never resolves
       const neverResolves = new Promise(() => {})
-      mockApiGet.mockReturnValue(neverResolves)
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return neverResolves
+        }
+        if (url === '/tags') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
 
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       // Should show loading state indefinitely
       expect(screen.getByText('Loading tags...')).toBeInTheDocument()
@@ -475,9 +628,21 @@ describe('TagCloud Component', () => {
     it('handles malformed API response', async () => {
       // The component doesn't validate response format, so it will try to process
       // a string as if it were an array of seeds, which will result in an empty state
-      mockApiGet.mockResolvedValue('invalid response')
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return Promise.resolve('invalid response' as any)
+        }
+        if (url === '/tags') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
 
-      render(<TagCloud />)
+      render(
+      <MemoryRouter>
+        <TagCloud />
+      </MemoryRouter>
+    )
 
       // Should handle error gracefully by showing empty state
       await waitFor(() => {

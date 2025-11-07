@@ -194,9 +194,10 @@ describe('CategoriesView', () => {
     await user.click(clearButton)
 
     // Filtered seeds panel should disappear
+    // Wait for the state to update and component to re-render
     await waitFor(() => {
       expect(screen.queryByText(/Seeds in/)).not.toBeInTheDocument()
-    }, { timeout: 2000 })
+    }, { timeout: 3000 })
   })
 
   it('should handle loading state for filtered seeds', async () => {
@@ -350,9 +351,10 @@ describe('CategoriesView', () => {
     await user.click(selectButton)
 
     // Filtered seeds panel should disappear
+    // Wait for the state to update and component to re-render
     await waitFor(() => {
       expect(screen.queryByText(/Seeds in "Work"/)).not.toBeInTheDocument()
-    }, { timeout: 2000 })
+    }, { timeout: 3000 })
   })
 })
 

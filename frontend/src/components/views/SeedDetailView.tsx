@@ -472,7 +472,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
                   return tagColorMap
                 })()}
                 onTagClick={(tagId, tagName) => {
-                  navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                  navigate(`/tags/${tagId}`)
                 }}
               />
             )}

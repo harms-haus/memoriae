@@ -34,7 +34,7 @@ export interface UpdateSeedDto {
  * Compute current seed state by replaying all transactions
  * This is the core timeline functionality - current state = replay all transactions
  */
-async function computeCurrentState(seedId: string): Promise<SeedState> {
+export async function computeCurrentState(seedId: string): Promise<SeedState> {
   // Fetch all transactions for this seed
   const transactions = await SeedTransactionsService.getBySeedId(seedId)
   

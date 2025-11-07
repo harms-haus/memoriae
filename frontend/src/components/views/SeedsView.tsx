@@ -370,7 +370,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
                     seed={seed}
                     tagColors={tagColorMap}
                     onTagClick={(tagId, tagName) => {
-                      navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                      navigate(`/tags/${tagId}`)
                     }}
                   />
                 </Panel>
