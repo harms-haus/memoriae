@@ -1,7 +1,15 @@
 // Authentication context for managing auth state
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { api } from '../services/api'
+import { getBrowserTimezone } from '../utils/timezone'
 import type { User } from '../types'
+
+interface UserSettings {
+  openrouter_api_key: string | null
+  openrouter_model: string | null
+  openrouter_model_name: string | null
+  timezone: string | null
+}
 
 interface AuthContextValue {
   user: User | null
@@ -28,6 +36,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const status = await api.getAuthStatus()
       setAuthenticated(status.authenticated)
       setUser(status.user)
+      
+      // If authenticated and user doesn't have timezone set, detect and set it
+      if (status.authenticated && status.user) {
+        try {
+          const settings = await api.get<UserSettings>('/settings')
+          if (!settings.timezone) {
+            // User doesn't have timezone set, detect browser timezone and set it
+            const browserTimezone = getBrowserTimezone()
+            await api.put('/settings', { timezone: browserTimezone })
+          }
+        } catch (err) {
+          // Silently fail - timezone detection is not critical
+          console.warn('Failed to set timezone:', err)
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication check failed')
       setAuthenticated(false)

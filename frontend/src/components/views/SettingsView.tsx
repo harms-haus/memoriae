@@ -5,12 +5,14 @@ import { Button } from '@mother/components/Button'
 import { Input } from '@mother/components/Input'
 import { Loader2, Save, Check } from 'lucide-react'
 import { ModelSelector } from '../ModelSelector'
+import { getTimezones } from '../../utils/timezone'
 import './Views.css'
 
 interface UserSettings {
   openrouter_api_key: string | null
   openrouter_model: string | null
   openrouter_model_name: string | null
+  timezone: string | null
 }
 
 interface OpenRouterModel {
@@ -24,6 +26,7 @@ export function SettingsView() {
     openrouter_api_key: null,
     openrouter_model: null,
     openrouter_model_name: null,
+    timezone: null,
   })
   const [models, setModels] = useState<OpenRouterModel[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +36,8 @@ export function SettingsView() {
   const [apiKey, setApiKey] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
   const [modelsLoaded, setModelsLoaded] = useState(false)
+  const [timezone, setTimezone] = useState('')
+  const timezones = getTimezones()
 
   // Load settings on mount
   useEffect(() => {
@@ -43,6 +48,7 @@ export function SettingsView() {
   useEffect(() => {
     setApiKey(settings.openrouter_api_key || '')
     setSelectedModel(settings.openrouter_model || '')
+    setTimezone(settings.timezone || '')
     
     // If there's a saved model, ensure it's in the models list
     if (settings.openrouter_model && settings.openrouter_model_name) {
@@ -170,6 +176,7 @@ export function SettingsView() {
         openrouter_api_key: apiKey.trim() || null,
         openrouter_model: selectedModel || null,
         openrouter_model_name: modelName,
+        timezone: timezone || null,
       }
 
       const updated = await api.put<UserSettings>('/settings', updates)
@@ -187,7 +194,8 @@ export function SettingsView() {
 
   const hasChanges = 
     apiKey !== (settings.openrouter_api_key || '') ||
-    selectedModel !== (settings.openrouter_model || '')
+    selectedModel !== (settings.openrouter_model || '') ||
+    timezone !== (settings.timezone || '')
 
   if (loading) {
     return (
@@ -287,6 +295,31 @@ export function SettingsView() {
                 Settings saved successfully
               </span>
             )}
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>Time Zone</h3>
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="label">Time Zone</label>
+            <select
+              className="select"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              style={{ marginTop: 'var(--space-2)' }}
+            >
+              <option value="">Select a time zone...</option>
+              {timezones.map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-sm" style={{ marginTop: 'var(--space-2)', color: 'var(--text-tertiary)' }}>
+              Your time zone is used for follow-up reminders and scheduling. Times are stored in UTC.
+            </p>
           </div>
         </div>
       </div>

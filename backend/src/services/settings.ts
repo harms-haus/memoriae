@@ -8,6 +8,7 @@ export interface UserSettingsRow {
   openrouter_api_key: string | null
   openrouter_model: string | null
   openrouter_model_name: string | null
+  timezone: string | null
   created_at: Date
   updated_at: Date
 }
@@ -16,12 +17,14 @@ export interface UserSettings {
   openrouter_api_key: string | null
   openrouter_model: string | null
   openrouter_model_name: string | null
+  timezone: string | null
 }
 
 export interface UpdateSettingsDto {
   openrouter_api_key?: string | null
   openrouter_model?: string | null
   openrouter_model_name?: string | null
+  timezone?: string | null
 }
 
 /**
@@ -45,6 +48,7 @@ export class SettingsService {
         openrouter_api_key: null,
         openrouter_model: null,
         openrouter_model_name: null,
+        timezone: null,
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -53,6 +57,7 @@ export class SettingsService {
         openrouter_api_key: null,
         openrouter_model: null,
         openrouter_model_name: null,
+        timezone: null,
       }
     }
 
@@ -60,6 +65,7 @@ export class SettingsService {
       openrouter_api_key: settings.openrouter_api_key,
       openrouter_model: settings.openrouter_model,
       openrouter_model_name: settings.openrouter_model_name,
+      timezone: settings.timezone,
     }
   }
 
@@ -82,6 +88,7 @@ export class SettingsService {
           openrouter_api_key: updates.openrouter_api_key ?? null,
           openrouter_model: updates.openrouter_model ?? null,
           openrouter_model_name: updates.openrouter_model_name ?? null,
+          timezone: updates.timezone ?? null,
           created_at: new Date(),
           updated_at: new Date(),
         })
@@ -99,6 +106,9 @@ export class SettingsService {
         }
         if (updates.openrouter_model_name !== undefined) {
           updateData.openrouter_model_name = updates.openrouter_model_name
+        }
+        if (updates.timezone !== undefined) {
+          updateData.timezone = updates.timezone
         }
 
         await db('user_settings')

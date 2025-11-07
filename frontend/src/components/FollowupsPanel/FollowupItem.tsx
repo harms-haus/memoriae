@@ -7,6 +7,8 @@ import type { Followup } from '../../types'
 import { EditFollowupModal } from './EditFollowupModal'
 import { SnoozeModal } from './SnoozeModal'
 import { FollowupTransactions } from './FollowupTransactions'
+import { useUserSettings } from '../../hooks/useUserSettings'
+import { formatDateInTimezone, getBrowserTimezone } from '../../utils/timezone'
 import './FollowupItem.css'
 
 interface FollowupItemProps {
@@ -18,33 +20,11 @@ export function FollowupItem({ followup, onUpdate }: FollowupItemProps) {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [snoozeModalOpen, setSnoozeModalOpen] = useState(false)
   const [dismissing, setDismissing] = useState(false)
+  const { settings } = useUserSettings()
 
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = date.getTime() - now.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 0) {
-      return `Overdue by ${Math.abs(diffMins)}m`
-    }
-    if (diffMins < 60) {
-      return `In ${diffMins}m`
-    }
-    if (diffHours < 24) {
-      return `In ${diffHours}h`
-    }
-    if (diffDays < 7) {
-      return `In ${diffDays}d`
-    }
-
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    })
+    const userTimezone = settings?.timezone || getBrowserTimezone()
+    return formatDateInTimezone(dateString, userTimezone)
   }
 
   const handleDismiss = async () => {

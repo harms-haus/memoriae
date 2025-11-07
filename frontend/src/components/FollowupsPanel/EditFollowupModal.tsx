@@ -3,6 +3,8 @@ import { api } from '../../services/api'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
 import { Button } from '@mother/components/Button'
 import type { Followup, EditFollowupDto } from '../../types'
+import { useUserSettings } from '../../hooks/useUserSettings'
+import { dateTimeLocalToUTC, utcToDateTimeLocal, getBrowserTimezone } from '../../utils/timezone'
 
 interface EditFollowupModalProps {
   open: boolean
@@ -21,25 +23,23 @@ export function EditFollowupModal({
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Convert ISO string to datetime-local format
-  const formatDateTimeLocal = (isoString: string): string => {
-    const date = new Date(isoString)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day}T${hours}:${minutes}`
-  }
+  const { settings } = useUserSettings()
 
   useEffect(() => {
     if (open && followup) {
-      setDueTime(formatDateTimeLocal(followup.due_time))
+      // Convert UTC ISO string to datetime-local format in user's timezone
+      const userTimezone = settings?.timezone || getBrowserTimezone()
+      try {
+        const localDateTime = utcToDateTimeLocal(followup.due_time, userTimezone)
+        setDueTime(localDateTime)
+      } catch (err) {
+        console.error('Error formatting date:', err)
+        setDueTime('')
+      }
       setMessage(followup.message)
       setError(null)
     }
-  }, [open, followup])
+  }, [open, followup, settings])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,15 +53,19 @@ export function EditFollowupModal({
       setSubmitting(true)
       setError(null)
 
-      // Convert datetime-local format to ISO string
-      const dueDate = new Date(dueTime)
-      if (isNaN(dueDate.getTime())) {
+      // Convert datetime-local format (in user's timezone) to UTC ISO string
+      const userTimezone = settings?.timezone || getBrowserTimezone()
+      let utcISO: string
+      
+      try {
+        utcISO = dateTimeLocalToUTC(dueTime, userTimezone)
+      } catch (err) {
         setError('Invalid date format')
         return
       }
 
       const data: EditFollowupDto = {
-        due_time: dueDate.toISOString(),
+        due_time: utcISO,
         message: message.trim(),
       }
 

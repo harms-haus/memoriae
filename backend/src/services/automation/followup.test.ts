@@ -66,7 +66,7 @@ describe('FollowupAutomation', () => {
   })
 
   describe('process', () => {
-    it('should create followup if confidence > 85%', async () => {
+    it('should create followup if confidence > 60%', async () => {
       const mockResponse: OpenRouterChatCompletionResponse = {
         id: 'chat-123',
         choices: [
@@ -119,7 +119,7 @@ describe('FollowupAutomation', () => {
       expect(createCall[2]).toBe('automatic')
     })
 
-    it('should not create followup if confidence <= 85%', async () => {
+    it('should not create followup if confidence <= 60%', async () => {
       const mockResponse: OpenRouterChatCompletionResponse = {
         id: 'chat-123',
         choices: [
@@ -127,7 +127,7 @@ describe('FollowupAutomation', () => {
             message: {
               role: 'assistant',
               content: JSON.stringify({
-                confidence: 70,
+                confidence: 50,
                 due_time: null,
                 message: '',
               }),

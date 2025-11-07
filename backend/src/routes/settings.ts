@@ -3,6 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { SettingsService } from '../services/settings'
 import { authenticate } from '../middleware/auth'
 import { OpenRouterClient } from '../services/openrouter/client'
+import { Info } from 'luxon'
 
 const router = Router()
 
@@ -34,6 +35,7 @@ router.put('/', async (req: Request, res: Response, next: NextFunction) => {
       openrouter_api_key?: string | null
       openrouter_model?: string | null
       openrouter_model_name?: string | null
+      timezone?: string | null
     }
 
     // Validate input
@@ -50,6 +52,19 @@ router.put('/', async (req: Request, res: Response, next: NextFunction) => {
     if (updates.openrouter_model_name !== undefined && typeof updates.openrouter_model_name !== 'string' && updates.openrouter_model_name !== null) {
       res.status(400).json({ error: 'openrouter_model_name must be a string or null' })
       return
+    }
+
+    if (updates.timezone !== undefined && typeof updates.timezone !== 'string' && updates.timezone !== null) {
+      res.status(400).json({ error: 'timezone must be a string or null' })
+      return
+    }
+
+    // Validate timezone format if provided (IANA timezone identifier)
+    if (updates.timezone !== undefined && updates.timezone !== null) {
+      if (!Info.isValidIANAZone(updates.timezone)) {
+        res.status(400).json({ error: 'Invalid IANA timezone identifier' })
+        return
+      }
     }
 
     const settings = await SettingsService.update(userId, updates)
