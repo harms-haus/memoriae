@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
-import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
 import { Badge } from '@mother/components/Badge'
 import { SeedView } from '../SeedView'
 import { FollowupsPanel } from '../FollowupsPanel'
+import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
 import type { SeedTransaction, Seed, SeedState, Tag as TagType } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
@@ -28,6 +28,108 @@ interface SeedStateResponse {
 interface SeedDetailViewProps {
   seedId: string
   onBack: () => void
+}
+
+// Helper functions for formatting transactions
+const formatTransactionTitle = (transaction: SeedTransaction): string => {
+  switch (transaction.transaction_type) {
+    case 'create_seed':
+      return 'Seed Created'
+    case 'edit_content':
+      return 'Content Edited'
+    case 'add_tag':
+      return 'Tag Added'
+    case 'remove_tag':
+      return 'Tag Removed'
+    case 'set_category':
+      return 'Category Set'
+    case 'remove_category':
+      return 'Category Removed'
+    case 'add_followup':
+      return 'Follow-up Added'
+    default:
+      return transaction.transaction_type
+  }
+}
+
+const formatTransactionContent = (transaction: SeedTransaction): string => {
+  const parts: string[] = []
+  
+  switch (transaction.transaction_type) {
+    case 'create_seed': {
+      const data = transaction.transaction_data
+      if ('content' in data && data.content) {
+        parts.push(`Content: ${data.content.substring(0, 100)}${data.content.length > 100 ? '...' : ''}`)
+      }
+      break
+    }
+    case 'edit_content': {
+      const data = transaction.transaction_data
+      if ('content' in data && data.content) {
+        parts.push(`Content updated`)
+      }
+      break
+    }
+    case 'add_tag': {
+      const data = transaction.transaction_data
+      if ('tag_name' in data) {
+        parts.push(`Tag: ${data.tag_name}`)
+      }
+      break
+    }
+    case 'remove_tag': {
+      const data = transaction.transaction_data
+      if ('tag_id' in data) {
+        parts.push(`Tag removed`)
+      }
+      break
+    }
+    case 'set_category': {
+      const data = transaction.transaction_data
+      if ('category_name' in data) {
+        parts.push(`Category: ${data.category_name}`)
+        if ('category_path' in data && data.category_path) {
+          parts.push(`Path: ${data.category_path}`)
+        }
+      }
+      break
+    }
+    case 'remove_category': {
+      parts.push(`Category removed`)
+      break
+    }
+    case 'add_followup': {
+      parts.push(`Follow-up added`)
+      break
+    }
+  }
+
+  if (transaction.automation_id) {
+    parts.push('(Automated)')
+  }
+
+  return parts.join(' • ') || 'Transaction'
+}
+
+const getTransactionColor = (transaction: SeedTransaction): string => {
+  switch (transaction.transaction_type) {
+    case 'create_seed':
+      return 'var(--accent-green)'
+    case 'edit_content':
+      return 'var(--accent-blue)'
+    case 'add_tag':
+      return 'var(--accent-purple)'
+    case 'remove_tag':
+      return 'var(--accent-pink)'
+    case 'set_category':
+      return 'var(--accent-yellow)'
+    case 'remove_category':
+      return 'var(--accent-orange)'
+    case 'add_followup':
+      return 'var(--accent-blue)'
+    default:
+      return 'var(--text-secondary)'
+  }
 }
 
 /**
@@ -199,206 +301,27 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     }
   }
 
-  // Transactions are immutable - no toggle functionality
-
-  const extractTagName = (transaction: SeedTransaction): string | null => {
-    if (transaction.transaction_type !== 'add_tag') return null
-    const data = transaction.transaction_data
-    if ('tag_name' in data) {
-      return data.tag_name
-    }
-    return null
-  }
-
-  // No RUN_AUTOMATION transactions - automations just create their transactions directly
-
-  // Group consecutive transactions of the same type
-  interface TransactionGroup {
-    transactionType: string
-    transactions: SeedTransaction[]
-    hasAutomation: boolean
-    position: number
-  }
-
-  const groupedTransactions: TransactionGroup[] = useMemo(() => {
-    if (transactions.length === 0) return []
-
-    const groups: TransactionGroup[] = []
-    let currentGroup: TransactionGroup | null = null
-
-    // Get date range for position calculation
-    const dates = transactions.map(transaction => new Date(transaction.created_at).getTime())
-    const minDate = Math.min(...dates)
-    const maxDate = Math.max(...dates)
-    const dateRange = maxDate - minDate
-
-    transactions.forEach((transaction) => {
-      // Transactions are grouped together if consecutive and same type
-      const shouldStartNewGroup = !currentGroup || 
-        currentGroup.transactionType !== transaction.transaction_type
-
-      if (shouldStartNewGroup) {
-        if (currentGroup) {
-          groups.push(currentGroup)
-        }
-        
-        const transactionDate = new Date(transaction.created_at).getTime()
-        const position = dateRange === 0 
-          ? 0 
-          : ((maxDate - transactionDate) / dateRange) * 100
-
-        currentGroup = {
-          transactionType: transaction.transaction_type,
-          transactions: [transaction],
-          hasAutomation: !!transaction.automation_id,
-          position: Math.max(0, Math.min(100, position)),
-        }
-      } else {
-        // Add to current group
-        if (currentGroup) {
-          currentGroup.transactions.push(transaction)
-          if (transaction.automation_id) {
-            currentGroup.hasAutomation = true
-          }
-          // Update position to the newest transaction in the group
-          const transactionDate = new Date(transaction.created_at).getTime()
-          const position = dateRange === 0 
-            ? 0 
-            : ((maxDate - transactionDate) / dateRange) * 100
-          currentGroup.position = Math.max(0, Math.min(100, position))
-        }
-      }
-    })
-
-    // Don't forget the last group
-    if (currentGroup) {
-      groups.push(currentGroup)
-    }
-
-    return groups
+  // Transform transactions into TransactionHistoryMessage format
+  const transactionMessages: TransactionHistoryMessage[] = useMemo(() => {
+    return transactions.map((transaction) => ({
+      id: transaction.id,
+      title: formatTransactionTitle(transaction),
+      content: formatTransactionContent(transaction),
+      time: transaction.created_at,
+      groupKey: transaction.transaction_type, // Use transaction type as group key
+    }))
   }, [transactions])
 
-  const formatTransactionTime = (transaction: SeedTransaction): string => {
-    const date = new Date(transaction.created_at)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
+  const transactionTypeMap = useMemo(() => {
+    const map = new Map<string, SeedTransaction>()
+    transactions.forEach(t => map.set(t.id, t))
+    return map
+  }, [transactions])
 
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    })
-  }
-
-  // Calculate timeline positions based on grouped transactions
-  const timelineItems: TimelineItem[] = useMemo(() => {
-    return groupedTransactions.map((group, index) => ({
-      id: `group-${index}-${group.transactionType}`,
-      position: group.position,
-    }))
-  }, [groupedTransactions])
-
-  const formatTransactionDescription = (transaction: SeedTransaction): string => {
-    switch (transaction.transaction_type) {
-      case 'create_seed':
-        return 'Seed created'
-      case 'edit_content':
-        return 'Content edited'
-      case 'add_tag':
-        const tagData = transaction.transaction_data
-        if ('tag_name' in tagData) {
-          return `Tag added: ${tagData.tag_name}`
-        }
-        return 'Tag added'
-      case 'remove_tag':
-        return 'Tag removed'
-      case 'set_category':
-        const catData = transaction.transaction_data
-        if ('category_name' in catData) {
-          return `Category set: ${catData.category_name}`
-        }
-        return 'Category set'
-      case 'remove_category':
-        return 'Category removed'
-      case 'add_followup':
-        return 'Follow-up added'
-      default:
-        return transaction.transaction_type
-    }
-  }
-
-  const renderPanel = (index: number, width: number): React.ReactNode => {
-    const group = groupedTransactions[index]
-    if (!group) return null
-
-    // Extract tag names for add_tag groups
-    const tagNames = group.transactionType === 'add_tag' 
-      ? group.transactions.map(t => extractTagName(t)).filter((name): name is string => name !== null)
-      : []
-
-    return (
-      <div className="event-group-content">
-        <div className="event-group-header">
-          <span className="event-type">{group.transactionType}</span>
-          {group.hasAutomation && (
-            <Badge variant="primary">Auto</Badge>
-          )}
-        </div>
-        <div className="event-group-body">
-          {group.transactionType === 'add_tag' && tagNames.length > 0 ? (
-            <div className="event-group-tags">
-              {tagNames.map((tagName, tagIndex) => {
-                const transaction = group.transactions[tagIndex]
-                if (!transaction) return null
-                const isLast = tagIndex === tagNames.length - 1
-                return (
-                  <span key={`${transaction.id}-${tagIndex}`}>
-                    <span className="event-group-tag">
-                      {tagName}
-                    </span>
-                    {!isLast && <span className="event-group-tag-separator">, </span>}
-                  </span>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="event-group-items">
-              {group.transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="event-group-item"
-                >
-                  {formatTransactionDescription(transaction)}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
-    const group = groupedTransactions[index]
-    if (!group) return null
-
-    // Use the newest transaction's time for the group
-    const newestTransaction = group.transactions[0] // Transactions are sorted newest first
-    if (!newestTransaction) return null
-
-    return (
-      <div className="event-time-opposite">
-        <span className="event-time">{formatTransactionTime(newestTransaction)}</span>
-      </div>
-    )
+  const getColor = (message: TransactionHistoryMessage): string => {
+    const transaction = transactionTypeMap.get(message.id)
+    if (!transaction) return 'var(--text-secondary)'
+    return getTransactionColor(transaction)
   }
 
   if (loading) {
@@ -481,21 +404,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           {/* Timeline of Transactions */}
           <Panel variant="elevated" className="seed-detail-timeline">
             <h3 className="panel-header">Timeline</h3>
-            <div className="seed-detail-timeline-wrapper">
-              {transactions.length === 0 ? (
-                <p className="text-secondary">No transactions yet.</p>
-              ) : (
-                <Timeline
-                  items={timelineItems}
-                  mode="left"
-                  renderPanel={renderPanel}
-                  renderOpposite={renderOpposite}
-                  maxPanelWidth={400}
-                  panelSpacing={16}
-                  panelClickable={true}
-                />
-              )}
-            </div>
+            <TransactionHistoryList messages={transactionMessages} getColor={getColor} />
           </Panel>
         </div>
 

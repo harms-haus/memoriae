@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Edit, Clock, X } from 'lucide-react'
 import { api } from '../../services/api'
 import { Button } from '@mother/components/Button'
 import { Badge } from '@mother/components/Badge'
@@ -69,15 +70,31 @@ export function FollowupItem({ followup, onUpdate }: FollowupItemProps) {
           </div>
           {!followup.dismissed && (
             <div className="followup-item-actions">
-              <Button variant="secondary" onClick={() => setEditModalOpen(true)}>
-                Edit
-              </Button>
-              <Button variant="secondary" onClick={() => setSnoozeModalOpen(true)}>
-                Snooze
-              </Button>
-              <Button variant="secondary" onClick={handleDismiss} disabled={dismissing}>
-                {dismissing ? 'Dismissing...' : 'Dismiss'}
-              </Button>
+              <Button 
+                variant="ghost" 
+                icon={Edit} 
+                onClick={() => setEditModalOpen(true)}
+                aria-label="Edit follow-up"
+                title="Edit follow-up"
+                className="followup-action-button"
+              />
+              <Button 
+                variant="ghost" 
+                icon={Clock} 
+                onClick={() => setSnoozeModalOpen(true)}
+                aria-label="Snooze follow-up"
+                title="Snooze follow-up"
+                className="followup-action-button"
+              />
+              <Button 
+                variant="ghost" 
+                icon={X} 
+                onClick={handleDismiss} 
+                disabled={dismissing}
+                aria-label="Dismiss follow-up"
+                title={dismissing ? "Dismissing..." : "Dismiss follow-up"}
+                className="followup-action-button"
+              />
             </div>
           )}
         </div>
