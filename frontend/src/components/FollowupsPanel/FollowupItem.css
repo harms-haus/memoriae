@@ -36,8 +36,49 @@
 
 .followup-item-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex-shrink: 0;
+  align-items: center;
+}
+
+.followup-action-button {
+  padding: var(--space-2) !important;
+  min-width: auto !important;
+  width: auto !important;
+  height: auto !important;
+  border: var(--border-thin) solid var(--border-primary) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.followup-action-button:hover {
+  background: var(--hover-bg) !important;
+  border-color: var(--accent-yellow) !important;
+  border-radius: var(--radius-sm);
+  transform: none !important;
+}
+
+.followup-action-button:focus {
+  outline: var(--border-thin) solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.followup-action-button:active {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.followup-action-button .button-icon-left,
+.followup-action-button .button-icon-right {
+  margin: 0;
+}
+
+.followup-action-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 .followup-dismissed-badge {

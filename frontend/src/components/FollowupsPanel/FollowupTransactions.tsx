@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import type { FollowupTransaction } from '../../types'
+import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
 import './FollowupTransactions.css'
 
 interface FollowupTransactionsProps {
@@ -84,44 +86,27 @@ export function FollowupTransactions({ transactions }: FollowupTransactionsProps
     }
   }
 
-  if (transactions.length === 0) {
-    return <p className="text-secondary">No transactions yet.</p>
+  const messages: TransactionHistoryMessage[] = useMemo(() => {
+    return transactions.map((transaction) => ({
+      id: transaction.id,
+      title: getTransactionTypeLabel(transaction.transaction_type),
+      content: renderTransactionData(transaction),
+      time: transaction.created_at,
+    }))
+  }, [transactions])
+
+  const transactionTypeMap = useMemo(() => {
+    const map = new Map<string, FollowupTransaction['transaction_type']>()
+    transactions.forEach(t => map.set(t.id, t.transaction_type))
+    return map
+  }, [transactions])
+
+  const getColor = (message: TransactionHistoryMessage): string => {
+    const transactionType = transactionTypeMap.get(message.id)
+    if (!transactionType) return 'var(--text-secondary)'
+    return getTransactionTypeColor(transactionType)
   }
 
-  // Sort transactions chronologically (oldest first)
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  )
-
-  return (
-    <div className="followup-transactions">
-      {sortedTransactions.map((transaction) => (
-        <div
-          key={transaction.id}
-          className="followup-transaction"
-          style={{
-            borderLeftColor: getTransactionTypeColor(transaction.transaction_type),
-          }}
-        >
-          <div className="followup-transaction-header">
-            <span
-              className="followup-transaction-type"
-              style={{
-                color: getTransactionTypeColor(transaction.transaction_type),
-              }}
-            >
-              {getTransactionTypeLabel(transaction.transaction_type)}
-            </span>
-            <span className="followup-transaction-time">
-              {formatDate(transaction.created_at)}
-            </span>
-          </div>
-          <div className="followup-transaction-data">
-            {renderTransactionData(transaction)}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
+  return <TransactionHistoryList messages={messages} getColor={getColor} />
 }
 

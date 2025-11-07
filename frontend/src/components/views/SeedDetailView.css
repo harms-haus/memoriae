@@ -129,12 +129,22 @@
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
+  overflow: hidden; /* Prevent panel from scrolling, let content scroll */
 }
 
 .seed-detail-timeline > .panel-header-light,
 .seed-detail-timeline > h3.panel-header {
   margin-bottom: var(--space-4);
   flex-shrink: 0;
+}
+
+/* Make TransactionHistoryList scrollable within the timeline panel */
+.seed-detail-timeline .transaction-history-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .seed-detail-timeline-wrapper {
