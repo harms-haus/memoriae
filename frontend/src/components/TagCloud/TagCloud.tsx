@@ -58,6 +58,8 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
     for (const seed of seeds) {
       const seedTags = seed.currentState?.tags || []
       for (const tag of seedTags) {
+        // Skip tags without names
+        if (!tag.name) continue
         const count = tagMap.get(tag.name) || 0
         tagMap.set(tag.name, count + 1)
       }
@@ -82,8 +84,9 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
   }
 
   // Get color for tag from database, or fallback to default
-  const getTagColor = (tagName: string): string => {
-    const tag = tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())
+  const getTagColor = (tagName: string | undefined): string => {
+    if (!tagName) return 'var(--text-primary)'
+    const tag = tags.find(t => t.name?.toLowerCase() === tagName.toLowerCase())
     return tag?.color || 'var(--text-primary)'
   }
 
@@ -141,43 +144,45 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
         </div>
         
         <div className="tag-cloud-content">
-          {tagData.map((tag) => {
-            const isSelected = selectedTags.has(tag.name)
-            const sizeClass = getTagSizeClass(tag.count, maxCount)
-            const tagColor = getTagColor(tag.name)
-            
-            return (
-              <a
-                key={tag.name}
-                href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
-                onClick={(e) => {
-                  e.preventDefault()
-                  handleTagClick(tag.name)
-                }}
-                className={`
-                  tag-cloud-item
-                  ${sizeClass}
-                  ${isSelected ? 'tag-cloud-item-selected' : ''}
-                `}
-                style={{}}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.setProperty('color', tagColor, 'important')
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.setProperty('color', tagColor, 'important')
-                }}
-                ref={(el) => {
-                  if (el) {
-                    el.style.setProperty('color', tagColor, 'important')
-                  }
-                }}
-                title={`${tag.name} (${tag.count} seed${tag.count !== 1 ? 's' : ''})`}
-              >
-                #{tag.name}
-                <span className="tag-cloud-count">{tag.count}</span>
-              </a>
-            )
-          })}
+          {tagData
+            .filter(tag => tag.name) // Filter out tags without names
+            .map((tag) => {
+              const isSelected = selectedTags.has(tag.name)
+              const sizeClass = getTagSizeClass(tag.count, maxCount)
+              const tagColor = getTagColor(tag.name)
+              
+              return (
+                <a
+                  key={tag.name}
+                  href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleTagClick(tag.name)
+                  }}
+                  className={`
+                    tag-cloud-item
+                    ${sizeClass}
+                    ${isSelected ? 'tag-cloud-item-selected' : ''}
+                  `}
+                  style={{}}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.setProperty('color', tagColor, 'important')
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.setProperty('color', tagColor, 'important')
+                  }}
+                  ref={(el) => {
+                    if (el) {
+                      el.style.setProperty('color', tagColor, 'important')
+                    }
+                  }}
+                  title={`${tag.name} (${tag.count} seed${tag.count !== 1 ? 's' : ''})`}
+                >
+                  #{tag.name}
+                  <span className="tag-cloud-count">{tag.count}</span>
+                </a>
+              )
+            })}
         </div>
       </Panel>
     </div>

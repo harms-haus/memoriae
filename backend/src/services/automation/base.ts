@@ -1,7 +1,7 @@
 // Base automation framework
 // All automations extend this abstract class to implement process(), calculatePressure(), and handlePressure()
 
-import type { Event } from '../events'
+import type { SeedTransaction } from '../../types/seed-transactions'
 import type { Seed } from '../seeds'
 import type { OpenRouterClient } from '../openrouter/client'
 
@@ -45,10 +45,10 @@ export interface AutomationContext {
  */
 export interface AutomationProcessResult {
   /**
-   * Events created by the automation
-   * These should be saved to the database using EventsService
+   * Transactions created by the automation
+   * These should be saved to the database using SeedTransactionsService
    */
-  events: Event[]
+  transactions: SeedTransaction[]
   
   /**
    * Optional metadata about the processing
@@ -59,11 +59,11 @@ export interface AutomationProcessResult {
 /**
  * Abstract base class for all automations
  * 
- * Automations analyze seeds and create timeline events automatically.
+ * Automations analyze seeds and create timeline transactions automatically.
  * They can respond to category changes through the pressure system.
  * 
  * Each automation must implement:
- * - process(): Analyze seed and create events
+ * - process(): Analyze seed and create transactions
  * - calculatePressure(): Determine pressure amount when categories change
  * - handlePressure(): Respond when pressure threshold is reached
  */
@@ -98,18 +98,18 @@ export abstract class Automation {
   enabled: boolean = true
 
   /**
-   * Process a seed and create events
+   * Process a seed and create transactions
    * 
    * This is the main method called when an automation should analyze a seed.
    * It should:
    * 1. Analyze the seed content/state
    * 2. Use OpenRouter API if needed (via context.openrouter)
-   * 3. Create appropriate events using JSON Patch operations
-   * 4. Return the events to be saved
+   * 3. Create appropriate transactions
+   * 4. Return the transactions to be saved
    * 
-   * @param seed - The seed to process (includes currentState computed from events)
+   * @param seed - The seed to process (includes currentState computed from transactions)
    * @param context - Automation context with OpenRouter client and other dependencies
-   * @returns Promise resolving to events created by the automation
+   * @returns Promise resolving to transactions created by the automation
    */
   abstract process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult>
 

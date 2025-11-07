@@ -3,7 +3,7 @@ import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import path from 'path'
 import authRoutes from './routes/auth'
-import eventsRoutes from './routes/events'
+import transactionsRoutes from './routes/transactions'
 import seedsRoutes from './routes/seeds'
 import categoriesRoutes from './routes/categories'
 import tagsRoutes from './routes/tags'
@@ -52,7 +52,7 @@ app.use('/api/categories', categoriesRoutes)
 app.use('/api/tags', tagsRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/search', searchRoutes)
-app.use('/api', eventsRoutes)
+app.use('/api', transactionsRoutes)
 app.use('/api', followupsRoutes)
 
 // Serve frontend static files in production

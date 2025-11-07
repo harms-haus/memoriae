@@ -1,12 +1,11 @@
 // Categorize automation - assigns categories to seeds using OpenRouter AI
-// Creates SET_CATEGORY or ADD_CATEGORY events when processing seeds
+// Creates add_category transactions when processing seeds
 
 import { v4 as uuidv4 } from 'uuid'
-import type { Operation } from 'fast-json-patch'
 import db from '../../db/connection'
 import { Automation, type AutomationContext, type AutomationProcessResult, type CategoryChange } from './base'
 import type { Seed } from '../seeds'
-import type { Event } from '../events'
+import type { SeedTransaction } from '../../types/seed-transactions'
 
 /**
  * Category record from database
@@ -23,7 +22,7 @@ interface CategoryRow {
  * CategorizeAutomation - Analyzes seed content and assigns categories
  * 
  * Uses OpenRouter AI to determine appropriate categories for seeds,
- * then creates SET_CATEGORY events. Handles hierarchical category structure.
+ * then creates add_category transactions. Handles hierarchical category structure.
  */
 export class CategorizeAutomation extends Automation {
   readonly name = 'categorize'
@@ -36,7 +35,7 @@ export class CategorizeAutomation extends Automation {
    * 1. Gets existing user categories from database
    * 2. Calls OpenRouter to analyze seed and suggest categories
    * 3. Creates categories if they don't exist (with proper hierarchy)
-   * 4. Creates SET_CATEGORY events to assign categories to seed
+   * 4. Creates add_category transactions to assign categories to seed
    */
   async process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult> {
     // Get all existing categories for the user
@@ -58,7 +57,7 @@ export class CategorizeAutomation extends Automation {
     const suggestedCategories = await this.generateCategories(seed, context, Array.from(categoriesByName.keys()))
 
     if (suggestedCategories.length === 0) {
-      return { events: [] }
+      return { transactions: [] }
     }
 
     // Ensure all suggested categories exist, creating them if needed
@@ -77,40 +76,29 @@ export class CategorizeAutomation extends Automation {
     const newCategories = categoryRecords.filter(cat => !existingCategoryIds.has(cat.id))
 
     if (newCategories.length === 0) {
-      return { events: [] }
+      return { transactions: [] }
     }
 
-    // Create SET_CATEGORY events for each new category
-    // We'll add categories to the existing array (not replace)
-    const events: Event[] = []
+    // Create add_category transactions for each new category
+    const transactions: SeedTransaction[] = []
 
     for (const category of newCategories) {
-      // Create JSON Patch operation to add category
-      const patch: Operation[] = [
-        {
-          op: 'add',
-          path: '/categories/-',
-          value: {
-            id: category.id,
-            name: category.name,
-            path: category.path,
-          },
-        },
-      ]
-
-      events.push({
+      transactions.push({
         id: uuidv4(),
         seed_id: seed.id,
-        event_type: 'SET_CATEGORY',
-        patch_json: patch,
-        enabled: true,
+        transaction_type: 'add_category',
+        transaction_data: {
+          category_id: category.id,
+          category_name: category.name,
+          category_path: category.path,
+        },
         created_at: new Date(),
         automation_id: this.id || null,
       })
     }
 
     return {
-      events,
+      transactions,
       metadata: {
         categoriesAssigned: categoryRecords.length,
         categoryPaths: categoryRecords.map(c => c.path),

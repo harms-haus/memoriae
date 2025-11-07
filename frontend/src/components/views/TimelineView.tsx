@@ -150,7 +150,7 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
     const seed = seeds[index]
     if (!seed) return null
 
-    const content = seed.currentState?.seed || seed.seed_content
+    const content = seed.currentState?.seed || ''
     const seedTags = seed.currentState?.tags || []
     const categories = seed.currentState?.categories || []
 

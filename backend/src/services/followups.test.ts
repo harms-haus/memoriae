@@ -13,6 +13,20 @@ import type {
 } from '../types/followups'
 import db from '../db/connection'
 
+// Mock SeedTransactionsService
+vi.mock('./seed-transactions', () => ({
+  SeedTransactionsService: {
+    create: vi.fn().mockResolvedValue({
+      id: 'seed-txn-123',
+      seed_id: 'seed-123',
+      transaction_type: 'add_followup',
+      transaction_data: { followup_id: 'followup-123' },
+      created_at: new Date(),
+      automation_id: null,
+    }),
+  },
+}))
+
 // Mock the database
 const mockWhere = vi.fn()
 const mockWhereIn = vi.fn()

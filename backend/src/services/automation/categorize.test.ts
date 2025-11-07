@@ -145,21 +145,15 @@ describe('CategorizeAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events.length).toBe(2)
-      expect(result.events[0].event_type).toBe('SET_CATEGORY')
-      expect(result.events[0].seed_id).toBe('seed-123')
-      expect(result.events[0].automation_id).toBe('automation-categorize-123')
-      expect(result.events[0].patch_json).toEqual([
-        {
-          op: 'add',
-          path: '/categories/-',
-          value: {
-            id: 'cat-work',
-            name: 'Work',
-            path: '/work',
-          },
-        },
-      ])
+      expect(result.transactions.length).toBe(2)
+      expect(result.transactions[0].transaction_type).toBe('add_category')
+      expect(result.transactions[0].seed_id).toBe('seed-123')
+      expect(result.transactions[0].automation_id).toBe('automation-categorize-123')
+      expect(result.transactions[0].transaction_data).toMatchObject({
+        category_id: 'cat-work',
+        category_name: 'Work',
+        category_path: '/work',
+      })
       expect(result.metadata?.categoriesAssigned).toBeDefined()
       expect(result.metadata?.categoryPaths).toBeDefined()
     })
@@ -222,9 +216,9 @@ describe('CategorizeAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      // Should only create event for /personal
-      expect(result.events.length).toBe(1)
-      expect(result.events[0].patch_json[0].value.path).toBe('/personal')
+      // Should only create transaction for /personal
+      expect(result.transactions.length).toBe(1)
+      expect((result.transactions[0].transaction_data as any).category_path).toBe('/personal')
     })
 
     it('should return empty events when no new categories generated', async () => {
@@ -269,7 +263,7 @@ describe('CategorizeAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
     })
 
     it('should handle OpenRouter API errors gracefully', async () => {
@@ -279,7 +273,7 @@ describe('CategorizeAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
     })
 
     it('should create parent categories in hierarchy', async () => {
@@ -352,8 +346,8 @@ describe('CategorizeAutomation', () => {
 
       // Should create 3 categories in database hierarchy (/work, /work/projects, /work/projects/web)
       // But only 1 event for the suggested category (/work/projects/web)
-      expect(result.events.length).toBe(1)
-      expect(result.events[0].patch_json[0].value.path).toBe('/work/projects/web')
+      expect(result.transactions.length).toBe(1)
+      expect((result.transactions[0].transaction_data as any).category_path).toBe('/work/projects/web')
       // ensureCategoryExists creates all parent categories, so 3 DB inserts
       expect(mockReturning).toHaveBeenCalledTimes(3)
     })
@@ -392,9 +386,9 @@ describe('CategorizeAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events.length).toBe(1)
-      expect(result.events[0].patch_json[0].value.id).toBe('existing-cat-id')
-      expect(result.events[0].patch_json[0].value.path).toBe('/work')
+      expect(result.transactions.length).toBe(1)
+      expect((result.transactions[0].transaction_data as any).category_id).toBe('existing-cat-id')
+      expect((result.transactions[0].transaction_data as any).category_path).toBe('/work')
       // Should not create category, should use existing
       expect(mockReturning).not.toHaveBeenCalled()
     })
@@ -449,7 +443,7 @@ describe('CategorizeAutomation', () => {
 
       // Should normalize paths (though the exact normalization depends on implementation)
       // Should have created events for both categories
-      expect(result.events.length).toBeGreaterThan(0)
+      expect(result.transactions.length).toBeGreaterThan(0)
     })
   })
 

@@ -92,7 +92,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(seed => {
-        const content = (seed.currentState?.seed || seed.seed_content).toLowerCase()
+        const content = (seed.currentState?.seed || '').toLowerCase()
         const tagNames = (seed.currentState?.tags || []).map(t => t.name.toLowerCase()).join(' ')
         const categoryNames = (seed.currentState?.categories || []).map(c => c.name.toLowerCase()).join(' ')
         return content.includes(query) || tagNames.includes(query) || categoryNames.includes(query)
@@ -123,8 +123,8 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
         case 'oldest':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         case 'alphabetical':
-          const contentA = (a.currentState?.seed || a.seed_content).toLowerCase()
-          const contentB = (b.currentState?.seed || b.seed_content).toLowerCase()
+          const contentA = (a.currentState?.seed || '').toLowerCase()
+          const contentB = (b.currentState?.seed || '').toLowerCase()
           return contentA.localeCompare(contentB)
         default:
           return 0
@@ -373,7 +373,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
       ) : (
         <div className="seeds-view-list">
           {filteredAndSortedSeeds.map((seed) => {
-            const content = seed.currentState?.seed || seed.seed_content
+            const content = seed.currentState?.seed || ''
             const seedTags = seed.currentState?.tags || []
             const seedCategories = seed.currentState?.categories || []
 

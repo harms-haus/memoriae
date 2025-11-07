@@ -138,14 +138,14 @@ describe('TagExtractionAutomation', () => {
       const result = await automation.process(mockSeed, mockContext)
 
       // Should extract hash tags
-      expect(result.events.length).toBeGreaterThanOrEqual(3)
-      const tagNames = result.events.map(e => e.patch_json[0].value.name)
+      expect(result.transactions.length).toBeGreaterThanOrEqual(3)
+      const tagNames = result.transactions.map(t => (t.transaction_data as any).tag_name)
       expect(tagNames).toContain('programming')
       expect(tagNames).toContain('web-development')
       expect(tagNames).toContain('testing')
     })
 
-    it('should generate tags and create ADD_TAG events', async () => {
+    it('should generate tags and create add_tag transactions', async () => {
       const mockTagsResponse: OpenRouterChatCompletionResponse = {
         id: 'chatcmpl-123',
         model: 'openai/gpt-3.5-turbo',
@@ -182,20 +182,14 @@ describe('TagExtractionAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events.length).toBeGreaterThan(0)
-      expect(result.events[0].event_type).toBe('ADD_TAG')
-      expect(result.events[0].seed_id).toBe('seed-123')
-      expect(result.events[0].automation_id).toBe('automation-tag-123')
-      expect(result.events[0].patch_json).toEqual([
-        {
-          op: 'add',
-          path: '/tags/-',
-          value: {
-            id: 'tag-123',
-            name: 'programming',
-          },
-        },
-      ])
+      expect(result.transactions.length).toBeGreaterThan(0)
+      expect(result.transactions[0].transaction_type).toBe('add_tag')
+      expect(result.transactions[0].seed_id).toBe('seed-123')
+      expect(result.transactions[0].automation_id).toBe('automation-tag-123')
+      expect(result.transactions[0].transaction_data).toMatchObject({
+        tag_id: 'tag-123',
+        tag_name: 'programming',
+      })
       expect(result.metadata?.tagsGenerated).toBeDefined()
       expect(result.metadata?.tagNames).toBeDefined()
     })
@@ -239,9 +233,9 @@ describe('TagExtractionAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      // Should only create event for 'new-tag'
-      expect(result.events.length).toBe(1)
-      expect(result.events[0].patch_json[0].value.name).toBe('new-tag')
+      // Should only create transaction for 'new-tag'
+      expect(result.transactions.length).toBe(1)
+      expect((result.transactions[0].transaction_data as any).tag_name).toBe('new-tag')
     })
 
     it('should return empty events when no new tags generated', async () => {
@@ -270,7 +264,7 @@ describe('TagExtractionAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
     })
 
     it('should handle OpenRouter API errors gracefully', async () => {
@@ -278,7 +272,7 @@ describe('TagExtractionAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
     })
 
     it('should handle markdown code block responses', async () => {
@@ -313,7 +307,7 @@ describe('TagExtractionAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events.length).toBeGreaterThan(0)
+      expect(result.transactions.length).toBeGreaterThan(0)
     })
 
     it('should use existing tags from database', async () => {
@@ -349,9 +343,9 @@ describe('TagExtractionAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events.length).toBe(1)
-      expect(result.events[0].patch_json[0].value.id).toBe('existing-tag-id')
-      expect(result.events[0].patch_json[0].value.name).toBe('programming')
+      expect(result.transactions.length).toBe(1)
+      expect((result.transactions[0].transaction_data as any).tag_id).toBe('existing-tag-id')
+      expect((result.transactions[0].transaction_data as any).tag_name).toBe('programming')
     })
 
     it('should normalize tag names (lowercase, hyphenated)', async () => {
@@ -386,7 +380,7 @@ describe('TagExtractionAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events.length).toBeGreaterThan(0)
+      expect(result.transactions.length).toBeGreaterThan(0)
       // Verify database was called to get existing tags
       // The implementation selects both 'name' and 'color'
       expect(mockSelect).toHaveBeenCalledWith('name', 'color')

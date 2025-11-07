@@ -1,6 +1,6 @@
 // REST API client with authentication
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
-import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup } from '../types'
+import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup, SeedTransaction, CreateSeedTransactionDto } from '../types'
 
 // In production, use relative URLs since backend serves frontend
 // In development, use explicit URL or Vite proxy
@@ -187,6 +187,19 @@ class ApiClient {
 
   async getDueFollowups(): Promise<DueFollowup[]> {
     return this.get<DueFollowup[]>('/followups/due')
+  }
+
+  // Transaction endpoints
+  async getSeedTransactions(seedId: string): Promise<SeedTransaction[]> {
+    return this.get<SeedTransaction[]>(`/seeds/${seedId}/transactions`)
+  }
+
+  async createSeedTransaction(seedId: string, data: CreateSeedTransactionDto): Promise<SeedTransaction> {
+    return this.post<SeedTransaction>(`/seeds/${seedId}/transactions`, data)
+  }
+
+  async getSeedTransaction(transactionId: string): Promise<SeedTransaction> {
+    return this.get<SeedTransaction>(`/transactions/${transactionId}`)
   }
 }
 

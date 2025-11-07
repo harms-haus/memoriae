@@ -166,7 +166,7 @@ describe('Automation handlePressure Integration', () => {
       readonly handlerFnName = 'test'
 
       async process() {
-        return { events: [] }
+        return { transactions: [] }
       }
 
       calculatePressure() {
@@ -180,7 +180,6 @@ describe('Automation handlePressure Integration', () => {
     const mockSeed = {
       id: 'seed-123',
       user_id: 'user-456',
-      seed_content: 'Test',
       created_at: new Date(),
       currentState: {
         seed: 'Test',

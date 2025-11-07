@@ -1,12 +1,11 @@
 // Tag extraction automation - extracts hash tags from seed content and generates additional tags using OpenRouter AI
-// Creates ADD_TAG events when processing seeds
+// Creates add_tag transactions when processing seeds
 
 import { v4 as uuidv4 } from 'uuid'
-import type { Operation } from 'fast-json-patch'
 import db from '../../db/connection'
 import { Automation, type AutomationContext, type AutomationProcessResult, type CategoryChange } from './base'
 import type { Seed } from '../seeds'
-import type { Event } from '../events'
+import type { SeedTransaction } from '../../types/seed-transactions'
 
 /**
  * Tag record from database
@@ -23,7 +22,7 @@ interface TagRow {
  * 
  * 1. Extracts hash tags (e.g., #hashtag) from seed content
  * 2. Optionally uses OpenRouter AI to generate additional relevant tags
- * 3. Creates ADD_TAG events for each extracted/generated tag.
+ * 3. Creates add_tag transactions for each extracted/generated tag.
  */
 export class TagExtractionAutomation extends Automation {
   readonly name = 'tag'
@@ -61,14 +60,15 @@ export class TagExtractionAutomation extends Automation {
    * 1. Extracts hash tags from seed content (e.g., #hashtag)
    * 2. Optionally calls OpenRouter to generate additional tags
    * 3. For each tag, ensures it exists in database (creates if needed)
-   * 4. Creates ADD_TAG events for tags not already present
+   * 4. Creates add_tag transactions for tags not already present
    */
   async process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult> {
     // Get existing tags from current state to avoid duplicates
+    const existingTagIds = new Set((seed.currentState.tags || []).map(t => t.id))
     const existingTagNames = new Set((seed.currentState.tags || []).map(t => t.name.toLowerCase()))
 
     // Extract hash tags from content (these don't have colors)
-    const hashTags = this.extractHashTags(seed.currentState.seed || seed.seed_content)
+    const hashTags = this.extractHashTags(seed.currentState.seed)
     
     // Generate additional tags using OpenRouter (if content has no hash tags or for additional suggestions)
     const aiGeneratedTags = await this.generateTags(seed, context)
@@ -84,7 +84,7 @@ export class TagExtractionAutomation extends Automation {
 
     if (newTags.length === 0) {
       // No new tags to add
-      return { events: [] }
+      return { transactions: [] }
     }
 
     // Ensure all tags exist in database and get/create them
@@ -92,38 +92,35 @@ export class TagExtractionAutomation extends Automation {
       newTags.map(tag => this.ensureTagExists(tag.name, tag.color))
     )
 
-    // Create ADD_TAG events for each new tag
-    const events: Event[] = []
+    // Filter out tags that are already in the seed's state (by ID)
+    const tagsToAdd = tagRecords.filter(tag => !existingTagIds.has(tag.id))
 
-    for (const tagRecord of tagRecords) {
-      // Create JSON Patch operation to add tag
-      const patch: Operation[] = [
-        {
-          op: 'add',
-          path: '/tags/-',
-          value: {
-            id: tagRecord.id,
-            name: tagRecord.name,
-          },
-        },
-      ]
+    if (tagsToAdd.length === 0) {
+      return { transactions: [] }
+    }
 
-      events.push({
+    // Create add_tag transactions for each new tag
+    const transactions: SeedTransaction[] = []
+
+    for (const tagRecord of tagsToAdd) {
+      transactions.push({
         id: uuidv4(), // Will be regenerated when saved, but needed for type
         seed_id: seed.id,
-        event_type: 'ADD_TAG',
-        patch_json: patch,
-        enabled: true,
+        transaction_type: 'add_tag',
+        transaction_data: {
+          tag_id: tagRecord.id,
+          tag_name: tagRecord.name,
+        },
         created_at: new Date(),
         automation_id: this.id || null,
       })
     }
 
     return {
-      events,
+      transactions,
       metadata: {
-        tagsGenerated: tagRecords.length,
-        tagNames: tagRecords.map(t => t.name),
+        tagsGenerated: tagsToAdd.length,
+        tagNames: tagsToAdd.map(t => t.name),
       },
     }
   }

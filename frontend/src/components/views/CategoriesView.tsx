@@ -190,7 +190,7 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
               {!error && !loading && seeds.length > 0 && (
                 <div className="categories-view-seeds-list">
                   {seeds.map((seed) => {
-                    const content = seed.currentState?.seed || seed.seed_content
+                    const content = seed.currentState?.seed || ''
                     const seedTags = seed.currentState?.tags || []
                     const seedCategories = seed.currentState?.categories || []
 

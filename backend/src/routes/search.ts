@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (q && typeof q === 'string' && q.trim()) {
       const query = q.toLowerCase().trim()
       seeds = seeds.filter(seed => {
-        const content = (seed.currentState?.seed || seed.seed_content).toLowerCase()
+        const content = (seed.currentState?.seed || '').toLowerCase()
         const tagNames = (seed.currentState?.tags || []).map(t => t.name.toLowerCase()).join(' ')
         const categoryNames = (seed.currentState?.categories || []).map(c => c.name.toLowerCase()).join(' ')
         return content.includes(query) || tagNames.includes(query) || categoryNames.includes(query)

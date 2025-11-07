@@ -48,13 +48,13 @@ vi.mock('../seeds', () => ({
   SeedsService: mockSeedsService,
 }))
 
-const mockEventsService = {
-  create: vi.fn().mockResolvedValue({ id: 'event-123' }),
+const mockSeedTransactionsService = {
+  create: vi.fn().mockResolvedValue({ id: 'transaction-123' }),
   createMany: vi.fn().mockResolvedValue([]),
 }
 
-vi.mock('../events', () => ({
-  EventsService: mockEventsService,
+vi.mock('../seed-transactions', () => ({
+  SeedTransactionsService: mockSeedTransactionsService,
 }))
 
 const mockCreateOpenRouterClient = vi.fn()
@@ -110,13 +110,12 @@ describe('Queue Processor', () => {
       enabled: true,
       validateSeed: vi.fn().mockResolvedValue(true),
       process: vi.fn().mockResolvedValue({
-        events: [
+        transactions: [
           {
-            id: 'event-1',
+            id: 'transaction-1',
             seed_id: 'seed-123',
-            event_type: 'ADD_TAG',
-            patch_json: [{ op: 'add', path: '/tags/-', value: { id: 'tag-1', name: 'test' } }],
-            enabled: true,
+            transaction_type: 'add_tag',
+            transaction_data: { tag_id: 'tag-1', tag_name: 'test' },
             created_at: new Date(),
             automation_id: 'auto-123',
           },
@@ -134,7 +133,6 @@ describe('Queue Processor', () => {
     mockSeed = {
       id: 'seed-123',
       user_id: 'user-456',
-      seed_content: 'Test seed content',
       created_at: new Date(),
       currentState: baseState,
     }
@@ -149,8 +147,8 @@ describe('Queue Processor', () => {
     }
 
     // Reset mock implementations to ensure they return values
-    mockEventsService.create.mockResolvedValue({ id: 'event-123' })
-    mockEventsService.createMany.mockResolvedValue([])
+    mockSeedTransactionsService.create.mockResolvedValue({ id: 'event-123' })
+    mockSeedTransactionsService.createMany.mockResolvedValue([])
 
     // Setup default service mocks
     mockRegistryInstance.getById.mockImplementation((id: string) => {
@@ -212,7 +210,7 @@ describe('Queue Processor', () => {
           userId: 'user-456',
         })
       )
-      expect(mockEventsService.createMany).toHaveBeenCalled()
+      expect(mockSeedTransactionsService.createMany).toHaveBeenCalled()
       expect(mockJob.updateProgress).toHaveBeenCalledWith(100)
     })
 
@@ -231,11 +229,11 @@ describe('Queue Processor', () => {
 
       await processAutomationJob(mockJob)
 
-      expect(mockEventsService.createMany).toHaveBeenCalledWith([
+      expect(mockSeedTransactionsService.createMany).toHaveBeenCalledWith([
         {
           seed_id: 'seed-123',
-          event_type: 'ADD_TAG',
-          patch_json: [{ op: 'add', path: '/tags/-', value: { id: 'tag-1', name: 'test' } }],
+          transaction_type: 'add_tag',
+          transaction_data: { tag_id: 'tag-1', tag_name: 'test' },
           automation_id: 'auto-123',
         },
       ])
@@ -384,17 +382,17 @@ describe('Queue Processor', () => {
       await expect(processAutomationJob(mockJob)).rejects.toThrow('Automation process failed')
     })
 
-    it('should not save events if automation returns no events', async () => {
+    it('should not save transactions if automation returns no transactions', async () => {
       const { processAutomationJob } = await import('./processor')
       
-      const automationWithNoEvents = {
+      const automationWithNoTransactions = {
         ...mockAutomation,
         process: vi.fn().mockResolvedValue({
-          events: [],
+          transactions: [],
           metadata: {},
         }),
       }
-      mockRegistryInstance.getById.mockReturnValueOnce(automationWithNoEvents)
+      mockRegistryInstance.getById.mockReturnValueOnce(automationWithNoTransactions)
 
       const mockJob = {
         id: 'job-123',
@@ -408,7 +406,7 @@ describe('Queue Processor', () => {
 
       await processAutomationJob(mockJob)
 
-      expect(mockEventsService.createMany).not.toHaveBeenCalled()
+      expect(mockSeedTransactionsService.createMany).not.toHaveBeenCalled()
     })
 
     it('should handle database errors gracefully', async () => {
@@ -441,8 +439,8 @@ describe('Queue Processor', () => {
     it('should handle event save errors', async () => {
       const { processAutomationJob } = await import('./processor')
       
-      const saveError = new Error('Failed to save events')
-      mockEventsService.createMany.mockRejectedValueOnce(saveError)
+      const saveError = new Error('Failed to save transactions')
+      mockSeedTransactionsService.createMany.mockRejectedValueOnce(saveError)
 
       const mockJob = {
         id: 'job-123',
@@ -453,7 +451,7 @@ describe('Queue Processor', () => {
         },
       } as any
 
-      await expect(processAutomationJob(mockJob)).rejects.toThrow('Failed to save events')
+      await expect(processAutomationJob(mockJob)).rejects.toThrow('Failed to save transactions')
     })
   })
 })

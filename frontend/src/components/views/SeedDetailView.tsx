@@ -10,7 +10,7 @@ import { Badge } from '@mother/components/Badge'
 import { renderHashTags } from '../../utils/renderHashTags'
 import { TagList } from '../TagList'
 import { FollowupsPanel } from '../FollowupsPanel'
-import type { Event, Seed, SeedState, Tag as TagType } from '../../types'
+import type { SeedTransaction, Seed, SeedState, Tag as TagType } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
 
@@ -23,9 +23,8 @@ interface Automation {
 
 interface SeedStateResponse {
   seed_id: string
-  base_state: SeedState
   current_state: SeedState
-  events_applied: number
+  transactions_applied: number
 }
 
 interface SeedDetailViewProps {
@@ -35,19 +34,17 @@ interface SeedDetailViewProps {
 
 /**
  * SeedDetailView displays:
- * - Current seed state (computed from base + enabled events)
- * - Timeline of all events with toggle functionality
- * - Each timeline item is clickable to toggle event on/off
+ * - Current seed state (computed from transactions)
+ * - Timeline of all transactions (immutable)
  */
 export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const navigate = useNavigate()
   const [seed, setSeed] = useState<Seed | null>(null)
-  const [events, setEvents] = useState<Event[]>([])
+  const [transactions, setTransactions] = useState<SeedTransaction[]>([])
   const [currentState, setCurrentState] = useState<SeedState | null>(null)
   const [tags, setTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [toggling, setToggling] = useState<Set<string>>(new Set())
   const [automations, setAutomations] = useState<Automation[]>([])
   const [loadingAutomations, setLoadingAutomations] = useState(false)
   const [runningAutomations, setRunningAutomations] = useState<Set<string>>(new Set())
@@ -70,16 +67,16 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       setLoading(true)
       setError(null)
 
-      // Load seed, timeline events, current state, and tags in parallel
-      const [seedData, eventsData, stateData, tagsData] = await Promise.all([
+      // Load seed, timeline transactions, current state, and tags in parallel
+      const [seedData, transactionsData, stateData, tagsData] = await Promise.all([
         api.get<Seed>(`/seeds/${seedId}`),
-        api.get<Event[]>(`/seeds/${seedId}/timeline`),
+        api.getSeedTransactions(seedId),
         api.get<SeedStateResponse>(`/seeds/${seedId}/state`),
         api.get<TagType[]>('/tags').catch(() => []), // Tags may not exist yet
       ])
 
       setSeed(seedData)
-      setEvents(eventsData.sort((a, b) => 
+      setTransactions(transactionsData.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ))
       setCurrentState(stateData.current_state)
@@ -110,9 +107,9 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const handleRunAutomation = async (automationId: string) => {
     if (!seedId || runningAutomations.has(automationId)) return
 
-    // Store initial event count to detect when new events are added
-    const initialEventCount = events.length
-    let lastEventCount = initialEventCount
+    // Store initial transaction count to detect when new transactions are added
+    const initialTransactionCount = transactions.length
+    let lastTransactionCount = initialTransactionCount
 
     try {
       setRunningAutomations((prev) => new Set(prev).add(automationId))
@@ -133,27 +130,27 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         attempts++
         
         try {
-          // Reload seed data to check if new events were created
-          const [seedData, eventsData, stateData] = await Promise.all([
+          // Reload seed data to check if new transactions were created
+          const [seedData, transactionsData, stateData] = await Promise.all([
             api.get<Seed>(`/seeds/${seedId}`),
-            api.get<Event[]>(`/seeds/${seedId}/timeline`),
+            api.getSeedTransactions(seedId),
             api.get<SeedStateResponse>(`/seeds/${seedId}/state`),
           ])
 
-          const sortedEvents = eventsData.sort((a, b) => 
+          const sortedTransactions = transactionsData.sort((a, b) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
-          const currentEventCount = sortedEvents.length
+          const currentTransactionCount = sortedTransactions.length
 
           // Update state
           setSeed(seedData)
-          setEvents(sortedEvents)
+          setTransactions(sortedTransactions)
           setCurrentState(stateData.current_state)
           
-          // Check if new events were created (automation completed)
-          if (currentEventCount > lastEventCount) {
-            // New events detected - automation completed
-            console.log('Automation completed - new events detected')
+          // Check if new transactions were created (automation completed)
+          if (currentTransactionCount > lastTransactionCount) {
+            // New transactions detected - automation completed
+            console.log('Automation completed - new transactions detected')
             setRunningAutomations((prev) => {
               const next = new Set(prev)
               next.delete(automationId)
@@ -162,13 +159,13 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
             return
           }
           
-          lastEventCount = currentEventCount
+          lastTransactionCount = currentTransactionCount
           
           // Check if we should continue polling
           if (attempts < maxAttempts) {
             setTimeout(pollForCompletion, pollInterval)
           } else {
-            // Stop polling after max attempts (automation may have completed without creating events, or failed silently)
+            // Stop polling after max attempts (automation may have completed without creating transactions, or failed silently)
             console.log('Polling stopped - max attempts reached')
             setRunningAutomations((prev) => {
               const next = new Set(prev)
@@ -204,154 +201,72 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     }
   }
 
-  const handleToggleEvent = async (eventId: string, currentEnabled: boolean) => {
-    if (!seedId || toggling.has(eventId)) return
+  // Transactions are immutable - no toggle functionality
 
-    try {
-      setToggling((prev) => new Set(prev).add(eventId))
-
-      // Optimistically update
-      const updatedEvents = events.map((e) =>
-        e.id === eventId ? { ...e, enabled: !currentEnabled } : e
-      )
-      setEvents(updatedEvents)
-
-      // Call API to toggle
-      await api.post(`/seeds/${seedId}/events/${eventId}/toggle`, {
-        enabled: !currentEnabled,
-      })
-
-      // Reload state to reflect changes
-      const stateData = await api.get<SeedStateResponse>(`/seeds/${seedId}/state`)
-      setCurrentState(stateData.current_state)
-
-      // Reload events to ensure consistency
-      const eventsData = await api.get<Event[]>(`/seeds/${seedId}/timeline`)
-      setEvents(eventsData.sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ))
-    } catch (err) {
-      console.error('Error toggling event:', err)
-      // Revert optimistic update
-      await loadSeedData()
-      setError(err instanceof Error ? err.message : 'Failed to toggle event')
-    } finally {
-      setToggling((prev) => {
-        const next = new Set(prev)
-        next.delete(eventId)
-        return next
-      })
+  const extractTagName = (transaction: SeedTransaction): string | null => {
+    if (transaction.transaction_type !== 'add_tag') return null
+    const data = transaction.transaction_data
+    if ('tag_name' in data) {
+      return data.tag_name
     }
+    return null
   }
 
-  const extractTagName = (event: Event): string | null => {
-    if (event.event_type !== 'ADD_TAG') return null
-    const addTagOp = event.patch_json.find((op) => op.path.startsWith('/tags/'))
-    if (!addTagOp?.value) return null
-    if (typeof addTagOp.value === 'object' && addTagOp.value && 'name' in addTagOp.value) {
-      return addTagOp.value.name as string
-    }
-    return String(addTagOp.value)
-  }
+  // No RUN_AUTOMATION transactions - automations just create their transactions directly
 
-  const formatEventDescription = (event: Event): string => {
-    switch (event.event_type) {
-      case 'ADD_TAG':
-        const tagName = extractTagName(event)
-        return tagName || 'Added tag'
-      case 'REMOVE_TAG':
-        return 'Removed tag'
-      case 'SET_CATEGORY':
-        const categoryOp = event.patch_json.find((op) => op.path.startsWith('/categories/'))
-        return categoryOp?.value
-          ? `Set category: ${typeof categoryOp.value === 'object' && categoryOp.value && 'name' in categoryOp.value ? categoryOp.value.name : categoryOp.value}`
-          : 'Set category'
-      case 'UPDATE_CONTENT':
-        return 'Updated content'
-      default:
-        return event.event_type
-    }
-  }
-
-  // Extract metadata from RUN_AUTOMATION events
-  const extractAutomationMetadata = (event: Event): { automation_name: string; manual: boolean } | null => {
-    if (event.event_type !== 'RUN_AUTOMATION') return null
-    const metadataOp = event.patch_json.find((op) => op.path === '/metadata')
-    if (!metadataOp?.value || typeof metadataOp.value !== 'object') return null
-    const metadata = metadataOp.value as { automation_name?: string; manual?: boolean }
-    return {
-      automation_name: metadata.automation_name || 'Unknown',
-      manual: metadata.manual === true,
-    }
-  }
-
-  // Format automation name for display (e.g., "tag" -> "Tag Extraction")
-  const formatAutomationName = (name: string): string => {
-    // Capitalize first letter
-    const capitalized = name.charAt(0).toUpperCase() + name.slice(1)
-    // Add "Extraction" or similar suffix based on automation type
-    if (name === 'tag') return 'Tag Extraction'
-    if (name === 'categorize') return 'Categorization'
-    return capitalized
-  }
-
-  // Group consecutive events of the same type
-  // RUN_AUTOMATION events are never grouped with other event types
-  interface EventGroup {
-    eventType: string
-    events: Event[]
+  // Group consecutive transactions of the same type
+  interface TransactionGroup {
+    transactionType: string
+    transactions: SeedTransaction[]
     hasAutomation: boolean
     position: number
   }
 
-  const groupedEvents: EventGroup[] = useMemo(() => {
-    if (events.length === 0) return []
+  const groupedTransactions: TransactionGroup[] = useMemo(() => {
+    if (transactions.length === 0) return []
 
-    const groups: EventGroup[] = []
-    let currentGroup: EventGroup | null = null
+    const groups: TransactionGroup[] = []
+    let currentGroup: TransactionGroup | null = null
 
     // Get date range for position calculation
-    const dates = events.map(event => new Date(event.created_at).getTime())
+    const dates = transactions.map(transaction => new Date(transaction.created_at).getTime())
     const minDate = Math.min(...dates)
     const maxDate = Math.max(...dates)
     const dateRange = maxDate - minDate
 
-    events.forEach((event) => {
-      // RUN_AUTOMATION events are never grouped with other types
-      // Other event types are grouped together if consecutive and same type
+    transactions.forEach((transaction) => {
+      // Transactions are grouped together if consecutive and same type
       const shouldStartNewGroup = !currentGroup || 
-        currentGroup.eventType !== event.event_type ||
-        event.event_type === 'RUN_AUTOMATION' ||
-        currentGroup.eventType === 'RUN_AUTOMATION'
+        currentGroup.transactionType !== transaction.transaction_type
 
       if (shouldStartNewGroup) {
         if (currentGroup) {
           groups.push(currentGroup)
         }
         
-        const eventDate = new Date(event.created_at).getTime()
+        const transactionDate = new Date(transaction.created_at).getTime()
         const position = dateRange === 0 
           ? 0 
-          : ((maxDate - eventDate) / dateRange) * 100
+          : ((maxDate - transactionDate) / dateRange) * 100
 
         currentGroup = {
-          eventType: event.event_type,
-          events: [event],
-          hasAutomation: !!event.automation_id,
+          transactionType: transaction.transaction_type,
+          transactions: [transaction],
+          hasAutomation: !!transaction.automation_id,
           position: Math.max(0, Math.min(100, position)),
         }
       } else {
         // Add to current group
         if (currentGroup) {
-          currentGroup.events.push(event)
-          if (event.automation_id) {
+          currentGroup.transactions.push(transaction)
+          if (transaction.automation_id) {
             currentGroup.hasAutomation = true
           }
-          // Update position to the newest event in the group
-          const eventDate = new Date(event.created_at).getTime()
+          // Update position to the newest transaction in the group
+          const transactionDate = new Date(transaction.created_at).getTime()
           const position = dateRange === 0 
             ? 0 
-            : ((maxDate - eventDate) / dateRange) * 100
+            : ((maxDate - transactionDate) / dateRange) * 100
           currentGroup.position = Math.max(0, Math.min(100, position))
         }
       }
@@ -363,10 +278,10 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     }
 
     return groups
-  }, [events])
+  }, [transactions])
 
-  const formatEventTime = (event: Event): string => {
-    const date = new Date(event.created_at)
+  const formatTransactionTime = (transaction: SeedTransaction): string => {
+    const date = new Date(transaction.created_at)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
@@ -385,75 +300,70 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     })
   }
 
-  // Calculate timeline positions based on grouped events
+  // Calculate timeline positions based on grouped transactions
   const timelineItems: TimelineItem[] = useMemo(() => {
-    return groupedEvents.map((group, index) => ({
-      id: `group-${index}-${group.eventType}`,
+    return groupedTransactions.map((group, index) => ({
+      id: `group-${index}-${group.transactionType}`,
       position: group.position,
     }))
-  }, [groupedEvents])
+  }, [groupedTransactions])
+
+  const formatTransactionDescription = (transaction: SeedTransaction): string => {
+    switch (transaction.transaction_type) {
+      case 'create_seed':
+        return 'Seed created'
+      case 'edit_content':
+        return 'Content edited'
+      case 'add_tag':
+        const tagData = transaction.transaction_data
+        if ('tag_name' in tagData) {
+          return `Tag added: ${tagData.tag_name}`
+        }
+        return 'Tag added'
+      case 'remove_tag':
+        return 'Tag removed'
+      case 'add_category':
+        const catData = transaction.transaction_data
+        if ('category_name' in catData) {
+          return `Category added: ${catData.category_name}`
+        }
+        return 'Category added'
+      case 'remove_category':
+        return 'Category removed'
+      case 'add_followup':
+        return 'Follow-up added'
+      default:
+        return transaction.transaction_type
+    }
+  }
 
   const renderPanel = (index: number, width: number): React.ReactNode => {
-    const group = groupedEvents[index]
+    const group = groupedTransactions[index]
     if (!group) return null
 
-    // Handle RUN_AUTOMATION events - display as italicized text
-    if (group.eventType === 'RUN_AUTOMATION') {
-      const event = group.events[0] // RUN_AUTOMATION events are never grouped
-      if (!event) return null
-      const metadata = extractAutomationMetadata(event)
-      if (!metadata) return null
-
-      const automationDisplayName = formatAutomationName(metadata.automation_name)
-      const triggerType = metadata.manual ? 'manual' : 'automatic'
-
-      return (
-        <div className="event-automation-run">
-          <span className="event-automation-run-text">
-            {automationDisplayName}: {triggerType}
-          </span>
-        </div>
-      )
-    }
-
-    const allDisabled = group.events.every(e => !e.enabled)
-    const someDisabled = group.events.some(e => !e.enabled) && !allDisabled
-
-    // Extract tag names for ADD_TAG groups
-    const tagNames = group.eventType === 'ADD_TAG' 
-      ? group.events.map(e => extractTagName(e)).filter((name): name is string => name !== null)
+    // Extract tag names for add_tag groups
+    const tagNames = group.transactionType === 'add_tag' 
+      ? group.transactions.map(t => extractTagName(t)).filter((name): name is string => name !== null)
       : []
 
     return (
       <div className="event-group-content">
         <div className="event-group-header">
-          <span className="event-type">{group.eventType}</span>
+          <span className="event-type">{group.transactionType}</span>
           {group.hasAutomation && (
             <Badge variant="primary">Auto</Badge>
           )}
-          {allDisabled && (
-            <Badge variant="warning" className="event-disabled-badge">Disabled</Badge>
-          )}
-          {someDisabled && (
-            <Badge variant="warning" className="event-disabled-badge">Some Disabled</Badge>
-          )}
         </div>
         <div className="event-group-body">
-          {group.eventType === 'ADD_TAG' && tagNames.length > 0 ? (
+          {group.transactionType === 'add_tag' && tagNames.length > 0 ? (
             <div className="event-group-tags">
               {tagNames.map((tagName, tagIndex) => {
-                const event = group.events[tagIndex]
-                if (!event) return null
+                const transaction = group.transactions[tagIndex]
+                if (!transaction) return null
                 const isLast = tagIndex === tagNames.length - 1
                 return (
-                  <span key={`${event.id}-${tagIndex}`}>
-                    <span
-                      className={`event-group-tag ${!event.enabled ? 'event-group-tag-disabled' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleToggleEvent(event.id, event.enabled)
-                      }}
-                    >
+                  <span key={`${transaction.id}-${tagIndex}`}>
+                    <span className="event-group-tag">
                       {tagName}
                     </span>
                     {!isLast && <span className="event-group-tag-separator">, </span>}
@@ -463,13 +373,12 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
             </div>
           ) : (
             <div className="event-group-items">
-              {group.events.map((event) => (
+              {group.transactions.map((transaction) => (
                 <div
-                  key={event.id}
-                  className={`event-group-item ${!event.enabled ? 'event-group-item-disabled' : ''}`}
-                  onClick={() => handleToggleEvent(event.id, event.enabled)}
+                  key={transaction.id}
+                  className="event-group-item"
                 >
-                  {formatEventDescription(event)}
+                  {formatTransactionDescription(transaction)}
                 </div>
               ))}
             </div>
@@ -480,16 +389,16 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   }
 
   const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
-    const group = groupedEvents[index]
+    const group = groupedTransactions[index]
     if (!group) return null
 
-    // Use the newest event's time for the group
-    const newestEvent = group.events[0] // Events are sorted newest first
-    if (!newestEvent) return null
+    // Use the newest transaction's time for the group
+    const newestTransaction = group.transactions[0] // Transactions are sorted newest first
+    if (!newestTransaction) return null
 
     return (
       <div className="event-time-opposite">
-        <span className="event-time">{formatEventTime(newestEvent)}</span>
+        <span className="event-time">{formatTransactionTime(newestTransaction)}</span>
       </div>
     )
   }
@@ -556,7 +465,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
                   tagColorMap.set(tag.name.toLowerCase(), tag.color)
                 }
               })
-              return renderHashTags(currentState?.seed || seed.seed_content, (tagName) => {
+              return renderHashTags(currentState?.seed || '', (tagName) => {
                 navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
               }, tagColorMap)
             })()}
@@ -635,11 +544,11 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         )}
       </ExpandingPanel>
 
-      {/* Timeline of Events */}
+      {/* Timeline of Transactions */}
       <Panel variant="elevated" className="seed-detail-timeline">
         <h3 className="panel-header">Timeline</h3>
-        {events.length === 0 ? (
-          <p className="text-secondary">No events yet.</p>
+        {transactions.length === 0 ? (
+          <p className="text-secondary">No transactions yet.</p>
         ) : (
           <Timeline
             items={timelineItems}

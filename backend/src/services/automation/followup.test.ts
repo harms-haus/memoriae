@@ -37,7 +37,6 @@ describe('FollowupAutomation', () => {
     mockSeed = {
       id: 'seed-123',
       user_id: 'user-123',
-      seed_content: 'Call John tomorrow about the project proposal',
       created_at: new Date(),
       currentState: baseState,
     }
@@ -108,7 +107,7 @@ describe('FollowupAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
       expect(FollowupService.create).toHaveBeenCalled()
       // Verify the call arguments
       const createCall = vi.mocked(FollowupService.create).mock.calls[0]
@@ -152,7 +151,7 @@ describe('FollowupAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
       expect(FollowupService.create).not.toHaveBeenCalled()
     })
 
@@ -171,7 +170,7 @@ describe('FollowupAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
       expect(mockCreateChatCompletion).not.toHaveBeenCalled()
       expect(FollowupService.create).not.toHaveBeenCalled()
     })
@@ -228,7 +227,7 @@ describe('FollowupAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
       expect(FollowupService.create).toHaveBeenCalled()
     })
 
@@ -238,7 +237,7 @@ describe('FollowupAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
       expect(FollowupService.create).not.toHaveBeenCalled()
     })
 
@@ -270,7 +269,7 @@ describe('FollowupAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
       expect(FollowupService.create).not.toHaveBeenCalled()
     })
 
@@ -315,7 +314,7 @@ describe('FollowupAutomation', () => {
 
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.events).toEqual([])
+      expect(result.transactions).toEqual([])
     })
   })
 

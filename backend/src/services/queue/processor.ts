@@ -5,7 +5,7 @@ import { config } from '../../config'
 import { type AutomationJobData } from './queue'
 import { AutomationRegistry } from '../automation/registry'
 import { SeedsService } from '../seeds'
-import { EventsService } from '../events'
+import { SeedTransactionsService } from '../seed-transactions'
 import { createOpenRouterClient } from '../openrouter/client'
 import { type UserSettings } from '../settings'
 
@@ -122,59 +122,22 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
       return
     }
 
-    // 7. Create RUN_AUTOMATION event to track that automation was executed
-    // For manual runs, the event is already created in the endpoint, so check if one exists
-    // For automatic runs, create it here
-    const isManual = job.data.metadata?.manual === true || false
-    
-    if (!isManual) {
-      // Only create RUN_AUTOMATION event for automatic runs
-      // Manual runs already have the event created in the endpoint
-      const automationRunEvent = await EventsService.create({
-        seed_id: seedId,
-        event_type: 'RUN_AUTOMATION',
-        patch_json: [
-          {
-            op: 'add',
-            path: '/metadata',
-            value: {
-              automation_id: automationId,
-              automation_name: automation.name,
-              automation_description: automation.description || null,
-              manual: false,
-            },
-          },
-        ],
-        automation_id: automationId,
-      })
-      console.log(`Created RUN_AUTOMATION event ${automationRunEvent.id} for automation ${automationId}`)
-    } else {
-      console.log(`Skipping RUN_AUTOMATION event creation for manual run (already created in endpoint)`)
-    }
-
-    // 8. Run the automation
+    // 7. Run the automation
     const result = await automation.process(seed, context)
 
-    // 9. Save events created by the automation
-    if (result.events.length > 0) {
-      // Log first event's patch_json structure for debugging
-      const firstEvent = result.events[0]
-      if (firstEvent) {
-        console.log(`[Worker] First event patch_json type: ${typeof firstEvent.patch_json}, isArray: ${Array.isArray(firstEvent.patch_json)}`)
-        console.log(`[Worker] First event patch_json:`, JSON.stringify(firstEvent.patch_json, null, 2))
-      }
-      
-      await EventsService.createMany(
-        result.events.map(event => ({
-          seed_id: event.seed_id,
-          event_type: event.event_type,
-          patch_json: event.patch_json, // Should be Operation[] array
-          automation_id: event.automation_id,
+    // 8. Save transactions created by the automation
+    if (result.transactions.length > 0) {
+      await SeedTransactionsService.createMany(
+        result.transactions.map(transaction => ({
+          seed_id: transaction.seed_id,
+          transaction_type: transaction.transaction_type,
+          transaction_data: transaction.transaction_data,
+          automation_id: transaction.automation_id,
         }))
       )
-      console.log(`Created ${result.events.length} events for seed ${seedId} via automation ${automationId}`)
+      console.log(`Created ${result.transactions.length} transactions for seed ${seedId} via automation ${automationId}`)
     } else {
-      console.log(`No events created for seed ${seedId} via automation ${automationId}`)
+      console.log(`No transactions created for seed ${seedId} via automation ${automationId}`)
     }
 
     // Update job progress

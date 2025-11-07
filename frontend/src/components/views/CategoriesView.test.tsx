@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { CategoriesView } from './CategoriesView'
 import { api } from '../../services/api'
 import type { Seed, Category } from '../../types'
@@ -82,7 +83,6 @@ const mockSeeds: Seed[] = [
   {
     id: 'seed-1',
     user_id: 'user-1',
-    seed_content: 'Test seed content',
     created_at: new Date().toISOString(),
     currentState: {
       seed: 'Test seed content',
@@ -94,7 +94,6 @@ const mockSeeds: Seed[] = [
   {
     id: 'seed-2',
     user_id: 'user-1',
-    seed_content: 'Another seed',
     created_at: new Date().toISOString(),
     currentState: {
       seed: 'Another seed',
@@ -113,7 +112,11 @@ describe('CategoriesView', () => {
   it('should render category tree', async () => {
     vi.mocked(api.get).mockResolvedValue(mockCategories)
 
-    render(<CategoriesView />)
+    render(
+      <MemoryRouter>
+        <CategoriesView />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
@@ -134,7 +137,11 @@ describe('CategoriesView', () => {
       return Promise.resolve([])
     })
 
-    render(<CategoriesView />)
+    render(
+      <MemoryRouter>
+        <CategoriesView />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
@@ -163,7 +170,11 @@ describe('CategoriesView', () => {
       .mockResolvedValueOnce(mockSeeds)
       .mockResolvedValueOnce(mockCategories)
 
-    render(<CategoriesView />)
+    render(
+      <MemoryRouter>
+        <CategoriesView />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
@@ -202,7 +213,11 @@ describe('CategoriesView', () => {
       return Promise.resolve([])
     })
 
-    render(<CategoriesView />)
+    render(
+      <MemoryRouter>
+        <CategoriesView />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
@@ -240,7 +255,11 @@ describe('CategoriesView', () => {
       return Promise.resolve([])
     })
 
-    render(<CategoriesView />)
+    render(
+      <MemoryRouter>
+        <CategoriesView />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
@@ -269,7 +288,11 @@ describe('CategoriesView', () => {
       return Promise.resolve([])
     })
 
-    render(<CategoriesView />)
+    render(
+      <MemoryRouter>
+        <CategoriesView />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
@@ -304,7 +327,11 @@ describe('CategoriesView', () => {
       return Promise.resolve([])
     })
 
-    render(<CategoriesView />)
+    render(
+      <MemoryRouter>
+        <CategoriesView />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()

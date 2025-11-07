@@ -23,27 +23,78 @@ export interface SeedState {
 export interface Seed {
   id: string
   user_id: string
-  seed_content: string
   created_at: string
   currentState: SeedState
+  transactions?: SeedTransaction[] // Optional, for timeline view
 }
 
 export interface CreateSeedDto {
   content: string
 }
 
-export interface Event {
+// Seed transaction types
+export type SeedTransactionType =
+  | 'create_seed'
+  | 'edit_content'
+  | 'add_tag'
+  | 'remove_tag'
+  | 'add_category'
+  | 'remove_category'
+  | 'add_followup'
+
+export interface CreateSeedTransactionData {
+  content: string
+}
+
+export interface EditContentTransactionData {
+  content: string
+}
+
+export interface AddTagTransactionData {
+  tag_id: string
+  tag_name: string
+}
+
+export interface RemoveTagTransactionData {
+  tag_id: string
+}
+
+export interface AddCategoryTransactionData {
+  category_id: string
+  category_name: string
+  category_path: string
+}
+
+export interface RemoveCategoryTransactionData {
+  category_id: string
+}
+
+export interface AddFollowupTransactionData {
+  followup_id: string
+}
+
+export type SeedTransactionData =
+  | CreateSeedTransactionData
+  | EditContentTransactionData
+  | AddTagTransactionData
+  | RemoveTagTransactionData
+  | AddCategoryTransactionData
+  | RemoveCategoryTransactionData
+  | AddFollowupTransactionData
+
+export interface SeedTransaction {
   id: string
   seed_id: string
-  event_type: string
-  patch_json: Array<{
-    op: 'add' | 'remove' | 'replace'
-    path: string
-    value?: unknown
-  }>
-  enabled: boolean
+  transaction_type: SeedTransactionType
+  transaction_data: SeedTransactionData
   created_at: string
   automation_id: string | null
+}
+
+export interface CreateSeedTransactionDto {
+  transaction_type: SeedTransactionType
+  transaction_data: SeedTransactionData
+  automation_id?: string | null
 }
 
 export interface SeedState {

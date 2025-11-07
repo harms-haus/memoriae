@@ -1,13 +1,12 @@
 // Seeds service - business logic for seed operations
 import { v4 as uuidv4 } from 'uuid'
 import db from '../db/connection'
-import { applyEvents, createBaseState } from '../utils/jsonpatch'
-import { EventsService } from './events'
+import { computeSeedState } from '../utils/seed-state'
+import { SeedTransactionsService } from './seed-transactions'
 
 export interface SeedRow {
   id: string
   user_id: string
-  seed_content: string
   created_at: Date
 }
 
@@ -32,42 +31,28 @@ export interface UpdateSeedDto {
 }
 
 /**
- * Compute current seed state by applying all enabled events to base state
- * This is the core timeline functionality - current state = base + enabled events
+ * Compute current seed state by replaying all transactions
+ * This is the core timeline functionality - current state = replay all transactions
  */
-async function computeCurrentState(seedContent: string, createdAt: Date, seedId: string): Promise<SeedState> {
-  // Create base state using jsonpatch utility
-  const baseState = createBaseState(seedContent, createdAt)
+async function computeCurrentState(seedId: string): Promise<SeedState> {
+  // Fetch all transactions for this seed
+  const transactions = await SeedTransactionsService.getBySeedId(seedId)
   
-  // Fetch all enabled events for this seed
-  const events = await EventsService.getEnabledBySeedId(seedId)
-  
-  // Apply events to compute current state
-  // Convert Event[] to EventData[] format expected by applyEvents
-  const eventData = events.map(e => ({
-    id: e.id,
-    patch_json: e.patch_json,
-    enabled: e.enabled,
-    created_at: e.created_at,
-  }))
-  
-  const computedState = applyEvents(baseState, eventData)
+  // Compute state by replaying transactions
+  const computedState = computeSeedState(transactions)
   
   // Convert to output format (timestamp as ISO string)
-  // With exactOptionalPropertyTypes, we can't assign undefined to optional properties
   const state: SeedState = {
     seed: computedState.seed,
-    timestamp: computedState.timestamp instanceof Date 
-      ? computedState.timestamp.toISOString() 
-      : new Date(computedState.timestamp).toISOString(),
+    timestamp: computedState.timestamp.toISOString(),
     metadata: computedState.metadata || {},
   }
   
   // Only include tags and categories if they exist (not undefined)
-  if (computedState.tags !== undefined) {
+  if (computedState.tags !== undefined && computedState.tags.length > 0) {
     state.tags = computedState.tags
   }
-  if (computedState.categories !== undefined) {
+  if (computedState.categories !== undefined && computedState.categories.length > 0) {
     state.categories = computedState.categories
   }
   
@@ -80,7 +65,7 @@ async function computeCurrentState(seedContent: string, createdAt: Date, seedId:
 export class SeedsService {
   /**
    * Get all seeds for a user
-   * Computes current state for each seed by applying enabled events
+   * Computes current state for each seed by replaying transactions
    */
   static async getByUser(userId: string): Promise<Seed[]> {
     const seeds = await db<SeedRow>('seeds')
@@ -91,7 +76,7 @@ export class SeedsService {
     const seedsWithState = await Promise.all(
       seeds.map(async (seed) => ({
         ...seed,
-        currentState: await computeCurrentState(seed.seed_content, seed.created_at, seed.id),
+        currentState: await computeCurrentState(seed.id),
       }))
     )
 
@@ -100,7 +85,7 @@ export class SeedsService {
 
   /**
    * Get a single seed by ID (must belong to user)
-   * Computes current state by applying all enabled events
+   * Computes current state by replaying all transactions
    */
   static async getById(id: string, userId: string): Promise<Seed | null> {
     const seed = await db<SeedRow>('seeds')
@@ -111,7 +96,7 @@ export class SeedsService {
       return null
     }
 
-    const currentState = await computeCurrentState(seed.seed_content, seed.created_at, seed.id)
+    const currentState = await computeCurrentState(seed.id)
 
     return {
       ...seed,
@@ -121,39 +106,53 @@ export class SeedsService {
 
   /**
    * Create a new seed
-   * New seeds start with base state (no events yet)
+   * Creates seed row and create_seed transaction atomically
    */
   static async create(userId: string, data: CreateSeedDto): Promise<Seed> {
     const id = uuidv4()
     const now = new Date()
 
-    const result = await db<SeedRow>('seeds')
-      .insert({
-        id,
-        user_id: userId,
-        seed_content: data.content,
-        created_at: now,
-      })
-      .returning('*')
+    // Use a database transaction to ensure atomicity
+    return await db.transaction(async (trx) => {
+      // Create seed row
+      const [seed] = await trx<SeedRow>('seeds')
+        .insert({
+          id,
+          user_id: userId,
+          created_at: now,
+        })
+        .returning('*')
 
-    const seed = result[0]
-    if (!seed) {
-      throw new Error('Failed to create seed: insert did not return a result')
-    }
+      if (!seed) {
+        throw new Error('Failed to create seed: insert did not return a result')
+      }
 
-    // New seeds have no events, so current state = base state
-    const currentState = await computeCurrentState(seed.seed_content, seed.created_at, seed.id)
+      // Create create_seed transaction within the same database transaction
+      await trx('seed_transactions')
+        .insert({
+          id: uuidv4(),
+          seed_id: id,
+          transaction_type: 'create_seed',
+          transaction_data: trx.raw('?::jsonb', [JSON.stringify({ content: data.content })]),
+          created_at: now,
+          automation_id: null,
+        })
 
-    return {
-      ...seed,
-      currentState,
-    }
+      // Return seed - state will be computed after transaction commits
+      return seed
+    }).then(async (seed) => {
+      // Compute current state from transactions (after commit)
+      const currentState = await computeCurrentState(id)
+      return {
+        ...seed,
+        currentState,
+      }
+    })
   }
 
   /**
-   * Update a seed's content (creates a new event in the timeline)
-   * For now, we'll update the base content. Later, this will create an UPDATE_CONTENT event.
-   * After update, recomputes current state from all enabled events
+   * Update a seed's content (creates an edit_content transaction)
+   * After update, recomputes current state from all transactions
    */
   static async update(id: string, userId: string, data: UpdateSeedDto): Promise<Seed | null> {
     // Verify seed belongs to user
@@ -165,35 +164,30 @@ export class SeedsService {
       return null
     }
 
-    const updates: Partial<SeedRow> = {}
-    if (data.content !== undefined) {
-      updates.seed_content = data.content
-    }
-
-    if (Object.keys(updates).length === 0) {
+    if (data.content === undefined) {
       // No updates, return existing with computed current state
-      const currentState = await computeCurrentState(existing.seed_content, existing.created_at, existing.id)
+      const currentState = await computeCurrentState(id)
       return {
         ...existing,
         currentState,
       }
     }
 
-    const result = await db<SeedRow>('seeds')
-      .where({ id })
-      .update(updates)
-      .returning('*')
-
-    const updated = result[0]
-    if (!updated) {
-      throw new Error('Failed to update seed: update did not return a result')
-    }
+    // Create edit_content transaction
+    await SeedTransactionsService.create({
+      seed_id: id,
+      transaction_type: 'edit_content',
+      transaction_data: {
+        content: data.content,
+      },
+      automation_id: null,
+    })
 
     // Recompute current state after update
-    const currentState = await computeCurrentState(updated.seed_content, updated.created_at, updated.id)
+    const currentState = await computeCurrentState(id)
 
     return {
-      ...updated,
+      ...existing,
       currentState,
     }
   }

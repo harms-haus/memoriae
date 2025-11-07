@@ -32,7 +32,7 @@ export class FollowupAutomation extends Automation {
     
     if (hasActiveFollowup) {
       // Seed already has an active followup, don't create another
-      return { events: [] }
+      return { transactions: [] }
     }
 
     // Use OpenRouter to analyze seed content
@@ -40,7 +40,7 @@ export class FollowupAutomation extends Automation {
 
     // Only create followup if confidence > 85%
     if (analysis.confidence <= 85) {
-      return { events: [] }
+      return { transactions: [] }
     }
 
     // Create followup
@@ -49,8 +49,8 @@ export class FollowupAutomation extends Automation {
       message: analysis.message,
     }, 'automatic')
 
-    // Return empty events (followups are NOT timeline events)
-    return { events: [] }
+    // Return empty transactions (followups are NOT timeline transactions)
+    return { transactions: [] }
   }
 
   /**
@@ -97,7 +97,7 @@ Example low-confidence (should not create follow-up):
 - "Had a nice conversation with Sarah" → confidence: 20, no follow-up needed
 - "Working on a new feature" → confidence: 30, no follow-up needed`
 
-    const userPrompt = `Analyze this text and determine if it requires a follow-up:\n\n${seed.currentState.seed || seed.seed_content}`
+    const userPrompt = `Analyze this text and determine if it requires a follow-up:\n\n${seed.currentState.seed}`
 
     try {
       const response = await context.openrouter.createChatCompletion(

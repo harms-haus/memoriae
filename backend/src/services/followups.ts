@@ -1,6 +1,7 @@
 // Followup service for managing follow-ups and their transactions
 import { v4 as uuidv4 } from 'uuid'
 import db from '../db/connection'
+import { SeedTransactionsService } from './seed-transactions'
 import type {
   Followup,
   FollowupRow,
@@ -164,6 +165,7 @@ export class FollowupService {
 
   /**
    * Create a new followup with creation transaction
+   * Also creates an add_followup transaction on the seed
    */
   static async create(
     seedId: string,
@@ -179,7 +181,7 @@ export class FollowupService {
       seed_id: seedId,
     })
 
-    // Create creation transaction
+    // Create creation transaction for followup
     const creationData: CreationTransactionData = {
       trigger,
       initial_time: data.due_time,
@@ -192,6 +194,16 @@ export class FollowupService {
       transaction_type: 'creation',
       transaction_data: db.raw('?::jsonb', [JSON.stringify(creationData)]),
       created_at: now,
+    })
+
+    // Create add_followup transaction on the seed
+    await SeedTransactionsService.create({
+      seed_id: seedId,
+      transaction_type: 'add_followup',
+      transaction_data: {
+        followup_id: followupId,
+      },
+      automation_id: null,
     })
 
     // Return computed state
