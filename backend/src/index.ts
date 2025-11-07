@@ -5,7 +5,9 @@ import { db } from './db/connection'
 import { AutomationRegistry } from './services/automation/registry'
 import { TagExtractionAutomation } from './services/automation/tag'
 import { CategorizeAutomation } from './services/automation/categorize'
+import { FollowupAutomation } from './services/automation/followup'
 import { automationWorker, automationQueue, getPressureEvaluationScheduler } from './services/queue'
+import { getFollowupNotificationScheduler } from './services/queue/followup-scheduler'
 
 const PORT = config.port
 
@@ -69,10 +71,11 @@ async function initializeServices() {
     // Create automation instances
     const tagAutomation = new TagExtractionAutomation()
     const categorizeAutomation = new CategorizeAutomation()
+    const followupAutomation = new FollowupAutomation()
     
     // Register automations
     const registry = AutomationRegistry.getInstance()
-    await registry.loadFromDatabase([tagAutomation, categorizeAutomation])
+    await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation])
     
     console.log('Automations initialized')
     console.log(`Registered ${registry.getAll().length} automations`)
@@ -98,6 +101,11 @@ async function initializeServices() {
     scheduler.start()
     console.log('Pressure evaluation scheduler started')
     
+    // Start followup notification scheduler
+    const followupScheduler = getFollowupNotificationScheduler()
+    followupScheduler.start()
+    console.log('Followup notification scheduler started')
+    
   } catch (error) {
     console.error('Failed to initialize services:', error)
     throw error
@@ -114,6 +122,10 @@ async function shutdown() {
     // Stop pressure evaluation scheduler
     const scheduler = getPressureEvaluationScheduler()
     await scheduler.stop()
+    
+    // Stop followup notification scheduler
+    const followupScheduler = getFollowupNotificationScheduler()
+    await followupScheduler.stop()
     
     // Close queue worker
     await automationWorker.close()

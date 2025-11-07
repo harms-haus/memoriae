@@ -388,7 +388,8 @@ describe('TagExtractionAutomation', () => {
 
       expect(result.events.length).toBeGreaterThan(0)
       // Verify database was called to get existing tags
-      expect(mockSelect).toHaveBeenCalledWith('name')
+      // The implementation selects both 'name' and 'color'
+      expect(mockSelect).toHaveBeenCalledWith('name', 'color')
       expect(mockOrderBy).toHaveBeenCalledWith('name', 'asc')
     })
   })

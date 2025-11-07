@@ -1,6 +1,6 @@
 // REST API client with authentication
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
-import type { AuthStatus } from '../types'
+import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup } from '../types'
 
 // In production, use relative URLs since backend serves frontend
 // In development, use explicit URL or Vite proxy
@@ -162,6 +162,31 @@ class ApiClient {
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.delete<T>(url, config)
     return response.data
+  }
+
+  // Followup endpoints
+  async getFollowups(seedId: string): Promise<Followup[]> {
+    return this.get<Followup[]>(`/seeds/${seedId}/followups`)
+  }
+
+  async createFollowup(seedId: string, data: CreateFollowupDto): Promise<Followup> {
+    return this.post<Followup>(`/seeds/${seedId}/followups`, data)
+  }
+
+  async editFollowup(followupId: string, data: EditFollowupDto): Promise<Followup> {
+    return this.put<Followup>(`/followups/${followupId}`, data)
+  }
+
+  async snoozeFollowup(followupId: string, durationMinutes: number): Promise<Followup> {
+    return this.post<Followup>(`/followups/${followupId}/snooze`, { duration_minutes: durationMinutes })
+  }
+
+  async dismissFollowup(followupId: string, type: 'followup' | 'snooze'): Promise<Followup> {
+    return this.post<Followup>(`/followups/${followupId}/dismiss`, { type })
+  }
+
+  async getDueFollowups(): Promise<DueFollowup[]> {
+    return this.get<DueFollowup[]>('/followups/due')
   }
 }
 

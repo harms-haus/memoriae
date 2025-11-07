@@ -1,0 +1,50 @@
+.followup-item {
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--bg-secondary);
+}
+
+.followup-item-dismissed {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.followup-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.followup-item-info {
+  flex: 1;
+}
+
+.followup-item-time {
+  font-weight: var(--weight-semibold);
+  margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.followup-item-message {
+  color: var(--text-secondary);
+}
+
+.followup-item-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.followup-dismissed-badge {
+  margin-left: var(--space-2);
+}
+
+.followup-transactions-panel {
+  margin-top: var(--space-3);
+}
+

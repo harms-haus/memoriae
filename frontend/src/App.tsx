@@ -13,6 +13,7 @@ import {
   SeedDetailView,
 } from './components/views'
 import { SeedComposer } from './components/SeedComposer'
+import { useFollowupNotifications } from './hooks/useFollowupNotifications'
 import { 
   FileText, 
   Clock, 
@@ -278,6 +279,9 @@ function SeedDetailWrapper() {
 
 function AppContent() {
   const { authenticated, loading } = useAuth()
+  
+  // Set up follow-up notifications when authenticated
+  useFollowupNotifications()
 
   if (loading) {
     return (

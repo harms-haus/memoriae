@@ -9,6 +9,7 @@ import { ExpandingPanel } from '@mother/components/ExpandingPanel'
 import { Badge } from '@mother/components/Badge'
 import { renderHashTags } from '../../utils/renderHashTags'
 import { TagList } from '../TagList'
+import { FollowupsPanel } from '../FollowupsPanel'
 import type { Event, Seed, SeedState, Tag as TagType } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
@@ -590,6 +591,9 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           </div>
         )}
       </Panel>
+
+      {/* Follow-ups Panel */}
+      <FollowupsPanel seedId={seedId} />
 
       {/* Automations Section */}
       <ExpandingPanel

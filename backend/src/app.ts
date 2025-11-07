@@ -9,6 +9,7 @@ import categoriesRoutes from './routes/categories'
 import tagsRoutes from './routes/tags'
 import settingsRoutes from './routes/settings'
 import searchRoutes from './routes/search'
+import followupsRoutes from './routes/followups'
 import { config } from './config'
 
 const app = express()
@@ -52,6 +53,7 @@ app.use('/api/tags', tagsRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/search', searchRoutes)
 app.use('/api', eventsRoutes)
+app.use('/api', followupsRoutes)
 
 // Serve frontend static files in production
 if (process.env.NODE_ENV === 'production') {
