@@ -1,6 +1,6 @@
 // REST API client with authentication
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
-import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup, SeedTransaction, CreateSeedTransactionDto } from '../types'
+import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup, SeedTransaction, CreateSeedTransactionDto, IdeaMusing } from '../types'
 
 // In production, use relative URLs since backend serves frontend
 // In development, use explicit URL or Vite proxy
@@ -213,6 +213,35 @@ class ApiClient {
 
   async getTagSeeds(tagId: string): Promise<any[]> {
     return this.get<any[]>(`/tags/${tagId}/seeds`)
+  }
+
+  // Idea musing endpoints
+  async getDailyMusings(): Promise<IdeaMusing[]> {
+    return this.get<IdeaMusing[]>('/idea-musings')
+  }
+
+  async getMusingsBySeedId(seedId: string): Promise<IdeaMusing[]> {
+    return this.get<IdeaMusing[]>(`/idea-musings/seed/${seedId}`)
+  }
+
+  async dismissMusing(musingId: string): Promise<IdeaMusing> {
+    return this.post<IdeaMusing>(`/idea-musings/${musingId}/dismiss`)
+  }
+
+  async regenerateMusing(musingId: string): Promise<IdeaMusing> {
+    return this.post<IdeaMusing>(`/idea-musings/${musingId}/regenerate`)
+  }
+
+  async applyIdea(musingId: string, ideaIndex: number, confirm?: boolean): Promise<{ preview?: string; applied?: boolean; content?: string }> {
+    return this.post<{ preview?: string; applied?: boolean; content?: string }>(`/idea-musings/${musingId}/apply-idea`, { ideaIndex, confirm })
+  }
+
+  async promptLLM(musingId: string, prompt: string, confirm?: boolean): Promise<{ preview?: string; applied?: boolean; content?: string }> {
+    return this.post<{ preview?: string; applied?: boolean; content?: string }>(`/idea-musings/${musingId}/prompt-llm`, { prompt, confirm })
+  }
+
+  async generateMusings(): Promise<{ message: string; musingsCreated: number }> {
+    return this.post<{ message: string; musingsCreated: number }>('/idea-musings/generate')
   }
 }
 

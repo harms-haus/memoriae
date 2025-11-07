@@ -6,26 +6,26 @@ import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
 import {
   SeedsView,
-  TimelineView,
   CategoriesView,
   TagsView,
   SettingsView,
   SeedDetailView,
   TagDetailView,
+  MusingsView,
 } from './components/views'
 import { SeedComposer } from './components/SeedComposer'
 import './components/SeedComposer/SeedComposer.css'
 import { useFollowupNotifications } from './hooks/useFollowupNotifications'
 import { 
   FileText, 
-  Clock, 
   FolderTree, 
   Tags, 
   Settings,
-  Plus
+  Plus,
+  Lightbulb
 } from 'lucide-react'
 
-export type ViewType = 'seeds' | 'timeline' | 'categories' | 'tags' | 'settings'
+export type ViewType = 'seeds' | 'categories' | 'tags' | 'settings' | 'musings'
 
 function LoginPage() {
   const { login } = useAuth()
@@ -91,7 +91,6 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
   const seedsViewRefreshRef = useRef<(() => void) | null>(null)
-  const timelineViewRefreshRef = useRef<(() => void) | null>(null)
   const categoriesViewRefreshRef = useRef<(() => void) | null>(null)
   const [isComposerOpen, setIsComposerOpen] = React.useState(false)
   const [isComposerClosing, setIsComposerClosing] = React.useState(false)
@@ -112,18 +111,18 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
       // Tag detail view - show tags tab as active
       return 'tags'
     }
-    if (path === '/timeline') return 'timeline'
     if (path === '/categories' || path.startsWith('/category/')) return 'categories'
     if (path === '/tags') return 'tags'
     if (path === '/settings') return 'settings'
+    if (path === '/musings') return 'musings'
     return 'seeds' // default
   }
 
   const activeView = getActiveView()
   const showComposerButton = activeView === 'seeds' || 
-                             activeView === 'timeline' || 
                              activeView === 'categories' || 
-                             activeView === 'tags'
+                             activeView === 'tags' ||
+                             activeView === 'musings'
   const isSeedDetail = location.pathname.startsWith('/seeds/') && 
                        location.pathname !== '/seeds' &&
                        !location.pathname.startsWith('/seeds/tag/')
@@ -131,10 +130,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   const handleTabChange = (value: string) => {
     const routeMap: Record<string, string> = {
       'seeds': '/seeds',
-      'timeline': '/timeline',
       'categories': '/categories',
       'tags': '/tags',
       'settings': '/settings',
+      'musings': '/musings',
     }
     navigate(routeMap[value] || '/seeds')
   }
@@ -146,7 +145,6 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   const handleSeedCreated = () => {
     // Trigger refresh in all views that have refresh functions
     seedsViewRefreshRef.current?.()
-    timelineViewRefreshRef.current?.()
     categoriesViewRefreshRef.current?.()
     // Close composer after seed is created
     handleCloseComposer()
@@ -210,11 +208,8 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
                 refreshRef={seedsViewRefreshRef}
               />
             </TabPanel>
-            <TabPanel value="timeline">
-              <TimelineView 
-                onSeedSelect={handleSeedSelect}
-                refreshRef={timelineViewRefreshRef}
-              />
+            <TabPanel value="musings">
+              <MusingsView />
             </TabPanel>
             <TabPanel value="categories">
               <CategoriesView refreshRef={categoriesViewRefreshRef} />
@@ -232,10 +227,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
                 <span style={{ fontSize: 'var(--text-xs)' }}>Seeds</span>
               </div>
             </Tab>
-            <Tab value="timeline">
+            <Tab value="musings">
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-                <Clock size={24} />
-                <span style={{ fontSize: 'var(--text-xs)' }}>Timeline</span>
+                <Lightbulb size={24} />
+                <span style={{ fontSize: 'var(--text-xs)' }}>Musings</span>
               </div>
             </Tab>
             <Tab value="categories">
@@ -391,12 +386,12 @@ function AppContent() {
       <Route path="/seeds" element={<TabNavigation />} />
       <Route path="/seeds/tag/:tagName" element={<TabNavigation />} />
       <Route path="/seeds/:id" element={<SeedDetailWrapper />} />
-      <Route path="/timeline" element={<TabNavigation />} />
       <Route path="/categories" element={<TabNavigation />} />
       <Route path="/category/*" element={<TabNavigation />} />
       <Route path="/tags" element={<TabNavigation />} />
       <Route path="/tags/:id" element={<TagDetailWrapper />} />
       <Route path="/settings" element={<TabNavigation />} />
+      <Route path="/musings" element={<TabNavigation />} />
     </Routes>
   )
 }

@@ -10,6 +10,7 @@ import tagsRoutes from './routes/tags'
 import settingsRoutes from './routes/settings'
 import searchRoutes from './routes/search'
 import followupsRoutes from './routes/followups'
+import ideaMusingsRoutes from './routes/idea-musings'
 import { config } from './config'
 
 const app = express()
@@ -54,6 +55,7 @@ app.use('/api/settings', settingsRoutes)
 app.use('/api/search', searchRoutes)
 app.use('/api', transactionsRoutes)
 app.use('/api', followupsRoutes)
+app.use('/api/idea-musings', ideaMusingsRoutes)
 
 // Serve frontend static files in production
 if (process.env.NODE_ENV === 'production') {

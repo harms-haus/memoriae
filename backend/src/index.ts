@@ -6,8 +6,10 @@ import { AutomationRegistry } from './services/automation/registry'
 import { TagExtractionAutomation } from './services/automation/tag'
 import { CategorizeAutomation } from './services/automation/categorize'
 import { FollowupAutomation } from './services/automation/followup'
+import { IdeaMusingAutomation } from './services/automation/idea-musing'
 import { automationWorker, automationQueue, getPressureEvaluationScheduler } from './services/queue'
 import { getFollowupNotificationScheduler } from './services/queue/followup-scheduler'
+import { getIdeaMusingScheduler } from './services/queue/idea-musing-scheduler'
 
 const PORT = config.port
 
@@ -72,10 +74,11 @@ async function initializeServices() {
     const tagAutomation = new TagExtractionAutomation()
     const categorizeAutomation = new CategorizeAutomation()
     const followupAutomation = new FollowupAutomation()
+    const ideaMusingAutomation = new IdeaMusingAutomation()
     
     // Register automations
     const registry = AutomationRegistry.getInstance()
-    await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation])
+    await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation, ideaMusingAutomation])
     
     console.log('Automations initialized')
     console.log(`Registered ${registry.getAll().length} automations`)
@@ -106,6 +109,11 @@ async function initializeServices() {
     followupScheduler.start()
     console.log('Followup notification scheduler started')
     
+    // Start idea musing scheduler
+    const ideaMusingScheduler = getIdeaMusingScheduler()
+    ideaMusingScheduler.start()
+    console.log('Idea musing scheduler started')
+    
   } catch (error) {
     console.error('Failed to initialize services:', error)
     throw error
@@ -126,6 +134,10 @@ async function shutdown() {
     // Stop followup notification scheduler
     const followupScheduler = getFollowupNotificationScheduler()
     await followupScheduler.stop()
+    
+    // Stop idea musing scheduler
+    const ideaMusingScheduler = getIdeaMusingScheduler()
+    await ideaMusingScheduler.stop()
     
     // Close queue worker
     await automationWorker.close()

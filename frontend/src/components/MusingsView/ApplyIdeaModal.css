@@ -1,0 +1,51 @@
+.apply-idea-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.idea-preview-section {
+  margin-bottom: var(--space-4);
+}
+
+.idea-preview-section h3 {
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
+.idea-text {
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.preview-section {
+  margin-top: var(--space-4);
+}
+
+.preview-section h3 {
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
+.preview-content {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.preview-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text-primary);
+  margin: 0;
+  font-family: var(--font-primary);
+}
+
+.error-section {
+  margin-top: var(--space-2);
+}
+

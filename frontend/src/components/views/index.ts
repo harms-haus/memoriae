@@ -5,4 +5,5 @@ export { TagsView } from './TagsView'
 export { SettingsView } from './SettingsView'
 export { SeedDetailView } from './SeedDetailView'
 export { TagDetailView } from './TagDetailView'
+export { MusingsView } from './MusingsView'
 

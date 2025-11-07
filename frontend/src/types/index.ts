@@ -256,3 +256,33 @@ export interface TagDetail extends Tag {
   }
   transactions: TagTransaction[]
 }
+
+// Idea musing types
+export type MusingTemplateType = 'numbered_ideas' | 'wikipedia_links' | 'markdown'
+
+export interface NumberedIdeasContent {
+  ideas: string[]
+  // Last item is always the custom prompt option
+}
+
+export interface WikipediaLinksContent {
+  links: Array<{
+    title: string
+    url: string
+  }>
+}
+
+export interface MarkdownContent {
+  markdown: string
+}
+
+export interface IdeaMusing {
+  id: string
+  seed_id: string
+  template_type: MusingTemplateType
+  content: NumberedIdeasContent | WikipediaLinksContent | MarkdownContent
+  created_at: string
+  dismissed: boolean
+  dismissed_at?: string
+  seed?: Seed // Optional, populated when fetching with seed details
+}

@@ -1,0 +1,24 @@
+.musings-view {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.musings-view-header {
+  margin-bottom: var(--space-2);
+}
+
+.musings-view-empty {
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.musings-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+

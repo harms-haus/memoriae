@@ -1,0 +1,7 @@
+---
+description: for debugging, fixing bugs
+alwaysApply: false
+---
+# If you are fixing a bug, also evaluate if a unit or visual test would have prevented that bug
+
+- Add that test

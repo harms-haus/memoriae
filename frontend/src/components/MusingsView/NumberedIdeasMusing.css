@@ -1,0 +1,55 @@
+.numbered-ideas-musing {
+  padding: var(--space-2);
+}
+
+.numbered-ideas-list {
+  list-style: decimal;
+  padding-left: var(--space-6);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.numbered-idea-item {
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-base);
+}
+
+.numbered-idea-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.numbered-idea-text {
+  color: var(--text-primary);
+}
+
+.numbered-idea-custom {
+  font-style: italic;
+}
+
+.numbered-idea-custom-prompt {
+  width: 100%;
+}
+
+.numbered-idea-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-2);
+  background: var(--bg-secondary);
+  border: var(--border-thin) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  resize: vertical;
+  cursor: pointer;
+}
+
+.numbered-idea-textarea:focus {
+  outline: none;
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+

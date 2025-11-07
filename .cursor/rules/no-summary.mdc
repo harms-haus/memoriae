@@ -3,3 +3,5 @@ alwaysApply: true
 ---
 
 # NEVER create summary, issue, or other documentation markdown files unless specifically asked to
+
+PREFER INSTEAD to write to the chat context without writing to file.

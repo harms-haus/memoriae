@@ -1,0 +1,26 @@
+.musing-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.musing-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.musing-item-seed {
+  flex: 1;
+}
+
+.musing-item-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.musing-item-content {
+  margin-top: var(--space-2);
+}
+

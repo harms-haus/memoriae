@@ -40,6 +40,11 @@ export const config = {
   queue: {
     checkInterval: parseInt(process.env.QUEUE_CHECK_INTERVAL || '30000', 10),
   },
+  ideaMusing: {
+    scheduleTime: process.env.IDEA_MUSING_SCHEDULE_TIME || '02:00', // 2 AM UTC
+    maxMusingsPerDay: parseInt(process.env.IDEA_MUSING_MAX_PER_DAY || '10', 10),
+    excludeDays: parseInt(process.env.IDEA_MUSING_EXCLUDE_DAYS || '2', 10), // Exclude seeds shown in last 2 days
+  },
 } as const
 
 // Validate required configuration

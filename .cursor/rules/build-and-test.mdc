@@ -1,5 +1,6 @@
 ---
-alwaysApply: true
+description: for tasks deemed to be medium or large sized
+alwaysApply: false
 ---
 # Before considering any medium to large tasks complete
 
