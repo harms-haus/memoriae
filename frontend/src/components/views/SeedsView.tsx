@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../services/api'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
@@ -6,6 +7,7 @@ import { Input } from '@mother/components/Input'
 import { Tag } from '@mother/components/Tag'
 import { Badge } from '@mother/components/Badge'
 import { Search, X, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
+import { renderHashTags } from '../../utils/renderHashTags'
 import type { Seed, Category, Tag as TagType } from '../../types'
 import './Views.css'
 import './SeedsView.css'
@@ -18,6 +20,8 @@ interface SeedsViewProps {
 type SortOption = 'newest' | 'oldest' | 'alphabetical'
 
 export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
+  const navigate = useNavigate()
+  const { tagName } = useParams<{ tagName?: string }>()
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<TagType[]>([])
@@ -30,6 +34,17 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showFilters, setShowFilters] = useState(false)
+
+  // Initialize tag filter from URL parameter
+  useEffect(() => {
+    if (tagName) {
+      // Find tag by name and add to selected tags
+      const tag = tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())
+      if (tag) {
+        setSelectedTags(new Set([tag.id]))
+      }
+    }
+  }, [tagName, tags])
 
   const loadData = useCallback(async () => {
     try {
@@ -353,7 +368,9 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
                 >
                   <div className="seeds-view-item-header">
                     <p className="seeds-view-item-content">
-                      {truncateContent(content)}
+                      {renderHashTags(truncateContent(content), (tagName) => {
+                        navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                      })}
                     </p>
                     <span className="seeds-view-item-time">
                       {formatSeedTime(seed)}

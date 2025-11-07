@@ -1,4 +1,4 @@
-// Tag automation - generates tags for seeds using OpenRouter AI
+// Tag extraction automation - extracts hash tags from seed content and generates additional tags using OpenRouter AI
 // Creates ADD_TAG events when processing seeds
 
 import { v4 as uuidv4 } from 'uuid'
@@ -19,32 +19,65 @@ interface TagRow {
 }
 
 /**
- * TagAutomation - Analyzes seed content and automatically generates tags
+ * TagExtractionAutomation - Extracts hash tags from seed content and generates additional tags
  * 
- * Uses OpenRouter AI to extract relevant tags from seed content,
- * then creates ADD_TAG events for each generated tag.
+ * 1. Extracts hash tags (e.g., #hashtag) from seed content
+ * 2. Optionally uses OpenRouter AI to generate additional relevant tags
+ * 3. Creates ADD_TAG events for each extracted/generated tag.
  */
-export class TagAutomation extends Automation {
+export class TagExtractionAutomation extends Automation {
   readonly name = 'tag'
-  readonly description = 'Automatically generates tags for seeds based on content analysis'
+  readonly description = 'Extracts hash tags from seed content and generates additional tags using AI'
   readonly handlerFnName = 'processTag'
 
   /**
-   * Process a seed and generate tags
+   * Extract hash tags from content using regex
+   * Matches patterns like #hashtag, #hash-tag, #hash_tag
+   */
+  private extractHashTags(content: string): string[] {
+    // Match # followed by word characters, hyphens, or underscores
+    // Exclude # at start of line (markdown headers) by requiring word boundary or space before
+    const hashTagRegex = /(?:^|\s)#([\w-]+)/g
+    const matches = content.matchAll(hashTagRegex)
+    const tags = new Set<string>()
+    
+    for (const match of matches) {
+      const tagName = match[1]
+      if (tagName && tagName.length > 0 && tagName.length <= 50) {
+        // Normalize: lowercase, trim
+        const normalized = tagName.toLowerCase().trim()
+        if (normalized.length > 0) {
+          tags.add(normalized)
+        }
+      }
+    }
+    
+    return Array.from(tags)
+  }
+
+  /**
+   * Process a seed and extract/generate tags
    * 
-   * 1. Calls OpenRouter to analyze seed content and extract tags
-   * 2. For each tag, ensures it exists in database (creates if needed)
-   * 3. Creates ADD_TAG events for tags not already present
+   * 1. Extracts hash tags from seed content (e.g., #hashtag)
+   * 2. Optionally calls OpenRouter to generate additional tags
+   * 3. For each tag, ensures it exists in database (creates if needed)
+   * 4. Creates ADD_TAG events for tags not already present
    */
   async process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult> {
     // Get existing tags from current state to avoid duplicates
     const existingTagNames = new Set((seed.currentState.tags || []).map(t => t.name.toLowerCase()))
 
-    // Generate tags using OpenRouter
-    const generatedTags = await this.generateTags(seed, context)
+    // Extract hash tags from content
+    const hashTags = this.extractHashTags(seed.currentState.seed || seed.seed_content)
+    
+    // Generate additional tags using OpenRouter (if content has no hash tags or for additional suggestions)
+    const aiGeneratedTags = await this.generateTags(seed, context)
+
+    // Combine hash tags and AI-generated tags, prioritizing hash tags
+    const allTags = [...hashTags, ...aiGeneratedTags]
 
     // Filter out tags that already exist
-    const newTags = generatedTags.filter(tag => !existingTagNames.has(tag.toLowerCase()))
+    const newTags = allTags.filter(tag => !existingTagNames.has(tag.toLowerCase()))
 
     if (newTags.length === 0) {
       // No new tags to add
@@ -310,7 +343,7 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
               }
               const parsed = JSON.parse(jsonToParse)
               if (Array.isArray(parsed) && parsed.length > 0) {
-                console.warn('TagAutomation: Response was truncated, but extracted partial tags:', parsed)
+                console.warn('TagExtractionAutomation: Response was truncated, but extracted partial tags:', parsed)
                 jsonContent = jsonToParse
               }
             } catch {
@@ -318,7 +351,7 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
               const tagMatches = partialJson.match(/"([^"]+)"/g)
               if (tagMatches && tagMatches.length > 0) {
                 const extractedTags = tagMatches.map(m => m.replace(/"/g, ''))
-                console.warn('TagAutomation: Response was truncated, extracted tags from partial JSON:', extractedTags)
+                console.warn('TagExtractionAutomation: Response was truncated, extracted tags from partial JSON:', extractedTags)
                 // Return early with extracted tags
                 return extractedTags
                   .map(tag => {
@@ -377,7 +410,7 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
         })
         .filter((tag): tag is string => tag !== null && tag.length > 0 && tag.length <= 50)
     } catch (error) {
-      console.error('TagAutomation: Failed to generate tags:', error)
+      console.error('TagExtractionAutomation: Failed to generate tags:', error)
       // Return empty array on error - don't fail the automation
       return []
     }

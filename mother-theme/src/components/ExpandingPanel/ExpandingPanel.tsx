@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import './ExpandingPanel.css';
 
 export interface ExpandingPanelProps {
@@ -25,88 +25,55 @@ export function ExpandingPanel({
 }: ExpandingPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const contentRef = useRef<HTMLDivElement>(null);
-  const innerContentRef = useRef<HTMLDivElement>(null);
-  const isInitialMount = useRef(true);
-  const [contentHeight, setContentHeight] = useState<number | 'auto'>(defaultExpanded ? 'auto' : 0);
+  const contentInnerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  const measureContentHeight = (): number => {
-    if (innerContentRef.current) {
-      // Temporarily remove height constraint to measure natural height
-      const currentHeight = contentRef.current?.style.height || '';
-      if (contentRef.current) {
-        contentRef.current.style.height = 'auto';
-      }
-      const naturalHeight = innerContentRef.current.scrollHeight;
-      if (contentRef.current) {
-        contentRef.current.style.height = currentHeight;
-      }
-      return naturalHeight;
-    }
-    return 0;
-  };
-
+  // Measure content height and set as CSS variable for smooth animation
   useEffect(() => {
-    if (!contentRef.current || !innerContentRef.current) return;
-
-    // Skip animation on initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      if (defaultExpanded) {
-        // Measure and set initial height
-        const height = measureContentHeight();
-        setContentHeight(height);
-        // After a brief moment, set to auto to allow natural sizing
-        setTimeout(() => {
-          setContentHeight('auto');
-        }, 50);
+    const updateHeight = () => {
+      if (contentInnerRef.current && contentRef.current && panelRef.current) {
+        // Save current inline styles
+        const originalMaxHeight = contentRef.current.style.maxHeight;
+        const originalOpacity = contentRef.current.style.opacity;
+        
+        // Temporarily remove height constraint to measure actual content height
+        // This happens synchronously so no visual flicker occurs
+        contentRef.current.style.maxHeight = '9999px';
+        contentRef.current.style.opacity = '1';
+        
+        // Force reflow to ensure measurement is accurate
+        void contentInnerRef.current.offsetHeight;
+        
+        // Measure the actual content height
+        const height = contentInnerRef.current.scrollHeight;
+        panelRef.current.style.setProperty('--content-height', `${height}px`);
+        
+        // Restore original styles immediately (synchronously to avoid flicker)
+        contentRef.current.style.maxHeight = originalMaxHeight;
+        contentRef.current.style.opacity = originalOpacity;
       }
-      return;
+    };
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    const rafId = requestAnimationFrame(() => {
+      updateHeight();
+    });
+
+    // Use ResizeObserver to handle dynamic content changes
+    const resizeObserver = new ResizeObserver(() => {
+      // Debounce measurements to avoid excessive calculations
+      requestAnimationFrame(updateHeight);
+    });
+
+    if (contentInnerRef.current) {
+      resizeObserver.observe(contentInnerRef.current);
     }
 
-    if (expanded) {
-      // Measure the natural height of the content
-      const fullHeight = measureContentHeight();
-      
-      // Start from current height (0 when collapsed)
-      const currentHeight = contentRef.current.offsetHeight || 0;
-      setContentHeight(currentHeight);
-      
-      // Force reflow, then animate to full height
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setContentHeight(fullHeight);
-        });
-      });
-    } else {
-      // Measure current height before collapsing
-      // If height is 'auto', we need to measure the actual rendered height
-      let currentHeight: number;
-      if (contentHeight === 'auto' && contentRef.current) {
-        // Get the actual rendered height when in auto mode
-        currentHeight = contentRef.current.offsetHeight;
-      } else if (typeof contentHeight === 'number') {
-        currentHeight = contentHeight;
-      } else {
-        currentHeight = measureContentHeight();
-      }
-      
-      setContentHeight(currentHeight);
-      
-      // Force reflow, then collapse
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setContentHeight(0);
-        });
-      });
-    }
-  }, [expanded, defaultExpanded]);
-
-
-  const handleTransitionEnd = () => {
-    if (expanded) {
-      setContentHeight('auto');
-    }
-  };
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, [children, expanded]);
 
   const handleToggle = () => {
     const newExpanded = !expanded;
@@ -145,7 +112,7 @@ export function ExpandingPanel({
     .join(' ');
 
   return (
-    <div className={panelClasses}>
+    <div ref={panelRef} className={panelClasses}>
       <div
         className={headerClasses}
         onClick={handleToggle}
@@ -156,23 +123,12 @@ export function ExpandingPanel({
         aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
       >
         <div className="expanding-panel-header-content">
-          {expanded ? (
-            <ChevronDown size={20} className="expanding-panel-chevron" />
-          ) : (
-            <ChevronRight size={20} className="expanding-panel-chevron" />
-          )}
+          <ChevronRight size={20} className="expanding-panel-chevron" />
           <div className="expanding-panel-title">{title}</div>
         </div>
       </div>
-      <div
-        ref={contentRef}
-        className={contentClasses}
-        style={{
-          height: typeof contentHeight === 'number' ? `${contentHeight}px` : contentHeight,
-        }}
-        onTransitionEnd={handleTransitionEnd}
-      >
-        <div ref={innerContentRef} className="expanding-panel-content-inner">
+      <div ref={contentRef} className={contentClasses}>
+        <div ref={contentInnerRef} className="expanding-panel-content-inner">
           {children}
         </div>
       </div>

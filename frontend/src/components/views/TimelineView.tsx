@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Panel } from '@mother/components/Panel'
 import { Tag } from '@mother/components/Tag'
 import { Badge } from '@mother/components/Badge'
 import { Button } from '@mother/components/Button'
 import { api } from '../../services/api'
+import { renderHashTags } from '../../utils/renderHashTags'
 import type { Seed } from '../../types'
 import './Views.css'
 import './TimelineView.css'
@@ -20,6 +22,7 @@ interface TimelineViewProps {
  * Seeds are positioned along the timeline based on their creation date.
  */
 export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
+  const navigate = useNavigate()
   const [seeds, setSeeds] = useState<Seed[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -153,7 +156,9 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
       >
         <div className="timeline-seed-text-wrapper">
           <p className="timeline-seed-text">
-            {truncateContent(content)}
+            {renderHashTags(truncateContent(content), (tagName) => {
+              navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+            })}
           </p>
         </div>
 

@@ -3,7 +3,7 @@ import app from './app'
 import { config } from './config'
 import { db } from './db/connection'
 import { AutomationRegistry } from './services/automation/registry'
-import { TagAutomation } from './services/automation/tag'
+import { TagExtractionAutomation } from './services/automation/tag'
 import { CategorizeAutomation } from './services/automation/categorize'
 import { automationWorker, automationQueue, getPressureEvaluationScheduler } from './services/queue'
 
@@ -67,7 +67,7 @@ async function initializeServices() {
     console.log('Initializing automations...')
     
     // Create automation instances
-    const tagAutomation = new TagAutomation()
+    const tagAutomation = new TagExtractionAutomation()
     const categorizeAutomation = new CategorizeAutomation()
     
     // Register automations

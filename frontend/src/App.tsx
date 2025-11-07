@@ -94,6 +94,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   const getActiveView = (): ViewType => {
     const path = location.pathname
     if (path.startsWith('/seeds/') && path !== '/seeds') {
+      // Check if it's a tag filter route
+      if (path.startsWith('/seeds/tag/')) {
+        return 'seeds'
+      }
       // Seed detail view - show seeds tab as active
       return 'seeds'
     }
@@ -109,7 +113,9 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
                           activeView === 'timeline' || 
                           activeView === 'categories' || 
                           activeView === 'tags'
-  const isSeedDetail = location.pathname.startsWith('/seeds/') && location.pathname !== '/seeds'
+  const isSeedDetail = location.pathname.startsWith('/seeds/') && 
+                       location.pathname !== '/seeds' &&
+                       !location.pathname.startsWith('/seeds/tag/')
 
   const handleTabChange = (value: string) => {
     const routeMap: Record<string, string> = {
@@ -293,6 +299,7 @@ function AppContent() {
     <Routes>
       <Route path="/" element={<TabNavigation />} />
       <Route path="/seeds" element={<TabNavigation />} />
+      <Route path="/seeds/tag/:tagName" element={<TabNavigation />} />
       <Route path="/seeds/:id" element={<SeedDetailWrapper />} />
       <Route path="/timeline" element={<TabNavigation />} />
       <Route path="/categories" element={<TabNavigation />} />

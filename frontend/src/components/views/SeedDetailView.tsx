@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Button } from '@mother/components/Button'
@@ -7,6 +8,7 @@ import { Panel } from '@mother/components/Panel'
 import { ExpandingPanel } from '@mother/components/ExpandingPanel'
 import { Tag } from '@mother/components/Tag'
 import { Badge } from '@mother/components/Badge'
+import { renderHashTags } from '../../utils/renderHashTags'
 import type { Event, Seed, SeedState } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
@@ -37,6 +39,7 @@ interface SeedDetailViewProps {
  * - Each timeline item is clickable to toggle event on/off
  */
 export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
+  const navigate = useNavigate()
   const [seed, setSeed] = useState<Seed | null>(null)
   const [events, setEvents] = useState<Event[]>([])
   const [currentState, setCurrentState] = useState<SeedState | null>(null)
@@ -335,16 +338,18 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         }
       } else {
         // Add to current group
-        currentGroup.events.push(event)
-        if (event.automation_id) {
-          currentGroup.hasAutomation = true
+        if (currentGroup) {
+          currentGroup.events.push(event)
+          if (event.automation_id) {
+            currentGroup.hasAutomation = true
+          }
+          // Update position to the newest event in the group
+          const eventDate = new Date(event.created_at).getTime()
+          const position = dateRange === 0 
+            ? 0 
+            : ((maxDate - eventDate) / dateRange) * 100
+          currentGroup.position = Math.max(0, Math.min(100, position))
         }
-        // Update position to the newest event in the group
-        const eventDate = new Date(event.created_at).getTime()
-        const position = dateRange === 0 
-          ? 0 
-          : ((maxDate - eventDate) / dateRange) * 100
-        currentGroup.position = Math.max(0, Math.min(100, position))
       }
     })
 
@@ -391,6 +396,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     // Handle RUN_AUTOMATION events - display as italicized text
     if (group.eventType === 'RUN_AUTOMATION') {
       const event = group.events[0] // RUN_AUTOMATION events are never grouped
+      if (!event) return null
       const metadata = extractAutomationMetadata(event)
       if (!metadata) return null
 
@@ -433,6 +439,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
             <div className="event-group-tags">
               {tagNames.map((tagName, tagIndex) => {
                 const event = group.events[tagIndex]
+                if (!event) return null
                 const isLast = tagIndex === tagNames.length - 1
                 return (
                   <span key={`${event.id}-${tagIndex}`}>
@@ -474,6 +481,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
 
     // Use the newest event's time for the group
     const newestEvent = group.events[0] // Events are sorted newest first
+    if (!newestEvent) return null
 
     return (
       <div className="event-time-opposite">
@@ -535,7 +543,11 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       <Panel variant="elevated" className="seed-detail-state">
         <h3 className="panel-header">Current State</h3>
         <div className="seed-content-display">
-          <p className="seed-text">{currentState?.seed || seed.seed_content}</p>
+          <p className="seed-text">
+            {renderHashTags(currentState?.seed || seed.seed_content, (tagName) => {
+              navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+            })}
+          </p>
         </div>
         {currentState?.tags && currentState.tags.length > 0 && (
           <div className="tag-list seed-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>

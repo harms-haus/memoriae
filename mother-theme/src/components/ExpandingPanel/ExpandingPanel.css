@@ -1,8 +1,14 @@
+/* ========================================
+ * EXPANDING PANEL - CSS-Based Animation
+ * Inspired by Material-UI, Radix UI, and shadcn/ui patterns
+ * ======================================== */
+
 .expanding-panel {
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-md);
   overflow: hidden;
+  transition: border-color var(--transition-base);
 }
 
 .expanding-panel-default {
@@ -21,6 +27,7 @@
   border: var(--border-thick) solid var(--border-accent);
 }
 
+/* Header */
 .expanding-panel-header {
   cursor: pointer;
   user-select: none;
@@ -30,6 +37,11 @@
   background: transparent;
   text-align: left;
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  position: relative;
+  z-index: 1;
 }
 
 .expanding-panel-header:hover {
@@ -37,7 +49,7 @@
 }
 
 .expanding-panel-header:focus-visible {
-  outline: var(--focus-ring) solid 2px;
+  outline: var(--border-thick) solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -45,12 +57,19 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex: 1;
 }
 
 .expanding-panel-chevron {
   flex-shrink: 0;
   color: var(--text-secondary);
-  transition: transform var(--transition-base), color var(--transition-base);
+  transition: transform var(--transition-hover) ease-out, color var(--transition-base);
+  transform: rotate(0deg);
+  will-change: transform;
+}
+
+.expanding-panel-expanded .expanding-panel-chevron {
+  transform: rotate(90deg);
 }
 
 .expanding-panel-header:hover .expanding-panel-chevron {
@@ -65,38 +84,57 @@
   margin: 0;
 }
 
+/* Content wrapper - uses max-height with CSS variable for smooth animation */
 .expanding-panel-content {
-  transition: height 0.3s ease-out, opacity 0.2s ease-out;
-  opacity: 1;
   overflow: hidden;
-}
-
-.expanding-panel:not(.expanding-panel-expanded) .expanding-panel-content {
+  max-height: 0;
   opacity: 0;
+  transition: 
+    max-height var(--transition-hover) ease-out,
+    opacity var(--transition-base) ease-out;
 }
 
+.expanding-panel-expanded .expanding-panel-content {
+  /* Use CSS variable set by component to measure actual content height */
+  max-height: var(--content-height, 2000px);
+  opacity: 1;
+  transition: 
+    max-height var(--transition-hover) ease-out,
+    opacity var(--transition-base) ease-out 0.05s;
+}
+
+/* Content inner - handles padding and border with smooth transitions */
 .expanding-panel-content-inner {
-  padding: 0;
-  opacity: 0;
-  transition: opacity 0.2s ease-out 0.1s;
+  padding: 0 var(--space-4);
+  border-top: 0 solid var(--border-primary);
+  margin-top: 0;
+  transition: 
+    padding-top var(--transition-base) ease-out,
+    padding-bottom var(--transition-base) ease-out,
+    border-top-width var(--transition-base) ease-out,
+    margin-top var(--transition-base) ease-out;
 }
 
 .expanding-panel-expanded .expanding-panel-content-inner {
-  padding: var(--space-4);
   padding-top: var(--space-4);
-  border-top: var(--border-thin) solid var(--border-primary);
+  padding-bottom: var(--space-4);
+  border-top-width: var(--border-thin);
   margin-top: var(--space-4);
-  opacity: 1;
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .expanding-panel-content {
-    transition: none;
+  .expanding-panel,
+  .expanding-panel-content,
+  .expanding-panel-content-inner,
+  .expanding-panel-chevron {
+    transition: none !important;
+    animation: none !important;
   }
   
-  .expanding-panel-chevron {
-    transition: none;
+  .expanding-panel-expanded .expanding-panel-content {
+    max-height: none;
+    opacity: 1;
   }
 }
 

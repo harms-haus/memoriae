@@ -1,6 +1,6 @@
-// TagAutomation tests
+// TagExtractionAutomation tests
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { TagAutomation } from './tag'
+import { TagExtractionAutomation } from './tag'
 import type { Seed, SeedState } from '../seeds'
 import type { OpenRouterClient, OpenRouterChatCompletionResponse } from '../openrouter/client'
 import type { AutomationContext, CategoryChange } from './base'
@@ -33,8 +33,8 @@ vi.mock('../../db/connection', () => {
   }
 })
 
-describe('TagAutomation', () => {
-  let automation: TagAutomation
+describe('TagExtractionAutomation', () => {
+  let automation: TagExtractionAutomation
   let mockSeed: Seed
   let mockContext: AutomationContext
   let mockOpenRouter: OpenRouterClient
@@ -54,7 +54,7 @@ describe('TagAutomation', () => {
     mockSelect.mockReturnThis()
     mockOrderBy.mockResolvedValue([])
     
-    automation = new TagAutomation()
+    automation = new TagExtractionAutomation()
     automation.id = 'automation-tag-123'
 
     const baseState: SeedState = {
@@ -92,13 +92,59 @@ describe('TagAutomation', () => {
   describe('basic properties', () => {
     it('should have correct name and description', () => {
       expect(automation.name).toBe('tag')
-      expect(automation.description).toBe('Automatically generates tags for seeds based on content analysis')
+      expect(automation.description).toBe('Extracts hash tags from seed content and generates additional tags using AI')
       expect(automation.handlerFnName).toBe('processTag')
       expect(automation.enabled).toBe(true)
     })
   })
 
   describe('process', () => {
+    it('should extract hash tags from content', async () => {
+      // Seed with hash tags in content
+      mockSeed.currentState.seed = 'This is a note about #programming and #web-development. Also #testing!'
+      mockSeed.seed_content = mockSeed.currentState.seed
+
+      // Mock database: tags don't exist, then create them
+      // We need to mock ensureTagExists which calls where().first() and insert().returning()
+      // For each tag, first() returns undefined (doesn't exist), then returning() returns the created tag
+      const mockTagRows = [
+        { id: 'tag-1', name: 'programming', color: null, created_at: new Date() },
+        { id: 'tag-2', name: 'web-development', color: null, created_at: new Date() },
+        { id: 'tag-3', name: 'testing', color: null, created_at: new Date() },
+      ]
+
+      // Track which tag we're creating
+      const tagQueue = [...mockTagRows]
+      
+      // Mock: each tag lookup returns undefined (doesn't exist)
+      mockFirst.mockResolvedValue(undefined)
+      
+      // Mock: each insert returns the next tag from the queue
+      mockReturning.mockImplementation(() => {
+        const tag = tagQueue.shift()
+        return Promise.resolve(tag ? [tag] : [])
+      })
+
+      // Mock AI response (may still be called for additional tags)
+      const mockTagsResponse: OpenRouterChatCompletionResponse = {
+        id: 'chatcmpl-123',
+        model: 'openai/gpt-3.5-turbo',
+        choices: [{ index: 0, message: { role: 'assistant', content: '[]' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+        created: 1234567890,
+      }
+      mockCreateChatCompletion.mockResolvedValueOnce(mockTagsResponse)
+
+      const result = await automation.process(mockSeed, mockContext)
+
+      // Should extract hash tags
+      expect(result.events.length).toBeGreaterThanOrEqual(3)
+      const tagNames = result.events.map(e => e.patch_json[0].value.name)
+      expect(tagNames).toContain('programming')
+      expect(tagNames).toContain('web-development')
+      expect(tagNames).toContain('testing')
+    })
+
     it('should generate tags and create ADD_TAG events', async () => {
       const mockTagsResponse: OpenRouterChatCompletionResponse = {
         id: 'chatcmpl-123',

@@ -76,6 +76,7 @@ export function ModelSelector({
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
+    return undefined
   }, [isOpen, selectedOption])
 
   // Calculate dropdown position based on available space

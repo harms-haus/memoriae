@@ -49,6 +49,7 @@ vi.mock('../seeds', () => ({
 }))
 
 const mockEventsService = {
+  create: vi.fn().mockResolvedValue({ id: 'event-123' }),
   createMany: vi.fn().mockResolvedValue([]),
 }
 
@@ -146,6 +147,10 @@ describe('Queue Processor', () => {
       setDefaultModel: vi.fn(),
       getDefaultModel: vi.fn(),
     }
+
+    // Reset mock implementations to ensure they return values
+    mockEventsService.create.mockResolvedValue({ id: 'event-123' })
+    mockEventsService.createMany.mockResolvedValue([])
 
     // Setup default service mocks
     mockRegistryInstance.getById.mockImplementation((id: string) => {
