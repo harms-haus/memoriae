@@ -315,18 +315,23 @@ describe('ExpandingPanel', () => {
         </ExpandingPanel>
       );
 
+      const panel = container.querySelector('.expanding-panel') as HTMLElement;
       const content = container.querySelector('.expanding-panel-content');
       expect(content).toBeInTheDocument();
 
-      // Wait for initial mount to complete
+      // Wait for initial mount to complete and CSS variable to be set
+      // Note: In jsdom, scrollHeight is 0, so the variable will be "0px"
+      // In a real browser, it would be the actual content height
       await waitFor(() => {
-        const style = content?.getAttribute('style');
-        // After transition, height should be 'auto'
-        expect(style).toContain('auto');
+        // Component sets --content-height CSS variable on the panel
+        const contentHeight = panel?.style.getPropertyValue('--content-height');
+        expect(contentHeight).toBeTruthy();
+        // Variable should be set (even if 0px in test environment)
+        expect(contentHeight).toMatch(/^\d+px$/);
       }, { timeout: 200 });
     });
 
-    it('should set height to auto after expansion', async () => {
+    it('should set content height CSS variable after expansion', async () => {
       const user = userEvent.setup();
       const { container } = render(
         <ExpandingPanel title="Test Panel">
@@ -335,24 +340,24 @@ describe('ExpandingPanel', () => {
       );
 
       const header = screen.getByRole('button');
+      const panel = container.querySelector('.expanding-panel') as HTMLElement;
+      
       await user.click(header);
 
-      const content = container.querySelector('.expanding-panel-content') as HTMLElement;
-      
       // Wait for the expanded state
       await waitFor(() => {
         expect(header).toHaveAttribute('aria-expanded', 'true');
       });
 
-      // Manually trigger transition end to simulate the animation completing
-      const transitionEndEvent = new Event('transitionend', { bubbles: true });
-      content.dispatchEvent(transitionEndEvent);
-
-      // After transition end, height should be 'auto'
+      // Wait for CSS variable to be set (component measures content and sets variable)
+      // Note: In jsdom, scrollHeight is 0, so the variable will be "0px"
+      // In a real browser, it would be the actual content height
       await waitFor(() => {
-        const style = content?.style.height;
-        expect(style).toBe('auto');
-      }, { timeout: 100 });
+        const contentHeight = panel?.style.getPropertyValue('--content-height');
+        expect(contentHeight).toBeTruthy();
+        // Variable should be set (even if 0px in test environment)
+        expect(contentHeight).toMatch(/^\d+px$/);
+      }, { timeout: 200 });
     });
   });
 

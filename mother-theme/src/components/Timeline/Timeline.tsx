@@ -131,7 +131,8 @@ export function Timeline({
     );
   };
 
-  const showTail = renderOpposite !== undefined;
+  // Only show tail (opposite content) in center mode
+  const showTail = renderOpposite !== undefined && mode === 'center';
 
   return (
     <div className={`timeline timeline-mode-${mode} ${showTail ? 'timeline-has-tail' : ''} ${className}`}>
@@ -162,8 +163,8 @@ export function Timeline({
               <div className={`timeline-line timeline-line-bottom ${isBottom ? 'timeline-line-bottom-invisible' : ''}`} />
             </div>
 
-            {/* Tail column */}
-            {showTail && (
+            {/* Tail column - only in center mode */}
+            {showTail && renderOpposite && (
               <div className="timeline-tail">
                 {renderOpposite(index, maxPanelWidth, side)}
               </div>

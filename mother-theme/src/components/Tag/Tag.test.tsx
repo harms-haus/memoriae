@@ -6,9 +6,11 @@ import { createUserEvent } from '../../test/utils';
 describe('Tag', () => {
   describe('Rendering', () => {
     it('should render tag with children', () => {
-      render(<Tag>Test Tag</Tag>);
+      const { container } = render(<Tag>Test Tag</Tag>);
       
-      expect(screen.getByText('Test Tag')).toBeInTheDocument();
+      const tag = container.querySelector('.tag-item');
+      expect(tag).toBeInTheDocument();
+      expect(tag?.textContent).toContain('Test Tag');
     });
 
     it('should apply default color', () => {
@@ -51,9 +53,9 @@ describe('Tag', () => {
       const user = createUserEvent();
       const handleClick = vi.fn();
       
-      render(<Tag onClick={handleClick}>Test</Tag>);
+      const { container } = render(<Tag onClick={handleClick}>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       await user.click(tag);
       
       expect(handleClick).toHaveBeenCalledTimes(1);
@@ -63,9 +65,9 @@ describe('Tag', () => {
       const user = createUserEvent();
       const handleClick = vi.fn();
       
-      render(<Tag onClick={handleClick} disabled>Test</Tag>);
+      const { container } = render(<Tag onClick={handleClick} disabled>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       await user.click(tag);
       
       expect(handleClick).not.toHaveBeenCalled();
@@ -74,9 +76,9 @@ describe('Tag', () => {
     it('should not call onClick when onClick is not provided', async () => {
       const user = createUserEvent();
       
-      render(<Tag>Test</Tag>);
+      const { container } = render(<Tag>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       await user.click(tag);
       
       // Should not throw or error
@@ -130,9 +132,9 @@ describe('Tag', () => {
       const user = createUserEvent();
       const handleClick = vi.fn();
       
-      render(<Tag onClick={handleClick}>Test</Tag>);
+      const { container } = render(<Tag onClick={handleClick}>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       tag.focus();
       await user.keyboard('{Enter}');
       
@@ -143,9 +145,9 @@ describe('Tag', () => {
       const user = createUserEvent();
       const handleClick = vi.fn();
       
-      render(<Tag onClick={handleClick}>Test</Tag>);
+      const { container } = render(<Tag onClick={handleClick}>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       tag.focus();
       await user.keyboard(' ');
       
@@ -153,16 +155,16 @@ describe('Tag', () => {
     });
 
     it('should have tabIndex when onClick is provided', () => {
-      render(<Tag onClick={() => {}}>Test</Tag>);
+      const { container } = render(<Tag onClick={() => {}}>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       expect(tag).toHaveAttribute('tabIndex', '0');
     });
 
     it('should not have tabIndex when onClick is not provided', () => {
-      render(<Tag>Test</Tag>);
+      const { container } = render(<Tag>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       expect(tag).not.toHaveAttribute('tabIndex');
     });
   });
@@ -210,9 +212,9 @@ describe('Tag', () => {
       const user = createUserEvent();
       const handleClick = vi.fn();
       
-      render(<Tag onClick={handleClick}>Test</Tag>);
+      const { container } = render(<Tag onClick={handleClick}>Test</Tag>);
       
-      const tag = screen.getByText('Test');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       await user.click(tag);
       
       expect(handleClick).toHaveBeenCalledTimes(1);
@@ -223,14 +225,15 @@ describe('Tag', () => {
       const user = createUserEvent();
       const handleRemove = vi.fn();
       
-      render(<Tag onRemove={handleRemove}>Test</Tag>);
+      const { container } = render(<Tag onRemove={handleRemove}>Test</Tag>);
       
       const removeButton = screen.getByLabelText('Remove tag');
       await user.click(removeButton);
       
       expect(handleRemove).toHaveBeenCalledTimes(1);
       // Should not have button role when no onClick
-      expect(screen.getByText('Test')).not.toHaveAttribute('role', 'button');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag).not.toHaveAttribute('role', 'button');
     });
 
     it('should handle both onClick and onRemove', async () => {
@@ -238,10 +241,11 @@ describe('Tag', () => {
       const handleClick = vi.fn();
       const handleRemove = vi.fn();
       
-      render(<Tag onClick={handleClick} onRemove={handleRemove}>Test</Tag>);
+      const { container } = render(<Tag onClick={handleClick} onRemove={handleRemove}>Test</Tag>);
       
       // Click tag
-      await user.click(screen.getByText('Test'));
+      const tag = container.querySelector('.tag-item') as HTMLElement;
+      await user.click(tag);
       expect(handleClick).toHaveBeenCalledTimes(1);
       
       // Click remove button

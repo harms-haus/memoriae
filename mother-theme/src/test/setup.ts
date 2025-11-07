@@ -48,6 +48,21 @@ beforeAll(() => {
   };
 });
 
+// Mock ResizeObserver for test environment
+beforeAll(() => {
+  global.ResizeObserver = class ResizeObserver {
+    observe() {
+      // Mock implementation
+    }
+    unobserve() {
+      // Mock implementation
+    }
+    disconnect() {
+      // Mock implementation
+    }
+  } as typeof ResizeObserver;
+});
+
 // Ensure localStorage is properly set up in test environment
 beforeAll(() => {
   if (typeof localStorage !== 'undefined') {
