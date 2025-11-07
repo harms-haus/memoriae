@@ -28,6 +28,7 @@
   width: 100%;
   min-height: 0;
   padding: var(--space-8);
+  padding-bottom: calc(var(--space-8) + 48px); /* Extra padding for submit button */
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-size: var(--text-lg);
@@ -230,6 +231,55 @@
 .seed-composer-zen-overlay.active .seed-composer-editor {
   font-size: var(--text-xl);
   padding: var(--space-8);
+  padding-bottom: calc(var(--space-8) + 48px); /* Extra padding for submit button */
+}
+
+/* Submit Button */
+.seed-composer-submit {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent-yellow);
+  color: var(--text-inverse);
+  border: var(--border-thick) solid var(--accent-yellow-dark);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-family: var(--font-primary);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-base), border-color var(--transition-base), opacity var(--transition-base);
+  z-index: 10;
+  min-height: 36px;
+  box-shadow: var(--shadow-sm);
+}
+
+.seed-composer-submit:hover:not(:disabled) {
+  background: var(--accent-yellow-dark);
+  border-color: var(--accent-yellow);
+  box-shadow: var(--shadow-md);
+}
+
+.seed-composer-submit:focus {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.seed-composer-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  color: var(--disabled-text);
+}
+
+/* Touch-friendly submit button */
+@media (hover: none) and (pointer: coarse) {
+  .seed-composer-submit {
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
 }
 
 /* Ensure toolbar is visible in zen mode */
