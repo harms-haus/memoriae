@@ -2,12 +2,11 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Panel } from '@mother/components/Panel'
-import { Tag } from '@mother/components/Tag'
 import { Badge } from '@mother/components/Badge'
 import { Button } from '@mother/components/Button'
 import { api } from '../../services/api'
 import { renderHashTags } from '../../utils/renderHashTags'
-import type { Seed } from '../../types'
+import type { Seed, Tag as TagType } from '../../types'
 import './Views.css'
 import './TimelineView.css'
 
@@ -24,6 +23,7 @@ interface TimelineViewProps {
 export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
   const navigate = useNavigate()
   const [seeds, setSeeds] = useState<Seed[]>([])
+  const [allTags, setAllTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,7 +48,11 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
       setLoading(true)
       setError(null)
 
-      const seedsData = await api.get<Seed[]>('/seeds')
+      // Load seeds and tags in parallel
+      const [seedsData, tagsData] = await Promise.all([
+        api.get<Seed[]>('/seeds'),
+        api.get<TagType[]>('/tags').catch(() => []), // Tags may not exist yet
+      ])
       
       // Sort by creation date (newest first for timeline)
       const sortedSeeds = [...seedsData].sort((a, b) => 
@@ -56,6 +60,7 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
       )
       
       setSeeds(sortedSeeds)
+      setAllTags(tagsData)
     } catch (err) {
       console.error('Error loading seeds:', err)
       setError(err instanceof Error ? err.message : 'Failed to load seeds')
@@ -146,7 +151,7 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
     if (!seed) return null
 
     const content = seed.currentState?.seed || seed.seed_content
-    const tags = seed.currentState?.tags || []
+    const seedTags = seed.currentState?.tags || []
     const categories = seed.currentState?.categories || []
 
     return (
@@ -156,27 +161,62 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
       >
         <div className="timeline-seed-text-wrapper">
           <p className="timeline-seed-text">
-            {renderHashTags(truncateContent(content), (tagName) => {
-              navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
-            })}
+            {(() => {
+              // Create tag color map: tag name (lowercase) -> color
+              const tagColorMap = new Map<string, string>()
+              allTags.forEach(tag => {
+                if (tag.color) {
+                  tagColorMap.set(tag.name.toLowerCase(), tag.color)
+                }
+              })
+              return renderHashTags(truncateContent(content), (tagName) => {
+                navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+              }, tagColorMap)
+            })()}
           </p>
         </div>
 
-        {tags.length > 0 && (
+        {seedTags.length > 0 && (
           <div className="timeline-seed-tags">
-            {tags.slice(0, 5).map((tag) => (
-              <Tag 
-                key={tag.id} 
-                variant="default"
-                className="timeline-seed-tag"
-              >
-                {tag.name}
-              </Tag>
-            ))}
-            {tags.length > 5 && (
-              <Tag variant="default" className="timeline-seed-tag">
-                +{tags.length - 5}
-              </Tag>
+            {seedTags.slice(0, 5).map((tag) => {
+              // Find the full tag object to get color
+              const fullTag = allTags.find(t => t.id === tag.id)
+              const tagColor = fullTag?.color || 'var(--text-primary)'
+              return (
+                <a
+                  key={tag.id}
+                  href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    navigate(`/seeds/tag/${encodeURIComponent(tag.name)}`)
+                  }}
+                  style={{
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.textDecoration = 'underline'
+                    e.currentTarget.style.setProperty('color', tagColor, 'important')
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textDecoration = 'none'
+                    e.currentTarget.style.setProperty('color', tagColor, 'important')
+                  }}
+                  ref={(el) => {
+                    if (el) {
+                      el.style.setProperty('color', tagColor, 'important')
+                    }
+                  }}
+                  className="timeline-seed-tag"
+                >
+                  #{tag.name}
+                </a>
+              )
+            })}
+            {seedTags.length > 5 && (
+              <span className="timeline-seed-tag" style={{ color: 'var(--text-secondary)' }}>
+                +{seedTags.length - 5}
+              </span>
             )}
           </div>
         )}

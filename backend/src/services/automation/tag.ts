@@ -67,17 +67,20 @@ export class TagExtractionAutomation extends Automation {
     // Get existing tags from current state to avoid duplicates
     const existingTagNames = new Set((seed.currentState.tags || []).map(t => t.name.toLowerCase()))
 
-    // Extract hash tags from content
+    // Extract hash tags from content (these don't have colors)
     const hashTags = this.extractHashTags(seed.currentState.seed || seed.seed_content)
     
     // Generate additional tags using OpenRouter (if content has no hash tags or for additional suggestions)
     const aiGeneratedTags = await this.generateTags(seed, context)
 
+    // Convert hash tags to same format as AI tags (no color)
+    const hashTagObjects = hashTags.map(name => ({ name, color: null as string | null }))
+
     // Combine hash tags and AI-generated tags, prioritizing hash tags
-    const allTags = [...hashTags, ...aiGeneratedTags]
+    const allTags = [...hashTagObjects, ...aiGeneratedTags]
 
     // Filter out tags that already exist
-    const newTags = allTags.filter(tag => !existingTagNames.has(tag.toLowerCase()))
+    const newTags = allTags.filter(tag => !existingTagNames.has(tag.name.toLowerCase()))
 
     if (newTags.length === 0) {
       // No new tags to add
@@ -86,7 +89,7 @@ export class TagExtractionAutomation extends Automation {
 
     // Ensure all tags exist in database and get/create them
     const tagRecords = await Promise.all(
-      newTags.map(tagName => this.ensureTagExists(tagName))
+      newTags.map(tag => this.ensureTagExists(tag.name, tag.color))
     )
 
     // Create ADD_TAG events for each new tag
@@ -182,16 +185,33 @@ export class TagExtractionAutomation extends Automation {
   /**
    * Generate tags using OpenRouter AI
    * 
-   * Calls OpenRouter to analyze seed content and extract relevant tags.
-   * Returns array of tag names (strings).
+   * Calls OpenRouter to analyze seed content and extract relevant tags with colors.
+   * Returns array of objects with name and color.
    */
-  private async generateTags(seed: Seed, context: AutomationContext): Promise<string[]> {
-    // Get all existing tag names from database to suggest to AI
+  private async generateTags(seed: Seed, context: AutomationContext): Promise<Array<{ name: string; color: string | null }>> {
+    // Get all existing tags with colors from database
     const existingTags = await db<TagRow>('tags')
-      .select('name')
+      .select('name', 'color')
       .orderBy('name', 'asc')
     
     const existingTagNames = existingTags.map(t => t.name).join(', ') || 'none'
+
+    // Group tags by color to identify domains
+    const colorGroups = new Map<string, string[]>()
+    existingTags.forEach(tag => {
+      if (tag.color) {
+        const tags = colorGroups.get(tag.color) || []
+        tags.push(tag.name)
+        colorGroups.set(tag.color, tags)
+      }
+    })
+
+    // Build color context string for prompt
+    const colorContext = colorGroups.size > 0
+      ? Array.from(colorGroups.entries())
+          .map(([color, tagNames]) => `- ${color}: ${tagNames.join(', ')}`)
+          .join('\n')
+      : 'No existing tags with colors yet.'
 
     const systemPrompt = `You are a tag extraction assistant. Analyze the given text and extract no more than 8 relevant tags that best describe the content.
 
@@ -204,7 +224,22 @@ Tags should be:
 Prefer tags that are not already directly stated in the seed's text.
 Prefer tags that already exist in the database: [${existingTagNames}]
 
-IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the JSON array at the very end of your response. Example: ["work", "programming", "typescript"]`
+Existing tags are grouped by color (domain):
+${colorContext}
+
+When suggesting new tags, assign a color that matches the domain/theme of similar existing tags.
+If a tag is similar to existing tags in a color group, use that same color.
+If no similar tags exist, choose an appropriate color from the style guide palette:
+- Yellow (#ffd43b): General, work, productivity
+- Blue (#4fc3f7): Technology, programming, technical
+- Green (#66bb6a): Nature, health, growth
+- Purple (#ab47bc): Creative, art, design
+- Pink (#ec407a): Personal, relationships, emotions
+- Orange (#ff9800): Energy, action, urgency
+
+IMPORTANT: Return ONLY a JSON array of objects as your final answer. Put the JSON array at the very end of your response.
+Each object should have "name" (string) and "color" (hex color string) properties.
+Example: [{"name": "work", "color": "#ffd43b"}, {"name": "programming", "color": "#4fc3f7"}, {"name": "typescript", "color": "#4fc3f7"}]`
 
     const userPrompt = `Extract tags from this text:\n\n${seed.currentState.seed}`
 
@@ -352,17 +387,24 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
               if (tagMatches && tagMatches.length > 0) {
                 const extractedTags = tagMatches.map(m => m.replace(/"/g, ''))
                 console.warn('TagExtractionAutomation: Response was truncated, extracted tags from partial JSON:', extractedTags)
-                // Return early with extracted tags
-                return extractedTags
-                  .map(tag => {
-                    if (typeof tag !== 'string') return null
-                    return tag
-                      .toLowerCase()
-                      .trim()
-                      .replace(/\s+/g, '-')
-                      .replace(/[^a-z0-9-]/g, '')
-                  })
-                  .filter((tag): tag is string => tag !== null && tag.length > 0 && tag.length <= 50)
+                // Return early with extracted tags (no colors for truncated responses)
+                const result: Array<{ name: string; color: string | null }> = []
+                for (const tag of extractedTags) {
+                  if (typeof tag !== 'string') continue
+                  const normalizedName = tag
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, '-')
+                    .replace(/[^a-z0-9-]/g, '')
+                  
+                  if (normalizedName.length > 0 && normalizedName.length <= 50) {
+                    result.push({
+                      name: normalizedName,
+                      color: null,
+                    })
+                  }
+                }
+                return result
               }
             }
           }
@@ -384,31 +426,58 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
 
       // Parse JSON array from response
       // jsonContent should already be a clean JSON array string at this point
-      let tags: string[]
+      let tags: Array<{ name: string; color: string | null }>
       try {
-        tags = JSON.parse(content) as string[]
+        const parsed = JSON.parse(content)
+        if (!Array.isArray(parsed)) {
+          throw new Error('OpenRouter response is not an array')
+        }
+        tags = parsed
       } catch (parseError) {
         throw new Error(`Failed to parse JSON from response. Content: ${content.substring(0, 200)}... Error: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
       }
 
       // Validate and normalize tags
-      if (!Array.isArray(tags)) {
-        throw new Error('OpenRouter response is not an array')
-      }
-
       return tags
         .map(tag => {
-          // Normalize: lowercase, trim, replace spaces with hyphens
-          if (typeof tag !== 'string') {
+          // Handle both object format {name, color} and legacy string format
+          let tagName: string
+          let tagColor: string | null = null
+
+          if (typeof tag === 'string') {
+            // Legacy format: just a string
+            tagName = tag
+          } else if (typeof tag === 'object' && tag !== null && 'name' in tag) {
+            // New format: object with name and optional color
+            tagName = String(tag.name)
+            if ('color' in tag && tag.color) {
+              const color = String(tag.color)
+              // Validate color format (hex or CSS color name)
+              if (/^#[0-9A-Fa-f]{6}$/.test(color) || /^[a-z]+$/i.test(color)) {
+                tagColor = color
+              }
+            }
+          } else {
             return null
           }
-          return tag
+
+          // Normalize tag name: lowercase, trim, replace spaces with hyphens
+          const normalizedName = tagName
             .toLowerCase()
             .trim()
             .replace(/\s+/g, '-')
             .replace(/[^a-z0-9-]/g, '') // Remove invalid characters
+
+          if (normalizedName.length === 0 || normalizedName.length > 50) {
+            return null
+          }
+
+          return {
+            name: normalizedName,
+            color: tagColor,
+          }
         })
-        .filter((tag): tag is string => tag !== null && tag.length > 0 && tag.length <= 50)
+        .filter((tag): tag is { name: string; color: string | null } => tag !== null)
     } catch (error) {
       console.error('TagExtractionAutomation: Failed to generate tags:', error)
       // Return empty array on error - don't fail the automation
@@ -419,8 +488,9 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
   /**
    * Ensure a tag exists in the database
    * Creates the tag if it doesn't exist, otherwise returns existing tag
+   * If tag exists but has no color and color is provided, updates it
    */
-  private async ensureTagExists(tagName: string): Promise<TagRow> {
+  private async ensureTagExists(tagName: string, color: string | null = null): Promise<TagRow> {
     // Normalize tag name for lookup (lowercase, trimmed)
     const normalizedName = tagName.toLowerCase().trim()
 
@@ -430,6 +500,14 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
       .first()
 
     if (existing) {
+      // If tag exists but has no color and color is provided, update it
+      if (!existing.color && color) {
+        await db<TagRow>('tags')
+          .where({ id: existing.id })
+          .update({ color })
+        
+        return { ...existing, color }
+      }
       return existing
     }
 
@@ -438,7 +516,7 @@ IMPORTANT: Return ONLY a JSON array of tag names as your final answer. Put the J
       .insert({
         id: uuidv4(),
         name: normalizedName,
-        color: null, // Could assign colors from style guide palette later
+        color: color || null,
         created_at: new Date(),
       })
       .returning('*')

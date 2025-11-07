@@ -1,0 +1,100 @@
+/* 
+ * TagList Component Styles
+ * 
+ * Reusable tag list component with truncation support
+ * Uses theme variables from theme.css
+ * 
+ * This file includes all styles needed for the TagList component:
+ * - .tag-list: Container for the tag list
+ * - .tag-item: Individual tag items (links or spans)
+ * - .tag-list-truncate-button: Button shown when tags are truncated
+ */
+
+/* ========================================
+ * TAG LIST CONTAINER
+ * ======================================== */
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tag-list-gap, var(--space-2));
+  align-items: center;
+}
+
+/* ========================================
+ * TAG ITEMS
+ * ======================================== */
+
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--tag-padding-y, 0.375rem) var(--tag-padding-x, 0.875rem);
+  border: none;
+  border-radius: var(--tag-border-radius, 0);
+  background: transparent;
+  color: var(--tag-color, var(--text-primary));
+  font-size: var(--tag-font-size, var(--text-sm));
+  font-weight: var(--tag-font-weight, var(--weight-medium));
+  transition: var(--transition-base);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tag-item:hover {
+  color: var(--tag-color-hover, var(--accent-yellow));
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
+.tag-item:focus-visible {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tag-item.active {
+  color: var(--tag-color-active, var(--text-inverse));
+  font-weight: var(--tag-font-weight-active, var(--weight-bold));
+  text-decoration: underline;
+}
+
+/* ========================================
+ * TRUNCATE BUTTON
+ * ======================================== */
+
+.tag-list-truncate-button {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--tag-padding-y, 0.375rem) var(--tag-padding-x, 0.875rem);
+  border: none;
+  border-radius: var(--tag-border-radius, 0);
+  background: transparent;
+  color: var(--tag-color, var(--text-primary));
+  font-size: var(--tag-font-size, var(--text-sm));
+  font-weight: var(--tag-font-weight, var(--weight-medium));
+  transition: var(--transition-base);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.tag-list-truncate-button:hover {
+  color: var(--tag-color-hover, var(--accent-yellow));
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
+.tag-list-truncate-button:focus-visible {
+  outline: var(--border-thick) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tag-list-truncate-button:active {
+  transform: translateY(0);
+}
+
+.tag-list-truncate-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+

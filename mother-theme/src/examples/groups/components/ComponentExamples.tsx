@@ -232,13 +232,13 @@ export function ComponentExamples() {
       {/* Tags Section */}
       <ExampleSection id="tags" title="Tags">
         <div className="panel">
-          <h3>Tag Variants</h3>
+          <h3>Tag Colors</h3>
           <div className="tag-list">
             <Tag>Default Tag</Tag>
-            <Tag variant="blue">Blue Tag</Tag>
-            <Tag variant="green">Green Tag</Tag>
-            <Tag variant="purple">Purple Tag</Tag>
-            <Tag variant="pink">Pink Tag</Tag>
+            <Tag color="var(--accent-blue)">Blue Tag</Tag>
+            <Tag color="var(--accent-green)">Green Tag</Tag>
+            <Tag color="var(--accent-purple)">Purple Tag</Tag>
+            <Tag color="var(--accent-pink)">Pink Tag</Tag>
             <Tag active>Active Tag</Tag>
           </div>
         </div>
@@ -247,7 +247,7 @@ export function ComponentExamples() {
           <h3>Interactive Tags</h3>
           <div className="tag-list">
             <Tag onRemove={() => alert('Tag removed')}>Removable Tag</Tag>
-            <Tag variant="blue" onRemove={() => alert('Blue tag removed')}>Removable Blue</Tag>
+            <Tag color="var(--accent-blue)" onRemove={() => alert('Blue tag removed')}>Removable Blue</Tag>
           </div>
         </div>
       </ExampleSection>

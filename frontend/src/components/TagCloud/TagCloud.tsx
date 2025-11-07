@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Panel } from '@mother/components/Panel'
 import { Badge } from '@mother/components/Badge'
 import { api } from '../../services/api'
-import type { Seed } from '../../types'
+import type { Seed, Tag as TagType } from '../../types'
 import './TagCloud.css'
 
 export interface TagCloudProps {
@@ -23,22 +23,28 @@ interface TagData {
  */
 export function TagCloud({ onTagSelect, selectedTags = new Set(), className = '' }: TagCloudProps) {
   const [seeds, setSeeds] = useState<Seed[]>([])
+  const [tags, setTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadSeeds()
+    loadData()
   }, [])
 
-  const loadSeeds = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await api.get<Seed[]>('/seeds')
-      setSeeds(data)
+      // Load seeds and tags in parallel
+      const [seedsData, tagsData] = await Promise.all([
+        api.get<Seed[]>('/seeds'),
+        api.get<TagType[]>('/tags').catch(() => []), // Tags may not exist yet
+      ])
+      setSeeds(seedsData)
+      setTags(tagsData)
     } catch (err) {
-      console.error('Error loading seeds for tag cloud:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load seeds')
+      console.error('Error loading data for tag cloud:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
       setLoading(false)
     }
@@ -75,11 +81,10 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
     return 'tag-cloud-size-xs'
   }
 
-  // Get color class for tag based on name hash (consistent colors)
-  const getTagColorClass = (tagName: string): string => {
-    const colors = ['tag-blue', 'tag-green', 'tag-purple', 'tag-pink']
-    const hash = tagName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return colors[hash % colors.length] || 'tag-blue' // Fallback to tag-blue
+  // Get color for tag from database, or fallback to default
+  const getTagColor = (tagName: string): string => {
+    const tag = tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())
+    return tag?.color || 'var(--text-primary)'
   }
 
   const handleTagClick = (tagName: string) => {
@@ -103,7 +108,7 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
       <Panel className="tag-cloud-panel">
         <div className="tag-cloud-error">
           <p className="text-error">{error}</p>
-          <button className="btn-secondary" onClick={loadSeeds}>
+          <button className="btn-secondary" onClick={loadData}>
             Retry
           </button>
         </div>
@@ -139,23 +144,38 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
           {tagData.map((tag) => {
             const isSelected = selectedTags.has(tag.name)
             const sizeClass = getTagSizeClass(tag.count, maxCount)
-            const colorClass = getTagColorClass(tag.name)
+            const tagColor = getTagColor(tag.name)
             
             return (
-              <button
+              <a
                 key={tag.name}
+                href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleTagClick(tag.name)
+                }}
                 className={`
                   tag-cloud-item
                   ${sizeClass}
-                  ${colorClass}
                   ${isSelected ? 'tag-cloud-item-selected' : ''}
                 `}
-                onClick={() => handleTagClick(tag.name)}
+                style={{}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.setProperty('color', tagColor, 'important')
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.setProperty('color', tagColor, 'important')
+                }}
+                ref={(el) => {
+                  if (el) {
+                    el.style.setProperty('color', tagColor, 'important')
+                  }
+                }}
                 title={`${tag.name} (${tag.count} seed${tag.count !== 1 ? 's' : ''})`}
               >
-                {tag.name}
+                #{tag.name}
                 <span className="tag-cloud-count">{tag.count}</span>
-              </button>
+              </a>
             )
           })}
         </div>

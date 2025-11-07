@@ -6,10 +6,10 @@ import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
 import { ExpandingPanel } from '@mother/components/ExpandingPanel'
-import { Tag } from '@mother/components/Tag'
 import { Badge } from '@mother/components/Badge'
 import { renderHashTags } from '../../utils/renderHashTags'
-import type { Event, Seed, SeedState } from '../../types'
+import { TagList } from '../TagList'
+import type { Event, Seed, SeedState, Tag as TagType } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
 
@@ -43,6 +43,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const [seed, setSeed] = useState<Seed | null>(null)
   const [events, setEvents] = useState<Event[]>([])
   const [currentState, setCurrentState] = useState<SeedState | null>(null)
+  const [tags, setTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
@@ -68,11 +69,12 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       setLoading(true)
       setError(null)
 
-      // Load seed, timeline events, and current state in parallel
-      const [seedData, eventsData, stateData] = await Promise.all([
+      // Load seed, timeline events, current state, and tags in parallel
+      const [seedData, eventsData, stateData, tagsData] = await Promise.all([
         api.get<Seed>(`/seeds/${seedId}`),
         api.get<Event[]>(`/seeds/${seedId}/timeline`),
         api.get<SeedStateResponse>(`/seeds/${seedId}/state`),
+        api.get<TagType[]>('/tags').catch(() => []), // Tags may not exist yet
       ])
 
       setSeed(seedData)
@@ -80,6 +82,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ))
       setCurrentState(stateData.current_state)
+      setTags(tagsData)
     } catch (err) {
       console.error('Error loading seed data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load seed')
@@ -544,19 +547,37 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         <h3 className="panel-header">Current State</h3>
         <div className="seed-content-display">
           <p className="seed-text">
-            {renderHashTags(currentState?.seed || seed.seed_content, (tagName) => {
-              navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
-            })}
+            {(() => {
+              // Create tag color map: tag name (lowercase) -> color
+              const tagColorMap = new Map<string, string>()
+              tags.forEach(tag => {
+                if (tag.color) {
+                  tagColorMap.set(tag.name.toLowerCase(), tag.color)
+                }
+              })
+              return renderHashTags(currentState?.seed || seed.seed_content, (tagName) => {
+                navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+              }, tagColorMap)
+            })()}
           </p>
         </div>
         {currentState?.tags && currentState.tags.length > 0 && (
-          <div className="tag-list seed-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-            {currentState.tags.map((tag) => (
-              <Tag key={tag.id}>
-                {tag.name}
-              </Tag>
-            ))}
-          </div>
+          <TagList
+            tags={currentState.tags.map((tag) => {
+              // Find the full tag object to get color
+              const fullTag = tags.find(t => t.id === tag.id)
+              return {
+                id: tag.id,
+                name: tag.name,
+                color: fullTag?.color ?? null,
+              }
+            })}
+            className="seed-tags"
+            onTagClick={(tag) => {
+              navigate(`/seeds/tag/${encodeURIComponent(tag.name)}`)
+            }}
+            suppressTruncate={true}
+          />
         )}
         {currentState?.categories && currentState.categories.length > 0 && (
           <div className="seed-categories">

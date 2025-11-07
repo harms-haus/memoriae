@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CategoryTree } from '../CategoryTree'
 import { api } from '../../services/api'
 import { Panel } from '@mother/components/Panel'
 import { Button } from '@mother/components/Button'
 import { Badge } from '@mother/components/Badge'
-import { Tag } from '@mother/components/Tag'
 import { X } from 'lucide-react'
-import type { Seed, Category } from '../../types'
+import type { Seed, Category, Tag as TagType } from '../../types'
 import './Views.css'
 import './CategoriesView.css'
 
@@ -15,8 +15,10 @@ interface CategoriesViewProps {
 }
 
 export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
+  const navigate = useNavigate()
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [seeds, setSeeds] = useState<Seed[]>([])
+  const [tags, setTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
@@ -38,9 +40,12 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
       setLoading(true)
       setError(null)
       
-      // Load all seeds and filter by category client-side
+      // Load all seeds, tags, and filter by category client-side
       // (Could be optimized with a backend filter endpoint)
-      const allSeeds = await api.get<Seed[]>('/seeds')
+      const [allSeeds, tagsData] = await Promise.all([
+        api.get<Seed[]>('/seeds'),
+        api.get<TagType[]>('/tags').catch(() => []), // Tags may not exist yet
+      ])
       
       const filtered = allSeeds.filter(seed => {
         const seedCategories = seed.currentState?.categories || []
@@ -48,6 +53,7 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
       })
       
       setSeeds(filtered)
+      setTags(tagsData)
     } catch (err) {
       console.error('Error loading filtered seeds:', err)
       setError(err instanceof Error ? err.message : 'Failed to load seeds')
@@ -204,15 +210,45 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
                             <div className="categories-view-seed-meta">
                               {seedTags.length > 0 && (
                                 <div className="tag-list categories-view-seed-tags">
-                                  {seedTags.slice(0, 5).map((tag) => (
-                                    <Tag key={tag.id} variant="default" className="tag-item-small">
-                                      {tag.name}
-                                    </Tag>
-                                  ))}
+                                  {seedTags.slice(0, 5).map((tag) => {
+                                    // Find the full tag object to get color
+                                    const fullTag = tags.find(t => t.id === tag.id)
+                                    const tagColor = fullTag?.color || 'var(--text-primary)'
+                                    return (
+                                      <a
+                                        key={tag.id}
+                                        href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          e.stopPropagation()
+                                          navigate(`/seeds/tag/${encodeURIComponent(tag.name)}`)
+                                        }}
+                                        style={{
+                                          textDecoration: 'none',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.textDecoration = 'underline'
+                                          e.currentTarget.style.setProperty('color', tagColor, 'important')
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.textDecoration = 'none'
+                                          e.currentTarget.style.setProperty('color', tagColor, 'important')
+                                        }}
+                                        ref={(el) => {
+                                          if (el) {
+                                            el.style.setProperty('color', tagColor, 'important')
+                                          }
+                                        }}
+                                        className="tag-item-small"
+                                      >
+                                        #{tag.name}
+                                      </a>
+                                    )
+                                  })}
                                   {seedTags.length > 5 && (
-                                    <Tag className="tag-item-small">
+                                    <span className="tag-item-small" style={{ color: 'var(--text-secondary)' }}>
                                       +{seedTags.length - 5}
-                                    </Tag>
+                                    </span>
                                   )}
                                 </div>
                               )}

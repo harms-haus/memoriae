@@ -11,31 +11,31 @@ describe('Tag', () => {
       expect(screen.getByText('Test Tag')).toBeInTheDocument();
     });
 
-    it('should apply default variant class', () => {
+    it('should apply default color', () => {
       const { container } = render(<Tag>Test</Tag>);
       
-      const tag = container.querySelector('.tag-item');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       expect(tag).toHaveClass('tag-item');
-      expect(tag).not.toHaveClass('tag-blue');
+      expect(tag.style.color).toBe('var(--text-primary)');
     });
 
-    it('should apply variant classes', () => {
-      const { container, rerender } = render(<Tag variant="blue">Test</Tag>);
+    it('should apply color prop', () => {
+      const { container, rerender } = render(<Tag color="var(--accent-blue)">Test</Tag>);
       
-      let tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-blue');
+      let tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-blue)');
 
-      rerender(<Tag variant="green">Test</Tag>);
-      tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-green');
+      rerender(<Tag color="var(--accent-green)">Test</Tag>);
+      tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-green)');
 
-      rerender(<Tag variant="purple">Test</Tag>);
-      tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-purple');
+      rerender(<Tag color="var(--accent-purple)">Test</Tag>);
+      tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-purple)');
 
-      rerender(<Tag variant="pink">Test</Tag>);
-      tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-pink');
+      rerender(<Tag color="var(--accent-pink)">Test</Tag>);
+      tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-pink)');
     });
 
     it('should apply active class when active', () => {
@@ -167,44 +167,41 @@ describe('Tag', () => {
     });
   });
 
-  describe('Variant Classes', () => {
-    it('should explicitly apply default variant (no variant class)', () => {
-      const { container } = render(<Tag variant="default">Test</Tag>);
+  describe('Color Prop', () => {
+    it('should apply default color when no color prop provided', () => {
+      const { container } = render(<Tag>Test</Tag>);
       
-      const tag = container.querySelector('.tag-item');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
       expect(tag).toHaveClass('tag-item');
-      expect(tag).not.toHaveClass('tag-blue');
-      expect(tag).not.toHaveClass('tag-green');
-      expect(tag).not.toHaveClass('tag-purple');
-      expect(tag).not.toHaveClass('tag-pink');
+      expect(tag.style.color).toBe('var(--text-primary)');
     });
 
-    it('should explicitly apply blue variant class', () => {
-      const { container } = render(<Tag variant="blue">Test</Tag>);
+    it('should apply blue color', () => {
+      const { container } = render(<Tag color="var(--accent-blue)">Test</Tag>);
       
-      const tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-blue');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-blue)');
     });
 
-    it('should explicitly apply green variant class', () => {
-      const { container } = render(<Tag variant="green">Test</Tag>);
+    it('should apply green color', () => {
+      const { container } = render(<Tag color="var(--accent-green)">Test</Tag>);
       
-      const tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-green');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-green)');
     });
 
-    it('should explicitly apply purple variant class', () => {
-      const { container } = render(<Tag variant="purple">Test</Tag>);
+    it('should apply purple color', () => {
+      const { container } = render(<Tag color="var(--accent-purple)">Test</Tag>);
       
-      const tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-purple');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-purple)');
     });
 
-    it('should explicitly apply pink variant class', () => {
-      const { container } = render(<Tag variant="pink">Test</Tag>);
+    it('should apply pink color', () => {
+      const { container } = render(<Tag color="var(--accent-pink)">Test</Tag>);
       
-      const tag = container.querySelector('.tag-item');
-      expect(tag).toHaveClass('tag-pink');
+      const tag = container.querySelector('.tag-item') as HTMLElement;
+      expect(tag.style.color).toBe('var(--accent-pink)');
     });
   });
 

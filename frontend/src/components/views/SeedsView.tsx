@@ -4,7 +4,6 @@ import { api } from '../../services/api'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
 import { Input } from '@mother/components/Input'
-import { Tag } from '@mother/components/Tag'
 import { Badge } from '@mother/components/Badge'
 import { Search, X, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
 import { renderHashTags } from '../../utils/renderHashTags'
@@ -285,16 +284,38 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
                   Filter by Tags
                 </label>
                 <div className="tag-list">
-                  {tags.map((tag) => (
-                    <Tag
-                      key={tag.id}
-                      variant={tag.color as 'default' | 'blue' | 'green' | 'purple' | 'pink'}
-                      active={selectedTags.has(tag.id)}
-                      onClick={() => toggleTag(tag.id)}
-                    >
-                      {tag.name}
-                    </Tag>
-                  ))}
+                  {tags.map((tag) => {
+                    const tagColor = tag.color || 'var(--text-primary)'
+                    return (
+                      <a
+                        key={tag.id}
+                        href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          toggleTag(tag.id)
+                        }}
+                        style={{
+                          textDecoration: selectedTags.has(tag.id) ? 'underline' : 'none',
+                          fontWeight: selectedTags.has(tag.id) ? 'var(--weight-semibold)' : 'var(--weight-medium)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.textDecoration = 'underline'
+                          e.currentTarget.style.setProperty('color', tagColor, 'important')
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.textDecoration = selectedTags.has(tag.id) ? 'underline' : 'none'
+                          e.currentTarget.style.setProperty('color', tagColor, 'important')
+                        }}
+                        ref={(el) => {
+                          if (el) {
+                            el.style.setProperty('color', tagColor, 'important')
+                          }
+                        }}
+                      >
+                        #{tag.name}
+                      </a>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -368,9 +389,18 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
                 >
                   <div className="seeds-view-item-header">
                     <p className="seeds-view-item-content">
-                      {renderHashTags(truncateContent(content), (tagName) => {
-                        navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
-                      })}
+                      {(() => {
+                        // Create tag color map: tag name (lowercase) -> color
+                        const tagColorMap = new Map<string, string>()
+                        tags.forEach(tag => {
+                          if (tag.color) {
+                            tagColorMap.set(tag.name.toLowerCase(), tag.color)
+                          }
+                        })
+                        return renderHashTags(truncateContent(content), (tagName) => {
+                          navigate(`/seeds/tag/${encodeURIComponent(tagName)}`)
+                        }, tagColorMap)
+                      })()}
                     </p>
                     <span className="seeds-view-item-time">
                       {formatSeedTime(seed)}
@@ -384,27 +414,42 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
                           {seedTags.slice(0, 5).map((tag) => {
                             // Find the full tag object to get color
                             const fullTag = tags.find(t => t.id === tag.id)
-                            const variant = fullTag?.color 
-                              ? (fullTag.color as 'default' | 'blue' | 'green' | 'purple' | 'pink')
-                              : 'default'
+                            const tagColor = fullTag?.color || 'var(--text-primary)'
                             
                             return (
-                              <Tag
+                              <a
                                 key={tag.id}
-                                variant={variant}
-                                className="tag-item-small"
-                                onClick={() => {
+                                href={`/seeds/tag/${encodeURIComponent(tag.name)}`}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
                                   toggleTag(tag.id)
                                 }}
+                                style={{
+                                  textDecoration: 'none',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.textDecoration = 'underline'
+                                  e.currentTarget.style.setProperty('color', tagColor, 'important')
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.textDecoration = 'none'
+                                  e.currentTarget.style.setProperty('color', tagColor, 'important')
+                                }}
+                                ref={(el) => {
+                                  if (el) {
+                                    el.style.setProperty('color', tagColor, 'important')
+                                  }
+                                }}
                               >
-                                {tag.name}
-                              </Tag>
+                                #{tag.name}
+                              </a>
                             )
                           })}
                           {seedTags.length > 5 && (
-                            <Tag className="tag-item-small">
+                            <span style={{ color: 'var(--text-secondary)' }}>
                               +{seedTags.length - 5}
-                            </Tag>
+                            </span>
                           )}
                         </div>
                       )}
