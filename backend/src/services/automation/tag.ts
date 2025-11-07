@@ -234,9 +234,11 @@ If no similar tags exist, choose an appropriate color from the style guide palet
 - Pink (#ec407a): Personal, relationships, emotions
 - Orange (#ff9800): Energy, action, urgency
 
-IMPORTANT: Return ONLY a JSON array of objects as your final answer. Put the JSON array at the very end of your response.
+CRITICAL: Return ONLY a JSON array of objects as your final answer. Put the JSON array at the very end of your response.
 Each object should have "name" (string) and "color" (hex color string) properties.
-Example: [{"name": "work", "color": "#ffd43b"}, {"name": "programming", "color": "#4fc3f7"}, {"name": "typescript", "color": "#4fc3f7"}]`
+Example: [{"name": "work", "color": "#ffd43b"}, {"name": "programming", "color": "#4fc3f7"}, {"name": "typescript", "color": "#4fc3f7"}]
+
+Do not include any reasoning or explanation - only the JSON array.`
 
     const userPrompt = `Extract tags from this text:\n\n${seed.currentState.seed}`
 
@@ -248,7 +250,7 @@ Example: [{"name": "work", "color": "#ffd43b"}, {"name": "programming", "color":
         ],
         {
           temperature: 0.3, // Lower temperature for more consistent tag extraction
-          max_tokens: 1000, // Increased to handle reasoning models and prevent truncation
+          max_tokens: 2000, // Increased to handle reasoning models that output reasoning before content
         }
       )
 

@@ -195,7 +195,10 @@ Categories should be hierarchical paths like "/work/projects" or "/personal/note
 
 If you see similar existing categories, prefer to use those.
 
-Return ONLY a JSON array with ONE category path, nothing else. Example: ["/work/projects"]`
+CRITICAL: Return ONLY a JSON array with ONE category path as your final answer. Put the JSON array at the very end of your response.
+Example: ["/work/projects"]
+
+Do not include any reasoning or explanation - only the JSON array.`
 
     const userPrompt = `Assign categories to this text:\n\n${seed.currentState.seed}${existingCategoriesText}`
 
@@ -207,7 +210,7 @@ Return ONLY a JSON array with ONE category path, nothing else. Example: ["/work/
         ],
         {
           temperature: 0.4, // Slightly higher for more creative categorization
-          max_tokens: 300,
+          max_tokens: 2000, // Increased to handle reasoning models that output reasoning before content
         }
       )
 
@@ -290,25 +293,63 @@ Return ONLY a JSON array with ONE category path, nothing else. Example: ["/work/
         jsonContent = extractJsonArray(combined)
       }
       
-      // If we still don't have valid JSON, throw a helpful error
+      // If we still don't have valid JSON, check if response was truncated
+      const finishReason = response.choices[0]?.finish_reason
       if (!jsonContent) {
-        const finishReason = response.choices[0]?.finish_reason
-        const debugInfo = {
-          hasContent: !!content,
-          contentLength: content.length,
-          hasReasoning: !!reasoning,
-          reasoningLength: reasoning.length,
-          finishReason,
-          contentPreview: content.substring(0, 200),
-          reasoningPreview: reasoning.substring(0, 200),
+        // If response was truncated, try to extract partial JSON from the end
+        if (finishReason === 'length') {
+          const combined = `${reasoning}\n${content}`.trim()
+          const lastBracket = combined.lastIndexOf(']')
+          const firstBracket = combined.lastIndexOf('[')
+          
+          if (firstBracket !== -1) {
+            // Extract from opening bracket to end (or closing bracket if found)
+            const endPos = lastBracket !== -1 && lastBracket > firstBracket ? lastBracket + 1 : combined.length
+            const partialJson = combined.substring(firstBracket, endPos)
+            
+            // Try to complete the JSON by adding closing bracket if needed
+            try {
+              let jsonToParse = partialJson.trim()
+              if (!jsonToParse.endsWith(']')) {
+                // Remove any trailing incomplete string
+                const lastQuote = jsonToParse.lastIndexOf('"')
+                if (lastQuote > jsonToParse.lastIndexOf(',')) {
+                  // Incomplete string at the end, remove it
+                  jsonToParse = jsonToParse.substring(0, jsonToParse.lastIndexOf(',', lastQuote)) + ']'
+                } else {
+                  jsonToParse = jsonToParse + ']'
+                }
+              }
+              const parsed = JSON.parse(jsonToParse)
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                console.warn('CategorizeAutomation: Response was truncated, but extracted partial categories:', parsed)
+                jsonContent = jsonToParse
+              }
+            } catch {
+              // Failed to parse partial JSON, continue to error
+            }
+          }
         }
-        throw new Error(
-          `Could not extract JSON array from model response. ` +
-          `Content: ${content ? `"${content.substring(0, 100)}..."` : 'empty'}, ` +
-          `Reasoning: ${reasoning ? `"${reasoning.substring(0, 100)}..."` : 'empty'}, ` +
-          `Finish reason: ${finishReason || 'unknown'}. ` +
-          `Debug: ${JSON.stringify(debugInfo)}`
-        )
+        
+        // If we still don't have JSON, throw a helpful error
+        if (!jsonContent) {
+          const debugInfo = {
+            hasContent: !!content,
+            contentLength: content.length,
+            hasReasoning: !!reasoning,
+            reasoningLength: reasoning.length,
+            finishReason,
+            contentPreview: content.substring(0, 200),
+            reasoningPreview: reasoning.substring(0, 200),
+          }
+          throw new Error(
+            `Could not extract JSON array from model response. ` +
+            `Content: ${content ? `"${content.substring(0, 100)}..."` : 'empty'}, ` +
+            `Reasoning: ${reasoning ? `"${reasoning.substring(0, 100)}..."` : 'empty'}, ` +
+            `Finish reason: ${finishReason || 'unknown'}. ` +
+            `Debug: ${JSON.stringify(debugInfo)}`
+          )
+        }
       }
 
       // Parse JSON array from response
