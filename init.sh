@@ -63,6 +63,38 @@ else
     echo -e "${YELLOW}Ensuring PostgreSQL directory permissions...${NC}"
     chown -R postgres:postgres /var/lib/postgresql/16/main
     chmod 700 /var/lib/postgresql/16/main
+    
+    # Ensure config files exist (they might be missing if volume was partially initialized)
+    if [ ! -f /var/lib/postgresql/16/main/postgresql.conf ]; then
+        echo -e "${YELLOW}PostgreSQL config file missing, creating minimal configuration...${NC}"
+        # Ensure directory permissions
+        chown -R postgres:postgres /var/lib/postgresql/16/main
+        chmod 700 /var/lib/postgresql/16/main
+        
+        # Create minimal postgresql.conf
+        sudo -u postgres bash -c "cat > /var/lib/postgresql/16/main/postgresql.conf << 'EOF'
+listen_addresses = 'localhost'
+port = 5432
+data_directory = '/var/lib/postgresql/16/main'
+EOF"
+        
+        # Create minimal pg_hba.conf if missing
+        if [ ! -f /var/lib/postgresql/16/main/pg_hba.conf ]; then
+            sudo -u postgres bash -c "cat > /var/lib/postgresql/16/main/pg_hba.conf << 'EOF'
+local   all             all                                     trust
+host    all             all             127.0.0.1/32            md5
+host    all             all             ::1/128                 md5
+EOF"
+        else
+            # Ensure authentication entries exist
+            if ! grep -q "127.0.0.1/32" /var/lib/postgresql/16/main/pg_hba.conf; then
+                sudo -u postgres bash -c "echo 'host    all             all             127.0.0.1/32            md5' >> /var/lib/postgresql/16/main/pg_hba.conf"
+            fi
+            if ! grep -q "::1/128" /var/lib/postgresql/16/main/pg_hba.conf; then
+                sudo -u postgres bash -c "echo 'host    all             all             ::1/128                 md5' >> /var/lib/postgresql/16/main/pg_hba.conf"
+            fi
+        fi
+    fi
 fi
 
 # Start PostgreSQL temporarily to set up database
@@ -72,7 +104,7 @@ echo -e "${YELLOW}Starting PostgreSQL for initialization...${NC}"
 chown -R postgres:postgres /var/lib/postgresql/16/main
 chmod 700 /var/lib/postgresql/16/main
 
-# Check if PostgreSQL config file exists
+# Check if PostgreSQL config file exists (should exist now after fallback creation above)
 if [ ! -f /var/lib/postgresql/16/main/postgresql.conf ]; then
     echo -e "${RED}PostgreSQL configuration file not found. Initialization may have failed.${NC}"
     exit 1
