@@ -60,12 +60,12 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user!.id
     const { content } = req.body
 
-    if (!content || typeof content !== 'string') {
-      res.status(400).json({ error: 'Content is required and must be a string' })
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      res.status(400).json({ error: 'Content is required and must be a non-empty string' })
       return
     }
 
-    const seed = await SeedsService.create(userId, { content })
+    const seed = await SeedsService.create(userId, { content: content.trim() })
     
     // Queue automation jobs for the new seed
     // Fire and forget - don't wait for automations to complete

@@ -30,8 +30,8 @@ export function validateTransaction(
   switch (type) {
     case 'create_seed': {
       const d = data as CreateSeedTransactionData
-      if (typeof d.content !== 'string') {
-        throw new Error('create_seed transaction requires content string')
+      if (typeof d.content !== 'string' || d.content.trim().length === 0) {
+        throw new Error('create_seed transaction requires non-empty content string')
       }
       break
     }
@@ -100,6 +100,9 @@ export function computeSeedState(transactions: SeedTransaction[]): SeedState {
   if (!creationTransaction) {
     throw new Error('Seed must have a create_seed transaction')
   }
+
+  // Validate create_seed transaction before using it
+  validateTransaction(creationTransaction.transaction_type, creationTransaction.transaction_data)
 
   const creationData = creationTransaction.transaction_data as CreateSeedTransactionData
 

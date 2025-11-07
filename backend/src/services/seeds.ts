@@ -107,10 +107,17 @@ export class SeedsService {
   /**
    * Create a new seed
    * Creates seed row and create_seed transaction atomically
+   * Content is required and must be non-empty
    */
   static async create(userId: string, data: CreateSeedDto): Promise<Seed> {
+    // Validate content is required and non-empty
+    if (!data.content || typeof data.content !== 'string' || data.content.trim().length === 0) {
+      throw new Error('Content is required and must be a non-empty string')
+    }
+
     const id = uuidv4()
     const now = new Date()
+    const trimmedContent = data.content.trim()
 
     // Use a database transaction to ensure atomicity
     return await db.transaction(async (trx) => {
@@ -133,7 +140,7 @@ export class SeedsService {
           id: uuidv4(),
           seed_id: id,
           transaction_type: 'create_seed',
-          transaction_data: trx.raw('?::jsonb', [JSON.stringify({ content: data.content })]),
+          transaction_data: trx.raw('?::jsonb', [JSON.stringify({ content: trimmedContent })]),
           created_at: now,
           automation_id: null,
         })

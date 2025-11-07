@@ -6,9 +6,32 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Check for arguments
+FORCE_REBUILD=false
+RUN_MIGRATIONS=false
+
+for arg in "$@"; do
+    case "$arg" in
+        force-rebuild)
+            FORCE_REBUILD=true
+            echo -e "${YELLOW}Force rebuild enabled - will rebuild without cache${NC}"
+            ;;
+        run-migrations)
+            RUN_MIGRATIONS=true
+            echo -e "${YELLOW}Will run migrations after container starts${NC}"
+            ;;
+    esac
+done
+
 echo -e "${GREEN}Building development container...${NC}"
 cd "$(dirname "$0")/.." || exit
-podman build -f docker/Dockerfile.dev -t memoriae-dev:latest .
+
+# Build with --no-cache if force-rebuild is enabled
+if [ "$FORCE_REBUILD" = true ]; then
+    podman build --no-cache -f docker/Dockerfile.dev -t memoriae-dev:latest .
+else
+    podman build -f docker/Dockerfile.dev -t memoriae-dev:latest .
+fi
 
 echo -e "${GREEN}Starting development container...${NC}"
 
@@ -43,13 +66,33 @@ podman run -d \
   memoriae-dev:latest
 
 echo -e "${GREEN}Container started!${NC}"
+
+# Run migrations if requested
+if [ "$RUN_MIGRATIONS" = true ]; then
+    echo ""
+    echo -e "${YELLOW}Waiting for database to be ready...${NC}"
+    sleep 3
+    
+    echo -e "${YELLOW}Running migrations...${NC}"
+    podman exec memoriae-dev npm run migrate --prefix /app/backend || {
+        echo -e "${YELLOW}Migration may have failed or already be up to date${NC}"
+    }
+fi
+
 echo ""
 echo "Services available at:"
 echo "  - Frontend: http://localhost:5173"
 echo "  - Backend API: http://localhost:3000"
 echo "  - Debugging: localhost:9229"
 echo ""
-echo "View logs: podman logs -f memoriae-dev"
-echo "Stop: podman stop memoriae-dev"
-echo "Remove: podman rm -f memoriae-dev"
+echo "Usage:"
+echo "  ./docker/run-dev.sh                    - Build and start (uses cache)"
+echo "  ./docker/run-dev.sh force-rebuild      - Force rebuild without cache"
+echo "  ./docker/run-dev.sh run-migrations      - Run migrations after start"
+echo "  ./docker/run-dev.sh force-rebuild run-migrations - Both options"
+echo ""
+echo "Other commands:"
+echo "  View logs: podman logs -f memoriae-dev"
+echo "  Stop: podman stop memoriae-dev"
+echo "  Remove: podman rm -f memoriae-dev"
 
