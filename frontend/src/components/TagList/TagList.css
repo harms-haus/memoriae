@@ -32,7 +32,8 @@
   border: none;
   border-radius: var(--tag-border-radius, 0);
   background: transparent;
-  color: var(--tag-color, var(--text-primary));
+  /* Use custom color if set, otherwise fall back to default */
+  color: var(--tag-custom-color, var(--tag-color, var(--text-primary)));
   font-size: var(--tag-font-size, var(--text-sm));
   font-weight: var(--tag-font-weight, var(--weight-medium));
   transition: var(--transition-base);
@@ -41,7 +42,8 @@
 }
 
 .tag-item:hover {
-  color: var(--tag-color-hover, var(--accent-yellow));
+  /* Use custom color if set, otherwise fall back to default hover color */
+  color: var(--tag-custom-color, var(--tag-color-hover, var(--accent-yellow)));
   text-decoration: underline;
   transform: translateY(-1px);
 }

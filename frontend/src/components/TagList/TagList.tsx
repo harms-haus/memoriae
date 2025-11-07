@@ -65,9 +65,9 @@ function getThemeColor(index: number): string {
  * @returns A color value (hex code or CSS variable value)
  */
 function getTagColor(tagName: string, existingColor?: string | null): string {
-  // If tag already has a color, use it
-  if (existingColor) {
-    return existingColor
+  // If tag already has a color (and it's not empty), use it
+  if (existingColor && existingColor.trim() !== '') {
+    return existingColor.trim()
   }
 
   // Generate a consistent color based on tag name
@@ -258,6 +258,35 @@ export function TagList({
   }
 
   const classes = ['tag-list', className].filter(Boolean).join(' ')
+  // Store refs for tag elements to update colors when they change
+  const tagRefs = useRef<Map<string, HTMLAnchorElement | HTMLSpanElement>>(new Map())
+
+  // Update colors whenever tags or suppressColors changes
+  // Use useEffect to ensure refs are set before we try to update colors
+  // Compute visibleTags inside effect to avoid dependency issues
+  useEffect(() => {
+    const currentVisibleTags = tags.slice(0, visibleCount)
+    currentVisibleTags.forEach((tag) => {
+      const element = tagRefs.current.get(tag.id)
+      if (!element) return
+
+      if (suppressColors) {
+        element.style.removeProperty('color')
+        element.style.removeProperty('--tag-custom-color')
+      } else {
+        const tagColor = getTagColor(tag.name, tag.color)
+        // Set both CSS custom property and inline color with !important
+        // This ensures the color is applied even if CSS rules try to override
+        if (tagColor && tagColor.trim() !== '') {
+          element.style.setProperty('--tag-custom-color', tagColor)
+          element.style.setProperty('color', tagColor, 'important')
+        } else {
+          element.style.removeProperty('--tag-custom-color')
+          element.style.removeProperty('color')
+        }
+      }
+    })
+  }, [tags, visibleCount, suppressColors])
 
   return (
     <div ref={containerRef} className={classes} style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
@@ -265,30 +294,43 @@ export function TagList({
         const tagColor = suppressColors ? undefined : getTagColor(tag.name, tag.color)
 
         const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement | HTMLSpanElement>) => {
-          if (!suppressColors && tagColor) {
-            e.currentTarget.style.textDecoration = 'underline'
+          e.currentTarget.style.textDecoration = 'underline'
+          // Maintain the tag color on hover
+          if (!suppressColors && tagColor && tagColor.trim() !== '') {
             e.currentTarget.style.setProperty('color', tagColor, 'important')
-          } else {
-            e.currentTarget.style.textDecoration = 'underline'
           }
         }
 
         const handleMouseLeave = (e: React.MouseEvent<HTMLAnchorElement | HTMLSpanElement>) => {
-          if (!suppressColors && tagColor) {
-            e.currentTarget.style.textDecoration = 'none'
+          e.currentTarget.style.textDecoration = 'none'
+          // Maintain the tag color after hover
+          if (!suppressColors && tagColor && tagColor.trim() !== '') {
             e.currentTarget.style.setProperty('color', tagColor, 'important')
-          } else {
-            e.currentTarget.style.textDecoration = 'none'
           }
         }
 
         const tagContent = suppressHashes ? tag.name : `#${tag.name}`
         const tagClasses = ['tag-item'].filter(Boolean).join(' ')
 
-        // Set color using ref callback
+        // Set color using ref callback - store element and set color with !important
         const setTagRef = (el: HTMLAnchorElement | HTMLSpanElement | null) => {
-          if (el && !suppressColors && tagColor) {
-            el.style.setProperty('color', tagColor, 'important')
+          if (el) {
+            tagRefs.current.set(tag.id, el)
+            if (!suppressColors && tagColor && tagColor.trim() !== '') {
+              // Set both CSS custom property and inline color with !important
+              el.style.setProperty('--tag-custom-color', tagColor)
+              el.style.setProperty('color', tagColor, 'important')
+            } else if (suppressColors) {
+              // Clear custom color if colors are suppressed
+              el.style.removeProperty('--tag-custom-color')
+              el.style.removeProperty('color')
+            } else {
+              // Clear if no valid color
+              el.style.removeProperty('--tag-custom-color')
+              el.style.removeProperty('color')
+            }
+          } else {
+            tagRefs.current.delete(tag.id)
           }
         }
 
@@ -305,7 +347,7 @@ export function TagList({
               style={{
                 textDecoration: 'none',
                 cursor: 'pointer',
-                color: suppressColors ? undefined : tagColor,
+                // Don't set color in inline style - let ref callback handle it with !important
               }}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
@@ -319,9 +361,7 @@ export function TagList({
               key={tag.id}
               ref={setTagRef}
               className={tagClasses}
-              style={{
-                color: suppressColors ? undefined : tagColor,
-              }}
+              // Don't set color in inline style - let ref callback handle it with !important
             >
               {tagContent}
             </span>

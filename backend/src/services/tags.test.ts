@@ -29,9 +29,24 @@ vi.mock('../db/connection', () => {
   }
 })
 
+// Mock the tag transactions service
+vi.mock('./tag-transactions', () => {
+  const mockGetByTagId = vi.fn()
+  return {
+    TagTransactionsService: {
+      getByTagId: mockGetByTagId,
+    },
+    __mockGetByTagId: mockGetByTagId,
+  }
+})
+
 describe('Tags Service', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    // Default: mock transactions service to return empty arrays (fallback to direct tag data)
+    const transactionsModule = await import('./tag-transactions')
+    const mockGetByTagId = (transactionsModule as any).__mockGetByTagId
+    mockGetByTagId.mockResolvedValue([])
   })
 
   describe('getAllTags', () => {

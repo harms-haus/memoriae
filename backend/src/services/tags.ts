@@ -42,19 +42,60 @@ export interface TagDetail extends Tag {
 /**
  * Get all tags
  * Returns all tags in the database, ordered by name
- * For backward compatibility - computes state from transactions if they exist
+ * Computes current state from transactions for each tag
  */
 export async function getAllTags(): Promise<Tag[]> {
   const tags = await db<TagRow>('tags')
     .select('*')
     .orderBy('name', 'asc')
 
-  // Convert to frontend format, providing empty string for null colors
-  return tags.map(tag => ({
-    id: tag.id,
-    name: tag.name,
-    color: tag.color || '',
-  }))
+  // Compute current state from transactions for each tag
+  const tagsWithState = await Promise.all(
+    tags.map(async (tag) => {
+      // Get all transactions for this tag
+      const transactions = await TagTransactionsService.getByTagId(tag.id)
+      
+      // Compute current state from transactions
+      // Only use transactions if there's a creation transaction (required by computeTagState)
+      let currentState
+      const hasCreationTransaction = transactions.some(
+        (t) => t.transaction_type === 'creation'
+      )
+      
+      if (transactions.length > 0 && hasCreationTransaction) {
+        try {
+          currentState = computeTagState(transactions)
+        } catch (error) {
+          // If computeTagState fails (e.g., invalid transaction data), fall back to direct tag data
+          console.warn(`Failed to compute state from transactions for tag ${tag.id}:`, error)
+          currentState = {
+            name: tag.name,
+            color: tag.color,
+            timestamp: tag.created_at,
+            metadata: {},
+          }
+        }
+      } else {
+        // Fallback to direct tag data if no transactions exist or no creation transaction
+        // (migration compatibility for legacy tags)
+        currentState = {
+          name: tag.name,
+          color: tag.color,
+          timestamp: tag.created_at,
+          metadata: {},
+        }
+      }
+
+      // Return tag with computed state
+      return {
+        id: tag.id,
+        name: currentState.name,
+        color: currentState.color || '',
+      }
+    })
+  )
+
+  return tagsWithState
 }
 
 /**

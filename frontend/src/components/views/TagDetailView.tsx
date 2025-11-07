@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
-import { Timeline, type TimelineItem } from '@mother/components/Timeline'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
 import { Input } from '@mother/components/Input'
 import { SeedView } from '../SeedView'
 import { HexColorPicker, HexColorInput } from 'react-colorful'
+import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
 import type { TagTransaction, Seed, Tag } from '../../types'
 import './Views.css'
 import './TagDetailView.css'
@@ -32,7 +32,7 @@ interface TagDetailViewProps {
 /**
  * TagDetailView displays:
  * - Current tag state (computed from transactions)
- * - Timeline of all transactions (immutable)
+ * - Transactions history (immutable)
  * - List of seeds using this tag
  */
 export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
@@ -150,32 +150,94 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
     })
   }
 
-  const getTransactionTypeLabel = (type: string) => {
-    switch (type) {
-      case 'creation': return 'Created'
-      case 'edit': return 'Name changed'
-      case 'set_color': return 'Color changed'
-      default: return type
+  // Helper functions for formatting transactions
+  const formatTransactionTitle = (transaction: TagTransaction): string => {
+    switch (transaction.transaction_type) {
+      case 'creation':
+        return 'Tag Created'
+      case 'edit':
+        return 'Name Changed'
+      case 'set_color':
+        return 'Color Changed'
+      default:
+        return transaction.transaction_type
     }
   }
 
-  const getTransactionDescription = (transaction: TagTransaction) => {
+  const formatTransactionContent = (transaction: TagTransaction): string => {
+    const parts: string[] = []
+    
     switch (transaction.transaction_type) {
       case 'creation': {
         const data = transaction.transaction_data as { name: string; color: string | null }
-        return `Created with name "${data.name}"${data.color ? ` and color` : ''}`
+        parts.push(`Created with name "${data.name}"`)
+        if (data.color) {
+          parts.push(`Color: ${data.color}`)
+        }
+        break
       }
       case 'edit': {
         const data = transaction.transaction_data as { name: string }
-        return `Name changed to "${data.name}"`
+        parts.push(`Name changed to "${data.name}"`)
+        break
       }
       case 'set_color': {
         const data = transaction.transaction_data as { color: string | null }
-        return `Color ${data.color ? `changed to ${data.color}` : 'removed'}`
+        if (data.color) {
+          parts.push(`Color changed to ${data.color}`)
+        } else {
+          parts.push('Color removed')
+        }
+        break
       }
-      default:
-        return 'Unknown transaction'
     }
+
+    if (transaction.automation_id) {
+      parts.push('(Automated)')
+    }
+
+    return parts.join(' • ') || 'Transaction'
+  }
+
+  const getTransactionColor = (transaction: TagTransaction): string => {
+    switch (transaction.transaction_type) {
+      case 'creation':
+        return 'var(--accent-green)'
+      case 'edit':
+        return 'var(--accent-blue)'
+      case 'set_color':
+        return 'var(--accent-purple)'
+      default:
+        return 'var(--text-secondary)'
+    }
+  }
+
+  // Transform transactions into TransactionHistoryMessage format
+  // Must be called before early returns to maintain hook order
+  const transactionMessages: TransactionHistoryMessage[] = useMemo(() => {
+    if (!tag) return []
+    return tag.transactions
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .map((transaction) => ({
+        id: transaction.id,
+        title: formatTransactionTitle(transaction),
+        content: formatTransactionContent(transaction),
+        time: transaction.created_at,
+        groupKey: transaction.transaction_type, // Use transaction type as group key
+      }))
+  }, [tag])
+
+  const transactionTypeMap = useMemo(() => {
+    if (!tag) return new Map<string, TagTransaction>()
+    const map = new Map<string, TagTransaction>()
+    tag.transactions.forEach(t => map.set(t.id, t))
+    return map
+  }, [tag])
+
+  const getColor = (message: TransactionHistoryMessage): string => {
+    const transaction = transactionTypeMap.get(message.id)
+    if (!transaction) return 'var(--text-secondary)'
+    return getTransactionColor(transaction)
   }
 
   if (loading) {
@@ -214,41 +276,6 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
         </div>
         <p className="text-secondary">Tag not found.</p>
       </div>
-    )
-  }
-
-  const timelineItems: TimelineItem[] = tag.transactions.map((transaction, index) => {
-    // Calculate position evenly distributed (0-100)
-    const position = tag.transactions.length > 1 
-      ? (index / (tag.transactions.length - 1)) * 100 
-      : 50
-    
-    return {
-      id: transaction.id,
-      position,
-    }
-  })
-
-  const renderPanel = (index: number, width: number): React.ReactNode => {
-    const transaction = tag.transactions[index]
-    if (!transaction) return null
-
-    return (
-      <div className="timeline-panel">
-        <h4 className="timeline-panel-title">{getTransactionTypeLabel(transaction.transaction_type)}</h4>
-        <p className="timeline-panel-description">{getTransactionDescription(transaction)}</p>
-      </div>
-    )
-  }
-
-  const renderOpposite = (index: number, width: number, panelSide: 'left' | 'right'): React.ReactNode => {
-    const transaction = tag.transactions[index]
-    if (!transaction) return null
-
-    return (
-      <span className="timeline-timestamp">
-        {formatDate(transaction.created_at.toString())}
-      </span>
     )
   }
 
@@ -393,24 +420,10 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
             </div>
           </Panel>
 
-          {/* Timeline Panel */}
+          {/* Transactions Panel */}
           <Panel variant="elevated" className="tag-detail-timeline">
-            <h3 className="panel-header">Timeline</h3>
-            <div className="tag-detail-timeline-wrapper">
-              {tag.transactions.length === 0 ? (
-                <p className="text-secondary">No transactions yet.</p>
-              ) : (
-                <Timeline
-                  items={timelineItems}
-                  mode="left"
-                  renderPanel={renderPanel}
-                  renderOpposite={renderOpposite}
-                  maxPanelWidth={400}
-                  panelSpacing={16}
-                  panelClickable={true}
-                />
-              )}
-            </div>
+            <h3 className="panel-header">Transactions</h3>
+            <TransactionHistoryList messages={transactionMessages} getColor={getColor} />
           </Panel>
         </div>
 
