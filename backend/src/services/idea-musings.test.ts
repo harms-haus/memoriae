@@ -87,6 +87,8 @@ describe('IdeaMusingsService', () => {
     created_at: new Date(),
     dismissed: false,
     dismissed_at: null,
+    completed: false,
+    completed_at: null,
   }
 
   // Get mocks from the module
@@ -123,7 +125,29 @@ describe('IdeaMusingsService', () => {
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe(mockMusingId)
       expect(result[0].seed_id).toBe(mockSeedId)
+      expect(result[0].completed).toBe(false)
+      expect(result[0].completed_at).toBeNull()
       expect(SeedsService.SeedsService.getByUser).toHaveBeenCalledWith(mockUserId)
+      // Verify that completed filter is applied (where is called multiple times)
+      expect(mocks.where).toHaveBeenCalledWith('completed', false)
+    })
+
+    it('should exclude completed musings', async () => {
+      const completedMusingRow = {
+        ...mockMusingRow,
+        completed: true,
+        completed_at: new Date(),
+      }
+
+      vi.mocked(SeedsService.SeedsService.getByUser).mockResolvedValue([mockSeed])
+      // Only return non-completed musings
+      mocks.select.mockResolvedValue([mockMusingRow])
+
+      const result = await IdeaMusingsService.getDailyMusings(mockUserId)
+
+      // Should not include completed musings
+      expect(result.every(m => !m.completed)).toBe(true)
+      expect(mocks.where).toHaveBeenCalledWith('completed', false)
     })
 
     it('should return empty array when no musings exist', async () => {
@@ -205,6 +229,8 @@ describe('IdeaMusingsService', () => {
 
       expect(result).toBeDefined()
       expect(result?.id).toBe(mockMusingId)
+      expect(result?.completed).toBe(false)
+      expect(result?.completed_at).toBeNull()
     })
 
     it('should return null when musing not found', async () => {
@@ -213,6 +239,20 @@ describe('IdeaMusingsService', () => {
       const result = await IdeaMusingsService.getById(mockMusingId)
 
       expect(result).toBeNull()
+    })
+
+    it('should include completed fields when musing is completed', async () => {
+      const completedRow = {
+        ...mockMusingRow,
+        completed: true,
+        completed_at: new Date('2024-01-01'),
+      }
+      mocks.first.mockResolvedValue(completedRow)
+
+      const result = await IdeaMusingsService.getById(mockMusingId)
+
+      expect(result?.completed).toBe(true)
+      expect(result?.completed_at).toBeInstanceOf(Date)
     })
   })
 
@@ -230,7 +270,13 @@ describe('IdeaMusingsService', () => {
 
       expect(result).toBeDefined()
       expect(result.id).toBe(mockMusingId)
+      expect(result.completed).toBe(false)
+      expect(result.completed_at).toBeNull()
       expect(mocks.insert).toHaveBeenCalled()
+      // Verify insert includes completed fields
+      const insertCall = mocks.insert.mock.calls[0][0]
+      expect(insertCall.completed).toBe(false)
+      expect(insertCall.completed_at).toBeNull()
     })
   })
 
@@ -325,6 +371,86 @@ describe('IdeaMusingsService', () => {
 
       expect(result).toBe(false)
       expect(mocks.count).toHaveBeenCalledWith('* as count')
+    })
+  })
+
+  describe('markComplete', () => {
+    it('should mark musing as complete', async () => {
+      const completedAt = new Date()
+      const updatedRow = {
+        ...mockMusingRow,
+        completed: true,
+        completed_at: completedAt,
+      }
+
+      mocks.first.mockResolvedValueOnce(mockMusingRow) // For getById check
+      mocks.first.mockResolvedValueOnce(updatedRow) // For getById after update
+      vi.mocked(SeedsService.SeedsService.getById).mockResolvedValue(mockSeed)
+
+      const result = await IdeaMusingsService.markComplete(mockMusingId, mockUserId)
+
+      expect(result.completed).toBe(true)
+      expect(result.completed_at).toBeInstanceOf(Date)
+      expect(mocks.update).toHaveBeenCalled()
+      const updateCall = mocks.update.mock.calls[0][0]
+      expect(updateCall.completed).toBe(true)
+      expect(updateCall.completed_at).toBeInstanceOf(Date)
+    })
+
+    it('should verify user ownership before marking complete', async () => {
+      mocks.first.mockResolvedValue(mockMusingRow)
+      vi.mocked(SeedsService.SeedsService.getById).mockResolvedValue(null) // Seed not found for this user
+
+      await expect(
+        IdeaMusingsService.markComplete(mockMusingId, mockUserId)
+      ).rejects.toThrow('Musing does not belong to user')
+      expect(mocks.update).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if musing not found', async () => {
+      mocks.first.mockResolvedValue(null) // Musing not found
+
+      await expect(
+        IdeaMusingsService.markComplete(mockMusingId, mockUserId)
+      ).rejects.toThrow('Musing not found')
+      expect(mocks.update).not.toHaveBeenCalled()
+    })
+
+    it('should be idempotent - can mark already completed musing', async () => {
+      const alreadyCompletedRow = {
+        ...mockMusingRow,
+        completed: true,
+        completed_at: new Date('2024-01-01'),
+      }
+      const updatedRow = {
+        ...alreadyCompletedRow,
+        completed_at: new Date(), // Updated timestamp
+      }
+
+      mocks.first.mockResolvedValueOnce(alreadyCompletedRow) // For getById check
+      mocks.first.mockResolvedValueOnce(updatedRow) // For getById after update
+      vi.mocked(SeedsService.SeedsService.getById).mockResolvedValue(mockSeed)
+
+      const result = await IdeaMusingsService.markComplete(mockMusingId, mockUserId)
+
+      expect(result.completed).toBe(true)
+      expect(mocks.update).toHaveBeenCalled()
+    })
+  })
+
+  describe('getBySeedId', () => {
+    it('should include completed fields in response', async () => {
+      const completedRow = {
+        ...mockMusingRow,
+        completed: true,
+        completed_at: new Date('2024-01-01'),
+      }
+      mocks.select.mockResolvedValue([completedRow])
+
+      const result = await IdeaMusingsService.getBySeedId(mockSeedId)
+
+      expect(result[0].completed).toBe(true)
+      expect(result[0].completed_at).toBeInstanceOf(Date)
     })
   })
 })

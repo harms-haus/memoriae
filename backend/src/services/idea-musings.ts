@@ -30,6 +30,8 @@ export interface IdeaMusingRow {
   created_at: Date
   dismissed: boolean
   dismissed_at: Date | null
+  completed: boolean
+  completed_at: Date | null
 }
 
 export interface IdeaMusing {
@@ -40,6 +42,8 @@ export interface IdeaMusing {
   created_at: Date
   dismissed: boolean
   dismissed_at: Date | null
+  completed: boolean
+  completed_at: Date | null
   seed?: import('./seeds').Seed // Optional, populated when fetching with seed details
 }
 
@@ -71,11 +75,13 @@ export class IdeaMusingsService {
       }
 
       // Get musings created today for user's seeds
+      // Exclude dismissed and completed musings
       const rows = await db<IdeaMusingRow>('idea_musings')
         .whereIn('seed_id', seedIds)
         .where('created_at', '>=', today)
         .where('created_at', '<', tomorrow)
         .where('dismissed', false)
+        .where('completed', false)
         .orderBy('created_at', 'desc')
         .select('*')
 
@@ -90,6 +96,8 @@ export class IdeaMusingsService {
           created_at: new Date(row.created_at),
           dismissed: row.dismissed,
           dismissed_at: row.dismissed_at ? new Date(row.dismissed_at) : null,
+          completed: row.completed ?? false,
+          completed_at: row.completed_at ? new Date(row.completed_at) : null,
         }
         const seed = seedMap.get(row.seed_id)
         if (seed) {
@@ -125,6 +133,8 @@ export class IdeaMusingsService {
         created_at: new Date(row.created_at),
         dismissed: row.dismissed,
         dismissed_at: row.dismissed_at ? new Date(row.dismissed_at) : null,
+        completed: row.completed ?? false,
+        completed_at: row.completed_at ? new Date(row.completed_at) : null,
       }))
     } catch (error: any) {
       // Handle case where table doesn't exist yet
@@ -156,6 +166,8 @@ export class IdeaMusingsService {
       created_at: new Date(row.created_at),
       dismissed: row.dismissed,
       dismissed_at: row.dismissed_at ? new Date(row.dismissed_at) : null,
+      completed: row.completed ?? false,
+      completed_at: row.completed_at ? new Date(row.completed_at) : null,
     }
   }
 
@@ -178,6 +190,8 @@ export class IdeaMusingsService {
       created_at: now,
       dismissed: false,
       dismissed_at: null,
+      completed: false,
+      completed_at: null,
     })
 
     const musing = await this.getById(id)
@@ -214,6 +228,37 @@ export class IdeaMusingsService {
     const updated = await this.getById(musingId)
     if (!updated) {
       throw new Error('Failed to dismiss musing')
+    }
+
+    return updated
+  }
+
+  /**
+   * Mark a musing as complete
+   */
+  static async markComplete(musingId: string, userId: string): Promise<IdeaMusing> {
+    // Verify musing belongs to user's seed
+    const musing = await this.getById(musingId)
+    if (!musing) {
+      throw new Error('Musing not found')
+    }
+
+    const seed = await SeedsService.getById(musing.seed_id, userId)
+    if (!seed) {
+      throw new Error('Musing does not belong to user')
+    }
+
+    // Update musing
+    await db<IdeaMusingRow>('idea_musings')
+      .where({ id: musingId })
+      .update({
+        completed: true,
+        completed_at: new Date(),
+      })
+
+    const updated = await this.getById(musingId)
+    if (!updated) {
+      throw new Error('Failed to mark musing as complete')
     }
 
     return updated

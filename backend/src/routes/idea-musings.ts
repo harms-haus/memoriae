@@ -365,7 +365,7 @@ Combine them while keeping the seed's format and style.`
 
       const newContent = message.content?.trim() || ''
 
-      // If confirm is true, create transaction
+      // If confirm is true, create transaction and mark musing as complete
       if (confirm === true) {
         await SeedTransactionsService.create({
           seed_id: seed.id,
@@ -375,6 +375,9 @@ Combine them while keeping the seed's format and style.`
           },
           automation_id: null,
         })
+
+        // Mark musing as complete
+        await IdeaMusingsService.markComplete(id, userId)
 
         res.json({ applied: true, content: newContent })
       } else {
@@ -469,7 +472,7 @@ Respond to the prompt considering the seed content.`
 
       const llmResponse = message.content?.trim() || ''
 
-      // If confirm is true, create transaction with combined content
+      // If confirm is true, create transaction with combined content and mark musing as complete
       if (confirm === true) {
         // Combine seed content with LLM response
         const combinedContent = `${seed.currentState.seed}\n\n${llmResponse}`
@@ -482,6 +485,9 @@ Respond to the prompt considering the seed content.`
           },
           automation_id: null,
         })
+
+        // Mark musing as complete
+        await IdeaMusingsService.markComplete(id, userId)
 
         res.json({ applied: true, content: combinedContent })
       } else {

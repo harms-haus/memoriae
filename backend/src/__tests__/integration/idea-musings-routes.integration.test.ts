@@ -24,6 +24,7 @@ vi.mock('../../services/idea-musings', () => ({
     create: vi.fn(),
     recordShown: vi.fn(),
     getSeedsShownInLastDays: vi.fn(),
+    markComplete: vi.fn(),
   },
 }))
 
@@ -397,6 +398,8 @@ describe('Idea Musings Routes', () => {
         created_at: new Date(),
         dismissed: false,
         dismissed_at: null,
+        completed: false,
+        completed_at: null,
       }
 
       const mockSeed = {
@@ -508,6 +511,70 @@ describe('Idea Musings Routes', () => {
 
       expect(response.body.applied).toBe(true)
       expect(SeedTransactionsService.create).toHaveBeenCalled()
+      // Verify musing is marked as complete
+      expect(IdeaMusingsService.markComplete).toHaveBeenCalledWith(mockMusingId, mockUserId)
+    })
+
+    it('should not mark musing as complete when confirm is false', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const mockMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'numbered_ideas',
+        content: { ideas: ['Idea 1'] },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+        completed: false,
+        completed_at: null,
+      }
+
+      const mockSeed = {
+        id: mockSeedId,
+        user_id: mockUserId,
+        created_at: new Date(),
+        currentState: {
+          seed: 'Original content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: 'test-key',
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const mockOpenRouterClient = {
+        createChatCompletion: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'Original content\n\nIdea 1',
+            },
+          }],
+        }),
+      }
+      vi.mocked(createOpenRouterClient).mockReturnValue(mockOpenRouterClient as any)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/apply-idea`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ ideaIndex: 0, confirm: false })
+        .expect(200)
+
+      expect(response.body.preview).toBeDefined()
+      // Should not mark complete when confirm is false
+      expect(IdeaMusingsService.markComplete).not.toHaveBeenCalled()
+      expect(SeedTransactionsService.create).not.toHaveBeenCalled()
     })
 
     it('should return 400 for invalid idea index', async () => {
@@ -522,6 +589,8 @@ describe('Idea Musings Routes', () => {
         created_at: new Date(),
         dismissed: false,
         dismissed_at: null,
+        completed: false,
+        completed_at: null,
       }
 
       vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
@@ -533,6 +602,159 @@ describe('Idea Musings Routes', () => {
         .expect(400)
 
       expect(response.body.error).toBe('Invalid idea index')
+    })
+  })
+
+  describe('POST /api/idea-musings/:musingId/prompt-llm', () => {
+    it('should return preview without confirm', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const mockMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'markdown',
+        content: { markdown: 'Some content' },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+        completed: false,
+        completed_at: null,
+      }
+
+      const mockSeed = {
+        id: mockSeedId,
+        user_id: mockUserId,
+        created_at: new Date(),
+        currentState: {
+          seed: 'Original content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: 'test-key',
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const mockOpenRouterClient = {
+        createChatCompletion: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'LLM response',
+            },
+          }],
+        }),
+      }
+      vi.mocked(createOpenRouterClient).mockReturnValue(mockOpenRouterClient as any)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/prompt-llm`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ prompt: 'Test prompt' })
+        .expect(200)
+
+      expect(response.body.preview).toBeDefined()
+      expect(response.body.preview).toBe('LLM response')
+      // Should not mark complete when confirm is false
+      expect(IdeaMusingsService.markComplete).not.toHaveBeenCalled()
+      expect(SeedTransactionsService.create).not.toHaveBeenCalled()
+    })
+
+    it('should apply prompt and mark musing as complete when confirm=true', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const mockMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'markdown',
+        content: { markdown: 'Some content' },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+        completed: false,
+        completed_at: null,
+      }
+
+      const mockSeed = {
+        id: mockSeedId,
+        user_id: mockUserId,
+        created_at: new Date(),
+        currentState: {
+          seed: 'Original content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: 'test-key',
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const mockOpenRouterClient = {
+        createChatCompletion: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'LLM response',
+            },
+          }],
+        }),
+      }
+      vi.mocked(createOpenRouterClient).mockReturnValue(mockOpenRouterClient as any)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue({
+        id: 'transaction-1',
+        seed_id: mockSeedId,
+        transaction_type: 'edit_content',
+        transaction_data: { content: 'Original content\n\nLLM response' },
+        created_at: new Date(),
+        automation_id: null,
+      } as any)
+      vi.mocked(IdeaMusingsService.markComplete).mockResolvedValue({
+        ...mockMusing,
+        completed: true,
+        completed_at: new Date(),
+      } as any)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/prompt-llm`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ prompt: 'Test prompt', confirm: true })
+        .expect(200)
+
+      expect(response.body.applied).toBe(true)
+      expect(response.body.content).toBe('Original content\n\nLLM response')
+      expect(SeedTransactionsService.create).toHaveBeenCalled()
+      // Verify musing is marked as complete
+      expect(IdeaMusingsService.markComplete).toHaveBeenCalledWith(mockMusingId, mockUserId)
+    })
+
+    it('should return 400 for missing prompt', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/prompt-llm`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(400)
+
+      expect(response.body.error).toContain('prompt is required')
     })
   })
 })

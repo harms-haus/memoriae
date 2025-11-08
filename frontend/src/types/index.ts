@@ -284,5 +284,7 @@ export interface IdeaMusing {
   created_at: string
   dismissed: boolean
   dismissed_at?: string
+  completed: boolean
+  completed_at?: string
   seed?: Seed // Optional, populated when fetching with seed details
 }
