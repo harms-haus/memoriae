@@ -311,6 +311,17 @@ function SeedDetailWrapper() {
     return null
   }
 
+  // Use browser history for back navigation, with fallback to /seeds
+  const handleBack = () => {
+    // Check if we can go back in history (more than just the current page)
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      // Fallback if no history (e.g., direct link)
+      navigate('/seeds')
+    }
+  }
+
   return (
     <div style={{
       height: '100vh',
@@ -329,7 +340,7 @@ function SeedDetailWrapper() {
         <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
           <SeedDetailView
             seedId={id}
-            onBack={() => navigate('/seeds')}
+            onBack={handleBack}
           />
         </Suspense>
       </div>
@@ -344,6 +355,17 @@ function TagDetailWrapper() {
   if (!id) {
     navigate('/tags')
     return null
+  }
+
+  // Use browser history for back navigation, with fallback to /tags
+  const handleBack = () => {
+    // Check if we can go back in history (more than just the current page)
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      // Fallback if no history (e.g., direct link)
+      navigate('/tags')
+    }
   }
 
   return (
@@ -364,7 +386,7 @@ function TagDetailWrapper() {
         <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
           <TagDetailView
             tagId={id}
-            onBack={() => navigate('/tags')}
+            onBack={handleBack}
           />
         </Suspense>
       </div>

@@ -1,5 +1,7 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { TagList } from '../TagList'
+import { renderHashTags } from '../../utils/renderHashTags'
 import type { Seed } from '../../types'
 import './SeedView.css'
 
@@ -57,6 +59,7 @@ export function SeedView({
   editedContent,
   editedTags,
 }: SeedViewProps) {
+  const navigate = useNavigate()
   const originalContent = seed.currentState?.seed || ''
   const originalTags = seed.currentState?.tags || []
   const seedCategories = seed.currentState?.categories || []
@@ -73,6 +76,21 @@ export function SeedView({
     event.stopPropagation()
     if (!isEditing) {
       onTagClick?.(tag.id, tag.name)
+    }
+  }
+
+  const handleHashTagClick = (tagName: string) => {
+    if (!isEditing) {
+      // Look up the tag ID from seedTags by matching the tag name (case-insensitive)
+      const matchingTag = seedTags.find(
+        tag => tag.name.toLowerCase() === tagName.toLowerCase()
+      )
+      
+      if (matchingTag) {
+        // Navigate to tag details view (browser history will handle back navigation)
+        navigate(`/tags/${matchingTag.id}`)
+      }
+      // If no matching tag found, do nothing (hashtag doesn't correspond to an actual tag)
     }
   }
 
@@ -107,7 +125,7 @@ export function SeedView({
           />
         ) : (
           <div className="seed-view-content">
-            {content}
+            {renderHashTags(content, handleHashTagClick, tagColors)}
           </div>
         )}
 

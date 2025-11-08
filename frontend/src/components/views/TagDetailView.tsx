@@ -445,8 +445,8 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
                       <SeedView
                         seed={seed}
                         tagColors={tagColorMap}
-                        onTagClick={(tagId, tagName) => {
-                          navigate(`/tags/${tagId}`)
+                        onTagClick={(clickedTagId, tagName) => {
+                          navigate(`/tags/${clickedTagId}`)
                         }}
                       />
                     </div>
