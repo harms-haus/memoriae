@@ -504,7 +504,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
                 })()}
                 onTagClick={(tagId, tagName) => {
                   if (!isEditing) {
-                    navigate(`/tags/${tagId}`)
+                    navigate(`/tags/${encodeURIComponent(tagName)}`)
                   }
                 }}
                 isEditing={isEditing}

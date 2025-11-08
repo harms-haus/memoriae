@@ -87,8 +87,8 @@ export function SeedView({
       )
       
       if (matchingTag) {
-        // Navigate to tag details view (browser history will handle back navigation)
-        navigate(`/tags/${matchingTag.id}`)
+        // Navigate to tag details view using tag name (browser history will handle back navigation)
+        navigate(`/tags/${encodeURIComponent(matchingTag.name)}`)
       }
       // If no matching tag found, do nothing (hashtag doesn't correspond to an actual tag)
     }

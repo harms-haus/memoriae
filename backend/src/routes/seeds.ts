@@ -11,6 +11,26 @@ const router = Router()
 router.use(authenticate)
 
 /**
+ * Helper function to resolve seed ID from either UUID or slug format
+ * Returns the actual UUID for the seed, or null if not found
+ */
+async function resolveSeedId(identifier: string, userId: string): Promise<string | null> {
+  if (!identifier) {
+    return null
+  }
+
+  if (identifier.includes('/')) {
+    // Slug format: get seed by slug and return its ID
+    const seed = await SeedsService.getBySlug(identifier, userId)
+    return seed ? seed.id : null
+  } else {
+    // UUID format: verify it exists and belongs to user
+    const seed = await SeedsService.getById(identifier, userId)
+    return seed ? seed.id : null
+  }
+}
+
+/**
  * GET /api/seeds
  * Get all seeds for the authenticated user
  */
@@ -26,7 +46,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
 /**
  * GET /api/seeds/:id
- * Get a single seed by ID
+ * Get a single seed by ID or slug
+ * Supports both UUID format and slug format (uuidPrefix/slug)
  */
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -34,11 +55,20 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params
 
     if (!id) {
-      res.status(400).json({ error: 'Seed ID is required' })
+      res.status(400).json({ error: 'Seed ID or slug is required' })
       return
     }
 
-    const seed = await SeedsService.getById(id, userId)
+    // Check if it's a slug format (contains '/') or UUID format
+    let seed: Awaited<ReturnType<typeof SeedsService.getById>> | null = null
+    
+    if (id.includes('/')) {
+      // Slug format: {uuidPrefix}/{slug}
+      seed = await SeedsService.getBySlug(id, userId)
+    } else {
+      // UUID format (backward compatibility)
+      seed = await SeedsService.getById(id, userId)
+    }
 
     if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
@@ -82,7 +112,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 
 /**
  * PUT /api/seeds/:id
- * Update a seed
+ * Update a seed (supports both UUID and slug formats)
  */
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -91,7 +121,14 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const { content } = req.body
 
     if (!id) {
-      res.status(400).json({ error: 'Seed ID is required' })
+      res.status(400).json({ error: 'Seed ID or slug is required' })
+      return
+    }
+
+    // Resolve to actual UUID
+    const seedId = await resolveSeedId(id, userId)
+    if (!seedId) {
+      res.status(404).json({ error: 'Seed not found' })
       return
     }
 
@@ -104,7 +141,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       updateData.content = content
     }
 
-    const seed = await SeedsService.update(id, userId, updateData)
+    const seed = await SeedsService.update(seedId, userId, updateData)
 
     if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
@@ -119,7 +156,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
 /**
  * DELETE /api/seeds/:id
- * Delete a seed
+ * Delete a seed (supports both UUID and slug formats)
  */
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -127,11 +164,18 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
     const { id } = req.params
 
     if (!id) {
-      res.status(400).json({ error: 'Seed ID is required' })
+      res.status(400).json({ error: 'Seed ID or slug is required' })
       return
     }
 
-    const deleted = await SeedsService.delete(id, userId)
+    // Resolve to actual UUID
+    const seedId = await resolveSeedId(id, userId)
+    if (!seedId) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    const deleted = await SeedsService.delete(seedId, userId)
 
     if (!deleted) {
       res.status(404).json({ error: 'Seed not found' })
@@ -146,7 +190,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 
 /**
  * GET /api/seeds/:id/automations
- * Get all available automations for a seed
+ * Get all available automations for a seed (supports both UUID and slug formats)
  */
 router.get('/:id/automations', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -154,13 +198,13 @@ router.get('/:id/automations', async (req: Request, res: Response, next: NextFun
     const { id } = req.params
 
     if (!id) {
-      res.status(400).json({ error: 'Seed ID is required' })
+      res.status(400).json({ error: 'Seed ID or slug is required' })
       return
     }
 
-    // Verify seed ownership
-    const seed = await SeedsService.getById(id, userId)
-    if (!seed) {
+    // Resolve to actual UUID and verify seed ownership
+    const seedId = await resolveSeedId(id, userId)
+    if (!seedId) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -185,15 +229,15 @@ router.get('/:id/automations', async (req: Request, res: Response, next: NextFun
 
 /**
  * POST /api/seeds/:id/automations/:automationId/run
- * Manually trigger an automation for a seed
+ * Manually trigger an automation for a seed (supports both UUID and slug formats)
  */
 router.post('/:id/automations/:automationId/run', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id
-    const { id: seedId, automationId } = req.params
+    const { id, automationId } = req.params
 
-    if (!seedId) {
-      res.status(400).json({ error: 'Seed ID is required' })
+    if (!id) {
+      res.status(400).json({ error: 'Seed ID or slug is required' })
       return
     }
 
@@ -202,9 +246,9 @@ router.post('/:id/automations/:automationId/run', async (req: Request, res: Resp
       return
     }
 
-    // Verify seed ownership
-    const seed = await SeedsService.getById(seedId, userId)
-    if (!seed) {
+    // Resolve to actual UUID and verify seed ownership
+    const seedId = await resolveSeedId(id, userId)
+    if (!seedId) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }

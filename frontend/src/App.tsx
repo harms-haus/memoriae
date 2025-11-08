@@ -138,8 +138,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
     navigate(routeMap[value] || '/seeds')
   }
 
-  const handleSeedSelect = (seedId: string) => {
-    navigate(`/seeds/${seedId}`)
+  const handleSeedSelect = (seed: { id: string; slug?: string | null }) => {
+    // Use slug if available, otherwise fall back to ID (backward compatibility)
+    const identifier = seed.slug || seed.id
+    navigate(`/seeds/${identifier}`)
   }
 
   const handleSeedCreated = () => {
@@ -303,10 +305,10 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
 }
 
 function SeedDetailWrapper() {
-  const { id } = useParams<{ id: string }>()
+  const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
-  if (!id) {
+  if (!slug) {
     navigate('/seeds')
     return null
   }
@@ -339,7 +341,7 @@ function SeedDetailWrapper() {
       }}>
         <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
           <SeedDetailView
-            seedId={id}
+            seedId={slug}
             onBack={handleBack}
           />
         </Suspense>
@@ -349,10 +351,10 @@ function SeedDetailWrapper() {
 }
 
 function TagDetailWrapper() {
-  const { id } = useParams<{ id: string }>()
+  const { name } = useParams<{ name: string }>()
   const navigate = useNavigate()
 
-  if (!id) {
+  if (!name) {
     navigate('/tags')
     return null
   }
@@ -385,7 +387,7 @@ function TagDetailWrapper() {
       }}>
         <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
           <TagDetailView
-            tagId={id}
+            tagName={name}
             onBack={handleBack}
           />
         </Suspense>
@@ -421,11 +423,11 @@ function AppContent() {
       <Route path="/" element={<TabNavigation />} />
       <Route path="/seeds" element={<TabNavigation />} />
       <Route path="/seeds/tag/:tagName" element={<TabNavigation />} />
-      <Route path="/seeds/:id" element={<SeedDetailWrapper />} />
+      <Route path="/seeds/:slug" element={<SeedDetailWrapper />} />
       <Route path="/categories" element={<TabNavigation />} />
       <Route path="/category/*" element={<TabNavigation />} />
       <Route path="/tags" element={<TabNavigation />} />
-      <Route path="/tags/:id" element={<TagDetailWrapper />} />
+      <Route path="/tags/:name" element={<TagDetailWrapper />} />
       <Route path="/settings" element={<TabNavigation />} />
       <Route path="/musings" element={<TabNavigation />} />
     </Routes>

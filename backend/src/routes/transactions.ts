@@ -2,6 +2,7 @@
 import { Router, Request, Response } from 'express'
 import { authenticate } from '../middleware/auth'
 import { SeedTransactionsService } from '../services/seed-transactions'
+import { SeedsService } from '../services/seeds'
 import db from '../db/connection'
 import { computeSeedState } from '../utils/seed-state'
 
@@ -11,8 +12,28 @@ const router = Router()
 router.use(authenticate)
 
 /**
+ * Helper function to resolve seed ID from either UUID or slug format
+ * Returns the actual UUID for the seed, or null if not found
+ */
+async function resolveSeedId(identifier: string, userId: string): Promise<string | null> {
+  if (!identifier) {
+    return null
+  }
+
+  if (identifier.includes('/')) {
+    // Slug format: get seed by slug and return its ID
+    const seed = await SeedsService.getBySlug(identifier, userId)
+    return seed ? seed.id : null
+  } else {
+    // UUID format: verify it exists and belongs to user
+    const seed = await SeedsService.getById(identifier, userId)
+    return seed ? seed.id : null
+  }
+}
+
+/**
  * GET /api/seeds/:seedId/transactions
- * Get full timeline of transactions for a seed
+ * Get full timeline of transactions for a seed (supports both UUID and slug formats)
  */
 router.get('/seeds/:seedId/transactions', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -20,22 +41,19 @@ router.get('/seeds/:seedId/transactions', async (req: Request, res: Response): P
     const userId = req.user!.id
 
     if (!seedId) {
-      res.status(400).json({ error: 'Seed ID is required' })
+      res.status(400).json({ error: 'Seed ID or slug is required' })
       return
     }
 
-    // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: seedId, user_id: userId })
-      .first()
-
-    if (!seed) {
+    // Resolve to actual UUID and verify seed ownership
+    const resolvedSeedId = await resolveSeedId(seedId, userId)
+    if (!resolvedSeedId) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
     // Get all transactions for the seed
-    const transactions = await SeedTransactionsService.getBySeedId(seedId)
+    const transactions = await SeedTransactionsService.getBySeedId(resolvedSeedId)
 
     res.json(transactions)
   } catch (error) {
@@ -47,6 +65,7 @@ router.get('/seeds/:seedId/transactions', async (req: Request, res: Response): P
 /**
  * GET /api/seeds/:seedId/state
  * Get computed current state of a seed (replayed from transactions)
+ * Supports both UUID and slug formats
  */
 router.get('/seeds/:seedId/state', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -54,28 +73,25 @@ router.get('/seeds/:seedId/state', async (req: Request, res: Response): Promise<
     const userId = req.user!.id
 
     if (!seedId) {
-      res.status(400).json({ error: 'Seed ID is required' })
+      res.status(400).json({ error: 'Seed ID or slug is required' })
       return
     }
 
-    // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: seedId, user_id: userId })
-      .first()
-
-    if (!seed) {
+    // Resolve to actual UUID and verify seed ownership
+    const resolvedSeedId = await resolveSeedId(seedId, userId)
+    if (!resolvedSeedId) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
     // Get all transactions
-    const transactions = await SeedTransactionsService.getBySeedId(seedId)
+    const transactions = await SeedTransactionsService.getBySeedId(resolvedSeedId)
 
     // Compute current state by replaying transactions
     const currentState = computeSeedState(transactions)
 
     res.json({
-      seed_id: seedId,
+      seed_id: resolvedSeedId,
       current_state: {
         ...currentState,
         timestamp: currentState.timestamp.toISOString(),
@@ -90,7 +106,7 @@ router.get('/seeds/:seedId/state', async (req: Request, res: Response): Promise<
 
 /**
  * POST /api/seeds/:seedId/transactions
- * Create a new transaction for a seed
+ * Create a new transaction for a seed (supports both UUID and slug formats)
  */
 router.post('/seeds/:seedId/transactions', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -99,7 +115,7 @@ router.post('/seeds/:seedId/transactions', async (req: Request, res: Response): 
     const { transaction_type, transaction_data, automation_id } = req.body
 
     if (!seedId) {
-      res.status(400).json({ error: 'Seed ID is required' })
+      res.status(400).json({ error: 'Seed ID or slug is required' })
       return
     }
 
@@ -114,19 +130,16 @@ router.post('/seeds/:seedId/transactions', async (req: Request, res: Response): 
       return
     }
 
-    // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: seedId, user_id: userId })
-      .first()
-
-    if (!seed) {
+    // Resolve to actual UUID and verify seed ownership
+    const resolvedSeedId = await resolveSeedId(seedId, userId)
+    if (!resolvedSeedId) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
     // Create transaction
     const transaction = await SeedTransactionsService.create({
-      seed_id: seedId,
+      seed_id: resolvedSeedId,
       transaction_type: transaction_type as any,
       transaction_data: transaction_data as any,
       automation_id: automation_id || null,

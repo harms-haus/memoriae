@@ -109,9 +109,9 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
       return
     }
     
-    // Otherwise, navigate to tag detail view
+    // Otherwise, navigate to tag detail view using tag name
     e.preventDefault()
-    navigate(`/tags/${tagId}`)
+    navigate(`/tags/${encodeURIComponent(tagName)}`)
   }
 
   const maxCount = Math.max(...tagData.map(t => t.count), 1)
@@ -174,7 +174,7 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
               return (
                 <a
                   key={tag.id}
-                  href={`/tags/${tag.id}`}
+                  href={`/tags/${encodeURIComponent(tag.name)}`}
                   onClick={(e) => handleTagClick(tag.id, tag.name, e)}
                   className={`
                     tag-cloud-item

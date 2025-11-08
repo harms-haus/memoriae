@@ -187,7 +187,10 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
                   <div 
                     key={seed.id} 
                     className="categories-view-seed-item"
-                    onClick={() => navigate(`/seeds/${seed.id}`)}
+                    onClick={() => {
+                      const slug = seed.slug || seed.id
+                      navigate(`/seeds/${slug}`)
+                    }}
                     style={{ cursor: 'pointer' }}
                   >
                     <Panel variant="elevated">
@@ -195,7 +198,7 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
                         seed={seed}
                         tagColors={tagColorMap}
                         onTagClick={(tagId, tagName) => {
-                          navigate(`/tags/${tagId}`)
+                          navigate(`/tags/${encodeURIComponent(tagName)}`)
                         }}
                       />
                     </Panel>

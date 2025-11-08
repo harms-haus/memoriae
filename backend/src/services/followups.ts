@@ -347,10 +347,10 @@ export class FollowupService {
   static async getDueFollowups(userId: string): Promise<DueFollowup[]> {
     const now = new Date()
 
-    // Get all seeds for user
+    // Get all seeds for user (including slug)
     const seeds = await db('seeds')
       .where({ user_id: userId })
-      .select('id')
+      .select('id', 'slug')
 
     const seedIds = seeds.map((s) => s.id)
 
@@ -399,12 +399,13 @@ export class FollowupService {
 
       // Check if due and not dismissed
       if (!followup.dismissed && followup.due_time <= now) {
-        // Find seed_id
+        // Find seed (including slug)
         const seed = seeds.find((s) => s.id === followup.seed_id)
         if (seed) {
           dueFollowups.push({
             followup_id: followup.id,
             seed_id: followup.seed_id,
+            seed_slug: seed.slug || null,
             user_id: userId,
             due_time: followup.due_time,
             message: followup.message,

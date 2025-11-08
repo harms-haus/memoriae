@@ -112,6 +112,7 @@ export interface DismissFollowupDto {
 export interface DueFollowup {
   followup_id: string
   seed_id: string
+  seed_slug: string | null
   user_id: string
   due_time: Date
   message: string

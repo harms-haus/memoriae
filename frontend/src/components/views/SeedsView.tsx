@@ -360,7 +360,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
               <div
                 key={seed.id}
                 className="seeds-view-item-wrapper"
-                onClick={() => onSeedSelect?.(seed.id)}
+                onClick={() => onSeedSelect?.({ id: seed.id, slug: seed.slug })}
               >
                 <Panel
                   variant="elevated"
@@ -370,7 +370,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
                     seed={seed}
                     tagColors={tagColorMap}
                     onTagClick={(tagId, tagName) => {
-                      navigate(`/tags/${tagId}`)
+                      navigate(`/tags/${encodeURIComponent(tagName)}`)
                     }}
                   />
                 </Panel>

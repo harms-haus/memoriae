@@ -3,11 +3,13 @@ import { v4 as uuidv4 } from 'uuid'
 import db from '../db/connection'
 import { computeSeedState } from '../utils/seed-state'
 import { SeedTransactionsService } from './seed-transactions'
+import { generateSeedSlug } from '../utils/slug'
 
 export interface SeedRow {
   id: string
   user_id: string
   created_at: Date
+  slug: string | null
 }
 
 export interface SeedState {
@@ -105,6 +107,27 @@ export class SeedsService {
   }
 
   /**
+   * Get a single seed by slug (must belong to user)
+   * Computes current state by replaying all transactions
+   */
+  static async getBySlug(slug: string, userId: string): Promise<Seed | null> {
+    const seed = await db<SeedRow>('seeds')
+      .where({ slug, user_id: userId })
+      .first()
+
+    if (!seed) {
+      return null
+    }
+
+    const currentState = await computeCurrentState(seed.id)
+
+    return {
+      ...seed,
+      currentState,
+    }
+  }
+
+  /**
    * Create a new seed
    * Creates seed row and create_seed transaction atomically
    * Content is required and must be non-empty
@@ -118,6 +141,12 @@ export class SeedsService {
     const id = uuidv4()
     const now = new Date()
     const trimmedContent = data.content.trim()
+    
+    // Generate UUID prefix (first 7 characters)
+    const uuidPrefix = id.substring(0, 7)
+    
+    // Generate slug
+    const slug = await generateSeedSlug(trimmedContent, uuidPrefix)
 
     // Use a database transaction to ensure atomicity
     return await db.transaction(async (trx) => {
@@ -127,6 +156,7 @@ export class SeedsService {
           id,
           user_id: userId,
           created_at: now,
+          slug,
         })
         .returning('*')
 

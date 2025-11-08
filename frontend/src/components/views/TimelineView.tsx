@@ -10,7 +10,7 @@ import './Views.css'
 import './TimelineView.css'
 
 interface TimelineViewProps {
-  onSeedSelect?: (seedId: string) => void
+  onSeedSelect?: (seed: { id: string; slug?: string | null }) => void
   refreshRef?: React.MutableRefObject<(() => void) | null>
 }
 
@@ -115,7 +115,8 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
   }, [seeds])
 
   const handleSeedClick = (seedId: string) => {
-    onSeedSelect?.(seedId)
+    const seed = seeds.find(s => s.id === seedId)
+    onSeedSelect?.({ id: seedId, slug: seed?.slug })
   }
 
   const renderPanel = (index: number, width: number): React.ReactNode => {
@@ -139,7 +140,7 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
           seed={seed}
           tagColors={tagColorMap}
           onTagClick={(tagId, tagName) => {
-            navigate(`/tags/${tagId}`)
+            navigate(`/tags/${encodeURIComponent(tagName)}`)
           }}
         />
       </div>

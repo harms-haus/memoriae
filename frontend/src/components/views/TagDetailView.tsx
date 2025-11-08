@@ -25,7 +25,7 @@ interface TagDetail {
 }
 
 interface TagDetailViewProps {
-  tagId: string
+  tagName: string
   onBack: () => void
 }
 
@@ -35,7 +35,7 @@ interface TagDetailViewProps {
  * - Transactions history (immutable)
  * - List of seeds using this tag
  */
-export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
+export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
   const navigate = useNavigate()
   const [tag, setTag] = useState<TagDetail | null>(null)
   const [seeds, setSeeds] = useState<Seed[]>([])
@@ -49,8 +49,8 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (!tagId) {
-      setError('Tag ID is required')
+    if (!tagName) {
+      setError('Tag name is required')
       setLoading(false)
       return
     }
@@ -58,13 +58,15 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
     loadTagData()
     loadSeeds()
     loadTags()
-  }, [tagId])
+  }, [tagName])
 
   const loadTagData = async () => {
     try {
       setLoading(true)
       setError(null)
-      const tagData = await api.get<TagDetail>(`/tags/${tagId}`)
+      // URL-encode the tag name
+      const encodedName = encodeURIComponent(tagName)
+      const tagData = await api.get<TagDetail>(`/tags/${encodedName}`)
       setTag(tagData)
       setNameInput(tagData.name)
       setColorInput(tagData.color || '')
@@ -78,7 +80,9 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
 
   const loadSeeds = async () => {
     try {
-      const seedsData = await api.get<Seed[]>(`/tags/${tagId}/seeds`)
+      // URL-encode the tag name
+      const encodedName = encodeURIComponent(tagName)
+      const seedsData = await api.get<Seed[]>(`/tags/${encodedName}/seeds`)
       setSeeds(seedsData)
     } catch (err) {
       console.error('Error loading seeds:', err)
@@ -99,9 +103,15 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
     
     setSaving(true)
     try {
-      const updatedTag = await api.put<TagDetail>(`/tags/${tag.id}`, { name: nameInput.trim() })
+      // URL-encode the tag name
+      const encodedName = encodeURIComponent(tag.name)
+      const updatedTag = await api.put<TagDetail>(`/tags/${encodedName}`, { name: nameInput.trim() })
       setTag(updatedTag)
       setEditingName(false)
+      // If name changed, navigate to new URL
+      if (updatedTag.name !== tag.name) {
+        navigate(`/tags/${encodeURIComponent(updatedTag.name)}`)
+      }
     } catch (err) {
       console.error('Error updating tag name:', err)
     } finally {
@@ -116,7 +126,9 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
     try {
       // Convert empty string to null for clearing color
       const colorValue = colorInput.trim() === '' ? null : colorInput.trim()
-      const updatedTag = await api.put<TagDetail>(`/tags/${tag.id}`, { 
+      // URL-encode the tag name
+      const encodedName = encodeURIComponent(tag.name)
+      const updatedTag = await api.put<TagDetail>(`/tags/${encodedName}`, { 
         color: colorValue
       })
       setTag(updatedTag)
@@ -128,8 +140,10 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
     }
   }
 
-  const handleSeedClick = (seedId: string) => {
-    navigate(`/seeds/${seedId}`)
+  const handleSeedClick = (seed: Seed) => {
+    // Navigate using slug if available, otherwise fall back to ID
+    const slug = seed.slug || seed.id
+    navigate(`/seeds/${slug}`)
   }
 
   // Build tag color map for SeedView
@@ -440,13 +454,13 @@ export function TagDetailView({ tagId, onBack }: TagDetailViewProps) {
                     <div 
                       key={seed.id} 
                       className="seed-item"
-                      onClick={() => handleSeedClick(seed.id)}
+                      onClick={() => handleSeedClick(seed)}
                     >
                       <SeedView
                         seed={seed}
                         tagColors={tagColorMap}
-                        onTagClick={(clickedTagId, tagName) => {
-                          navigate(`/tags/${clickedTagId}`)
+                        onTagClick={(clickedTagId, clickedTagName) => {
+                          navigate(`/tags/${encodeURIComponent(clickedTagName)}`)
                         }}
                       />
                     </div>

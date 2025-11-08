@@ -68,11 +68,12 @@ export function showNotification(followup: DueFollowup): void {
   // Mark as shown
   shownNotificationIds.add(followup.followup_id)
 
-  // Handle click - navigate to seed detail page
+  // Handle click - navigate to seed detail page using slug if available
   notification.onclick = () => {
     window.focus()
-    // Navigate to seed detail page
-    window.location.href = `/seeds/${followup.seed_id}`
+    // Use slug if available, otherwise fall back to seed_id (backward compatibility)
+    const identifier = followup.seed_slug || followup.seed_id
+    window.location.href = `/seeds/${identifier}`
     notification.close()
   }
 

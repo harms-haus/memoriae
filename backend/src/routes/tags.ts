@@ -1,6 +1,6 @@
 // Tag routes
 import { Router, Request, Response, NextFunction } from 'express'
-import { getAllTags, getById, edit, setColor, getSeedsByTagId } from '../services/tags'
+import { getAllTags, getById, getByName, edit, setColor, getSeedsByTagId, getSeedsByTagName } from '../services/tags'
 import { authenticate } from '../middleware/auth'
 
 const router = Router()
@@ -22,18 +22,21 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 })
 
 /**
- * GET /api/tags/:id
- * Get tag with current state and transactions
+ * GET /api/tags/:name
+ * Get tag by name (case-sensitive) with current state and transactions
  */
-router.get('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/:name', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { id } = req.params
-    if (!id) {
-      res.status(400).json({ error: 'Tag ID is required' })
+    const { name } = req.params
+    if (!name) {
+      res.status(400).json({ error: 'Tag name is required' })
       return
     }
     
-    const tag = await getById(id)
+    // Decode URL-encoded tag name
+    const decodedName = decodeURIComponent(name)
+    
+    const tag = await getByName(decodedName)
     
     if (!tag) {
       res.status(404).json({ error: 'Tag not found' })
@@ -47,18 +50,21 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction): Prom
 })
 
 /**
- * GET /api/tags/:id/seeds
- * Get seeds that use this tag
+ * GET /api/tags/:name/seeds
+ * Get seeds that use this tag (by name, case-sensitive)
  */
-router.get('/:id/seeds', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/:name/seeds', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { id } = req.params
-    if (!id) {
-      res.status(400).json({ error: 'Tag ID is required' })
+    const { name } = req.params
+    if (!name) {
+      res.status(400).json({ error: 'Tag name is required' })
       return
     }
     
-    const seeds = await getSeedsByTagId(id)
+    // Decode URL-encoded tag name
+    const decodedName = decodeURIComponent(name)
+    
+    const seeds = await getSeedsByTagName(decodedName)
     res.json(seeds)
   } catch (error) {
     next(error)
@@ -66,14 +72,24 @@ router.get('/:id/seeds', async (req: Request, res: Response, next: NextFunction)
 })
 
 /**
- * PUT /api/tags/:id
- * Update tag (name/color) via transactions
+ * PUT /api/tags/:name
+ * Update tag (name/color) via transactions (by name, case-sensitive)
  */
-router.put('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.put('/:name', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { id } = req.params
-    if (!id) {
-      res.status(400).json({ error: 'Tag ID is required' })
+    const { name: tagName } = req.params
+    if (!tagName) {
+      res.status(400).json({ error: 'Tag name is required' })
+      return
+    }
+    
+    // Decode URL-encoded tag name
+    const decodedName = decodeURIComponent(tagName)
+    
+    // Get tag by name to get its ID
+    const tag = await getByName(decodedName)
+    if (!tag) {
+      res.status(404).json({ error: 'Tag not found' })
       return
     }
     
@@ -83,18 +99,18 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction): Prom
     
     if (name !== undefined && color !== undefined) {
       // Update both name and color
-      updatedTag = await edit(id, { name })
+      updatedTag = await edit(tag.id, { name })
       if (color !== null && typeof color === 'string') {
-        updatedTag = await setColor(id, color)
+        updatedTag = await setColor(tag.id, color)
       } else {
-        updatedTag = await setColor(id, null)
+        updatedTag = await setColor(tag.id, null)
       }
     } else if (name !== undefined) {
       // Update name only
-      updatedTag = await edit(id, { name })
+      updatedTag = await edit(tag.id, { name })
     } else if (color !== undefined) {
       // Update color only
-      updatedTag = await setColor(id, color)
+      updatedTag = await setColor(tag.id, color)
     } else {
       res.status(400).json({ error: 'No fields to update' })
       return

@@ -24,6 +24,7 @@ export interface Seed {
   id: string
   user_id: string
   created_at: string
+  slug?: string | null
   currentState: SeedState
   transactions?: SeedTransaction[] // Optional, for timeline view
 }
@@ -203,6 +204,7 @@ export interface DismissFollowupDto {
 export interface DueFollowup {
   followup_id: string
   seed_id: string
+  seed_slug: string | null
   user_id: string
   due_time: string // ISO string
   message: string

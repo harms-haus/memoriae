@@ -137,7 +137,46 @@ export async function getById(tagId: string): Promise<TagDetail | null> {
 }
 
 /**
- * Get all seeds that use a specific tag
+ * Get tag by name (case-sensitive) with current state computed from transactions
+ * PostgreSQL unique constraints are case-sensitive by default
+ */
+export async function getByName(tagName: string): Promise<TagDetail | null> {
+  const tag = await db<TagRow>('tags')
+    .where({ name: tagName })
+    .first()
+
+  if (!tag) {
+    return null
+  }
+
+  // Get all transactions for this tag
+  const transactions = await TagTransactionsService.getByTagId(tag.id)
+  
+  // Compute current state from transactions
+  let currentState
+  if (transactions.length > 0) {
+    currentState = computeTagState(transactions)
+  } else {
+    // Fallback to direct tag data if no transactions exist yet (migration compatibility)
+    currentState = {
+      name: tag.name,
+      color: tag.color,
+      timestamp: tag.created_at,
+      metadata: {},
+    }
+  }
+
+  return {
+    id: tag.id,
+    name: currentState.name,
+    color: currentState.color || '',
+    currentState,
+    transactions,
+  }
+}
+
+/**
+ * Get all seeds that use a specific tag by tag ID
  * Returns full Seed objects with currentState computed
  */
 export async function getSeedsByTagId(tagId: string): Promise<Seed[]> {
@@ -179,6 +218,24 @@ export async function getSeedsByTagId(tagId: string): Promise<Seed[]> {
       new Date(b.tag_added_at).getTime() - new Date(a.tag_added_at).getTime()
     )
     .map(({ tag_added_at, ...seed }) => seed)
+}
+
+/**
+ * Get all seeds that use a specific tag by tag name (case-sensitive)
+ * Returns full Seed objects with currentState computed
+ */
+export async function getSeedsByTagName(tagName: string): Promise<Seed[]> {
+  // First get the tag by name to get its ID
+  const tag = await db<TagRow>('tags')
+    .where({ name: tagName })
+    .first()
+
+  if (!tag) {
+    return []
+  }
+
+  // Use the existing getSeedsByTagId function
+  return getSeedsByTagId(tag.id)
 }
 
 /**
