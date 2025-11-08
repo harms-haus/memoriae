@@ -83,6 +83,7 @@ const mockMusings: IdeaMusing[] = [
     },
     created_at: new Date().toISOString(),
     dismissed: false,
+    completed: false,
   },
   {
     id: 'musing-2',
@@ -95,6 +96,7 @@ const mockMusings: IdeaMusing[] = [
     },
     created_at: new Date().toISOString(),
     dismissed: false,
+    completed: false,
   },
 ]
 

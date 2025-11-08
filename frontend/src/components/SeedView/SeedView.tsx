@@ -7,6 +7,11 @@ export interface SeedViewProps {
   seed: Seed
   onTagClick?: (tagId: string, tagName: string) => void
   tagColors?: Map<string, string> // Optional map of tag names (lowercase) to colors
+  isEditing?: boolean
+  onContentChange?: (content: string) => void
+  onTagRemove?: (tagId: string) => void
+  editedContent?: string
+  editedTags?: Array<{ id: string; name: string }>
 }
 
 /**
@@ -40,11 +45,25 @@ function formatSeedTime(seed: Seed): string {
  * - Tags with truncation (TagList)
  * - Category in brackets, bottom-center, italicized
  * - Date/time (relative if close) in small font, top-right corner
+ * - Editing mode: editable content and removable tags
  */
-export function SeedView({ seed, onTagClick, tagColors }: SeedViewProps) {
-  const content = seed.currentState?.seed || ''
-  const seedTags = seed.currentState?.tags || []
+export function SeedView({ 
+  seed, 
+  onTagClick, 
+  tagColors,
+  isEditing = false,
+  onContentChange,
+  onTagRemove,
+  editedContent,
+  editedTags,
+}: SeedViewProps) {
+  const originalContent = seed.currentState?.seed || ''
+  const originalTags = seed.currentState?.tags || []
   const seedCategories = seed.currentState?.categories || []
+  
+  // Use edited values if provided, otherwise use original
+  const content = editedContent !== undefined ? editedContent : originalContent
+  const seedTags = editedTags !== undefined ? editedTags : originalTags
   
   // Get primary category (first one, or empty)
   const primaryCategory = seedCategories.length > 0 ? seedCategories[0] : null
@@ -52,7 +71,13 @@ export function SeedView({ seed, onTagClick, tagColors }: SeedViewProps) {
   const handleTagClick = (tag: { id: string; name: string }, event: React.MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    onTagClick?.(tag.id, tag.name)
+    if (!isEditing) {
+      onTagClick?.(tag.id, tag.name)
+    }
+  }
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onContentChange?.(e.target.value)
   }
 
   return (
@@ -71,23 +96,60 @@ export function SeedView({ seed, onTagClick, tagColors }: SeedViewProps) {
       </div>
 
       <div className="seed-view-body">
-        {/* Seed content */}
-        <div className="seed-view-content">
-          {content}
-        </div>
+        {/* Seed content - editable in edit mode */}
+        {isEditing ? (
+          <textarea
+            className="seed-view-content seed-view-content-editable"
+            value={content}
+            onChange={handleContentChange}
+            placeholder="Enter seed content..."
+            rows={10}
+          />
+        ) : (
+          <div className="seed-view-content">
+            {content}
+          </div>
+        )}
 
-        {/* Tags with truncation */}
+        {/* Tags with truncation - show X buttons in edit mode */}
         {seedTags.length > 0 && (
           <div className="seed-view-tags">
-            <TagList
-              tags={seedTags.map(tag => ({
-                id: tag.id,
-                name: tag.name,
-                color: tagColors?.get(tag.name.toLowerCase()) ?? null,
-              }))}
-              onTagClick={handleTagClick}
-              suppressTruncate={true}
-            />
+            {isEditing ? (
+              <div className="tag-list">
+                {seedTags.map(tag => {
+                  const tagColor = tagColors?.get(tag.name.toLowerCase()) ?? null
+                  return (
+                    <span key={tag.id} className="tag-item tag-item-editable">
+                      <span style={tagColor ? { color: tagColor } : {}}>
+                        #{tag.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="tag-remove-button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          onTagRemove?.(tag.id)
+                        }}
+                        aria-label={`Remove tag ${tag.name}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )
+                })}
+              </div>
+            ) : (
+              <TagList
+                tags={seedTags.map(tag => ({
+                  id: tag.id,
+                  name: tag.name,
+                  color: tagColors?.get(tag.name.toLowerCase()) ?? null,
+                }))}
+                onTagClick={handleTagClick}
+                suppressTruncate={true}
+              />
+            )}
           </div>
         )}
       </div>

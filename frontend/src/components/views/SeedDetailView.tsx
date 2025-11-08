@@ -8,7 +8,7 @@ import { Badge } from '@mother/components/Badge'
 import { SeedView } from '../SeedView'
 import { FollowupsPanel } from '../FollowupsPanel'
 import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
-import type { SeedTransaction, Seed, SeedState, Tag as TagType } from '../../types'
+import type { SeedTransaction, SeedTransactionType, Seed, SeedState, Tag as TagType } from '../../types'
 import './Views.css'
 import './SeedDetailView.css'
 
@@ -148,6 +148,9 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const [automations, setAutomations] = useState<Automation[]>([])
   const [loadingAutomations, setLoadingAutomations] = useState(false)
   const [runningAutomations, setRunningAutomations] = useState<Set<string>>(new Set())
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedContent, setEditedContent] = useState<string | null>(null)
+  const [editedTags, setEditedTags] = useState<Array<{ id: string; name: string }> | null>(null)
 
   useEffect(() => {
     if (!seedId) {
@@ -159,6 +162,19 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     loadSeedData()
     loadAutomations()
   }, [seedId])
+
+  // Reset edited state when entering/exiting edit mode
+  useEffect(() => {
+    if (isEditing && currentState) {
+      // Initialize edited state with current values
+      setEditedContent(currentState.seed)
+      setEditedTags(currentState.tags ? [...currentState.tags] : [])
+    } else {
+      // Clear edited state when exiting edit mode
+      setEditedContent(null)
+      setEditedTags(null)
+    }
+  }, [isEditing, currentState])
 
   const loadSeedData = async () => {
     if (!seedId) return
@@ -324,6 +340,89 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     return getTransactionColor(transaction)
   }
 
+  const handleContentChange = (content: string) => {
+    setEditedContent(content)
+  }
+
+  const handleTagRemove = (tagId: string) => {
+    if (editedTags) {
+      setEditedTags(editedTags.filter(tag => tag.id !== tagId))
+    }
+  }
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    // Edited state will be cleared by useEffect
+  }
+
+  const handleSave = async () => {
+    if (!seedId || !currentState || !seed) return
+
+    try {
+      setError(null)
+      const transactionsToCreate: Array<{
+        transaction_type: SeedTransactionType
+        transaction_data: any
+      }> = []
+
+      // Check for content changes
+      const originalContent = currentState.seed
+      const newContent = editedContent !== null ? editedContent : originalContent
+      if (newContent !== originalContent) {
+        transactionsToCreate.push({
+          transaction_type: 'edit_content',
+          transaction_data: {
+            content: newContent,
+          },
+        })
+      }
+
+      // Check for tag removals
+      const originalTagIds = new Set((currentState.tags || []).map(t => t.id))
+      const editedTagIds = new Set((editedTags || currentState.tags || []).map(t => t.id))
+      
+      // Find removed tags
+      const removedTagIds = Array.from(originalTagIds).filter(id => !editedTagIds.has(id))
+      
+      // Group tag removals by time (all removals in the same save get the same timestamp)
+      if (removedTagIds.length > 0) {
+        // Create one transaction per removed tag, but they'll be grouped by timestamp
+        for (const tagId of removedTagIds) {
+          const tag = (currentState.tags || []).find(t => t.id === tagId)
+          if (tag) {
+            transactionsToCreate.push({
+              transaction_type: 'remove_tag',
+              transaction_data: {
+                tag_id: tagId,
+              },
+            })
+          }
+        }
+      }
+
+      // Create all transactions
+      if (transactionsToCreate.length > 0) {
+        // Create transactions sequentially to ensure proper ordering
+        for (const transaction of transactionsToCreate) {
+          await api.createSeedTransaction(seedId, transaction)
+        }
+
+        // Reload seed data to reflect changes
+        await loadSeedData()
+      }
+
+      setIsEditing(false)
+    } catch (err) {
+      console.error('Error saving seed changes:', err)
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : axios.isAxiosError(err) && err.response?.data?.error
+          ? err.response.data.error
+          : 'Failed to save changes'
+      setError(errorMessage)
+    }
+  }
+
   if (loading) {
     return (
       <div className="view-container">
@@ -371,6 +470,15 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           ← Back
         </Button>
         <h2 className="seed-detail-title">Seed Detail</h2>
+        {!isEditing && (
+          <Button
+            variant="primary"
+            onClick={() => setIsEditing(true)}
+            aria-label="Edit seed"
+          >
+            Edit
+          </Button>
+        )}
       </div>
 
       <div className="seed-detail-content">
@@ -395,11 +503,36 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
                   return tagColorMap
                 })()}
                 onTagClick={(tagId, tagName) => {
-                  navigate(`/tags/${tagId}`)
+                  if (!isEditing) {
+                    navigate(`/tags/${tagId}`)
+                  }
                 }}
+                isEditing={isEditing}
+                onContentChange={handleContentChange}
+                onTagRemove={handleTagRemove}
+                {...(editedContent !== null && { editedContent })}
+                {...(editedTags !== null && { editedTags })}
               />
             )}
           </Panel>
+
+          {/* Save/Cancel buttons in edit mode */}
+          {isEditing && currentState && seed && (
+            <div className="seed-edit-actions">
+              <Button
+                variant="primary"
+                onClick={handleSave}
+              >
+                Save
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
 
           {/* Timeline of Transactions */}
           <Panel variant="elevated" className="seed-detail-timeline">

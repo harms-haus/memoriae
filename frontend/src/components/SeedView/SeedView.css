@@ -58,9 +58,69 @@
   flex: 1;
 }
 
+/* Editable seed content */
+.seed-view-content-editable {
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--bg-tertiary);
+  border: var(--border-thick) solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 150px;
+}
+
+.seed-view-content-editable:focus {
+  outline: none;
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
 /* Tags container */
 .seed-view-tags {
   margin-top: auto; /* Push to bottom */
   flex-shrink: 0;
+}
+
+/* Editable tag item with remove button */
+.tag-item-editable {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-tertiary);
+  border: var(--border-thin) solid var(--border-primary);
+  border-radius: var(--radius-sm);
+}
+
+.tag-remove-button {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-lg);
+  line-height: 1;
+  padding: 0;
+  margin-left: var(--space-1);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+}
+
+.tag-remove-button:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.tag-remove-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
