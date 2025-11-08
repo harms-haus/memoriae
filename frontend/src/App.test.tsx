@@ -172,77 +172,101 @@ describe('App', () => {
   })
 
   describe('Routing', () => {
-    it('should render seeds view at /seeds', () => {
+    it('should render seeds view at /seeds', async () => {
       renderAppWithRoute('/seeds')
 
-      expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
+      })
     })
 
-    it('should render categories view at /categories', () => {
+    it('should render categories view at /categories', async () => {
       renderAppWithRoute('/categories')
 
-      expect(screen.getByTestId('categories-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('categories-view')).toBeInTheDocument()
+      })
     })
 
-    it('should render tags view at /tags', () => {
+    it('should render tags view at /tags', async () => {
       renderAppWithRoute('/tags')
 
-      expect(screen.getByTestId('tags-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('tags-view')).toBeInTheDocument()
+      })
     })
 
-    it('should render settings view at /settings', () => {
+    it('should render settings view at /settings', async () => {
       renderAppWithRoute('/settings')
 
-      expect(screen.getByTestId('settings-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('settings-view')).toBeInTheDocument()
+      })
     })
 
-    it('should render musings view at /musings', () => {
+    it('should render musings view at /musings', async () => {
       renderAppWithRoute('/musings')
 
-      expect(screen.getByTestId('musings-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('musings-view')).toBeInTheDocument()
+      })
     })
 
-    it('should render seed detail view at /seeds/:id', () => {
+    it('should render seed detail view at /seeds/:id', async () => {
       renderAppWithRoute('/seeds/seed-123')
 
-      expect(screen.getByTestId('seed-detail-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('seed-detail-view')).toBeInTheDocument()
+      })
       expect(screen.getByText('Seed Detail: seed-123')).toBeInTheDocument()
     })
 
-    it('should render tag detail view at /tags/:name', () => {
+    it('should render tag detail view at /tags/:name', async () => {
       renderAppWithRoute('/tags/work')
 
-      expect(screen.getByTestId('tag-detail-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('tag-detail-view')).toBeInTheDocument()
+      })
       expect(screen.getByText('Tag Detail: work')).toBeInTheDocument()
     })
 
-    it('should default to seeds view at /', () => {
+    it('should default to seeds view at /', async () => {
       renderAppWithRoute('/')
 
-      expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
+      })
     })
   })
 
   describe('Tab Navigation', () => {
-    it('should show seeds tab as active on /seeds', () => {
+    it('should show seeds tab as active on /seeds', async () => {
       renderAppWithRoute('/seeds')
 
-      const tabs = screen.getByTestId('tabs')
-      expect(tabs).toHaveAttribute('data-value', 'seeds')
+      await waitFor(() => {
+        const tabs = screen.getByTestId('tabs')
+        expect(tabs).toHaveAttribute('data-value', 'seeds')
+      })
     })
 
-    it('should show seeds tab as active on /seeds/:id', () => {
+    it('should not show tabs on detail pages', async () => {
       renderAppWithRoute('/seeds/seed-123')
 
-      const tabs = screen.getByTestId('tabs')
-      expect(tabs).toHaveAttribute('data-value', 'seeds')
+      // Detail pages don't render tabs - they have their own layout
+      await waitFor(() => {
+        expect(screen.getByTestId('seed-detail-view')).toBeInTheDocument()
+      })
+      expect(screen.queryByTestId('tabs')).not.toBeInTheDocument()
     })
 
-    it('should show tags tab as active on /tags/:name', () => {
+    it('should not show tabs on tag detail pages', async () => {
       renderAppWithRoute('/tags/work')
 
-      const tabs = screen.getByTestId('tabs')
-      expect(tabs).toHaveAttribute('data-value', 'tags')
+      // Detail pages don't render tabs - they have their own layout
+      await waitFor(() => {
+        expect(screen.getByTestId('tag-detail-view')).toBeInTheDocument()
+      })
+      expect(screen.queryByTestId('tabs')).not.toBeInTheDocument()
     })
 
     it('should handle tab change', async () => {

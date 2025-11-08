@@ -1046,6 +1046,44 @@ describe('FollowupService', () => {
 
       vi.restoreAllMocks()
     })
+
+    it('should handle missing slug column gracefully', async () => {
+      const userId = 'user-123'
+      const seedId = 'seed-123'
+      const followupId = 'followup-123'
+      const now = new Date('2024-01-01T12:00:00Z')
+      const pastDueTime = new Date('2024-01-01T10:00:00Z')
+
+      const followupRow: FollowupRow = {
+        id: followupId,
+        seed_id: seedId,
+      }
+
+      const creationTransaction: FollowupTransaction = {
+        id: 'txn-1',
+        followup_id: followupId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: pastDueTime.toISOString(),
+          initial_message: 'Due followup',
+        },
+        created_at: new Date('2024-01-01T08:00:00Z'),
+      }
+
+      // Mock: seeds query without slug, followups query, transactions query
+      selectCallQueue = [[{ id: seedId }], [followupRow], [creationTransaction]]
+      selectCallIndex = 0
+
+      const result = await FollowupService.getDueFollowups(userId)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].followup_id).toBe(followupId)
+      expect(result[0].seed_id).toBe(seedId)
+      expect(result[0].user_id).toBe(userId)
+      expect(result[0].seed_slug).toBe(null) // Should default to null when slug column doesn't exist
+      expect(result[0].message).toBe('Due followup')
+    })
   })
 })
 

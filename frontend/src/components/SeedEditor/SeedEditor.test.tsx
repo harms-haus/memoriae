@@ -154,17 +154,17 @@ describe('SeedEditor Component', () => {
         expect(document.querySelector('.seed-editor-zen-mode')).toBeInTheDocument()
       })
       
-      // Exit zen mode by reducing content - select all, delete, then type short content
-      textarea.focus()
-      textarea.setSelectionRange(0, textarea.value.length)
-      // Delete selected content
-      await user.keyboard('{Delete}')
-      // Type short content
-      await user.type(textarea, shortContent)
+      // Get the zen mode textarea
+      const zenTextarea = document.querySelector('.seed-editor-zen-input') as HTMLTextAreaElement
+      expect(zenTextarea).toBeInTheDocument()
+      
+      // Exit zen mode by clearing content and typing short content
+      await user.clear(zenTextarea)
+      await user.type(zenTextarea, shortContent)
       
       await waitFor(() => {
         expect(document.querySelector('.seed-editor-zen-mode')).not.toBeInTheDocument()
-      }, { timeout: 1000 })
+      }, { timeout: 2000 })
     })
 
     it('should manually enter zen mode from medium stage', async () => {

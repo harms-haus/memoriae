@@ -528,6 +528,51 @@ describe('Tags Service', () => {
       // Verify limit(50) was called
       expect(mockLimit).toHaveBeenCalledWith(50)
     })
+
+    it('should handle missing slug column gracefully', async () => {
+      const mockTagTransactions = [
+        { seed_id: 'seed-1', created_at: new Date('2024-01-02') },
+      ]
+
+      const mockSeedRows = [
+        { id: 'seed-1', user_id: 'user-123', created_at: new Date('2024-01-01') },
+      ]
+
+      const mockState1 = {
+        seed: 'Seed 1 content',
+        timestamp: new Date('2024-01-01'),
+        metadata: {},
+      }
+
+      // Mock database query that doesn't include slug (simulating missing column)
+      const mockDbQuery = vi.fn()
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          whereRaw: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue(mockTagTransactions),
+        })
+        .mockReturnValueOnce({
+          select: vi.fn().mockReturnThis(),
+          whereIn: vi.fn().mockResolvedValue(mockSeedRows),
+        })
+
+      vi.mocked(db).mockImplementation(mockDbQuery)
+      vi.mocked(computeCurrentState).mockResolvedValueOnce(mockState1)
+
+      const result = await tagsService.getSeedsByTagId('tag-123')
+
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({
+        id: 'seed-1',
+        user_id: 'user-123',
+        currentState: mockState1,
+      })
+      // Verify that slug is selected along with id, user_id, created_at
+      const secondCall = mockDbQuery.mock.results[1].value
+      expect(secondCall.select).toHaveBeenCalledWith('id', 'user_id', 'created_at', 'slug')
+    })
   })
 
   describe('create', () => {

@@ -15,11 +15,12 @@ vi.mock('../db/connection', () => {
       returning: vi.fn(),
       update: vi.fn().mockReturnThis(),
       delete: vi.fn().mockReturnThis(),
-      first: vi.fn(),
+      first: vi.fn().mockResolvedValue(undefined), // Default: no collision for slug generation
       where: vi.fn().mockImplementation((...args: any[]) => {
         // Return a new builder that supports chaining
         return createMockQueryBuilder(methods)
       }),
+      whereIn: vi.fn().mockReturnThis(),
       ...methods,
     }
     return builder
@@ -53,6 +54,10 @@ vi.mock('./seed-transactions', () => ({
 
 vi.mock('../utils/seed-state', () => ({
   computeSeedState: vi.fn(),
+}))
+
+vi.mock('../utils/slug', () => ({
+  generateSeedSlug: vi.fn().mockResolvedValue('abc1234/test-seed'),
 }))
 
 describe('SeedsService', () => {
@@ -262,12 +267,106 @@ describe('SeedsService', () => {
     })
   })
 
+  describe('getBySlug', () => {
+    it('should return seed by slug with computed state', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date('2024-01-01'),
+        slug: 'abc1234/test-seed',
+      }
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-123',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Test content' },
+          created_at: new Date('2024-01-01'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Test content',
+        timestamp: new Date('2024-01-01'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(mockSeed),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      const result = await SeedsService.getBySlug('abc1234/test-seed', 'user-123')
+
+      expect(result).toMatchObject({
+        id: 'seed-123',
+        user_id: 'user-123',
+        slug: 'abc1234/test-seed',
+        currentState: {
+          seed: 'Test content',
+          timestamp: '2024-01-01T00:00:00.000Z',
+          metadata: {},
+        },
+      })
+      expect(SeedTransactionsService.getBySeedId).toHaveBeenCalledWith('seed-123')
+      expect(computeSeedState).toHaveBeenCalledWith(mockTransactions)
+    })
+
+    it('should return null when seed not found by slug', async () => {
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(null),
+      } as any)
+
+      const result = await SeedsService.getBySlug('non-existent-slug', 'user-123')
+
+      expect(result).toBeNull()
+      expect(SeedTransactionsService.getBySeedId).not.toHaveBeenCalled()
+    })
+
+    it('should verify user ownership', async () => {
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(null), // No seed found because user_id doesn't match
+      } as any)
+
+      const result = await SeedsService.getBySlug('abc1234/test-seed', 'user-123')
+
+      expect(result).toBeNull()
+    })
+
+    it('should handle missing slug column gracefully', async () => {
+      // When slug column doesn't exist, the query will fail
+      // This test verifies that the error is handled appropriately
+      const dbError = new Error('column "slug" does not exist')
+      dbError.name = 'error'
+      ;(dbError as any).code = '42703'
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        first: vi.fn().mockRejectedValue(dbError),
+      } as any)
+
+      // The function should throw the error (not swallow it)
+      // In production, this would be caught by error handling middleware
+      await expect(
+        SeedsService.getBySlug('abc1234/test-seed', 'user-123')
+      ).rejects.toThrow('column "slug" does not exist')
+    })
+  })
+
   describe('create', () => {
     it('should create a new seed with create_seed transaction', async () => {
       const mockSeed = {
         id: 'seed-123',
         user_id: 'user-123',
         created_at: new Date('2024-01-01'),
+        slug: 'abc1234/test-seed',
       }
 
       const mockTransaction = {
@@ -335,6 +434,7 @@ describe('SeedsService', () => {
         id: 'seed-123',
         user_id: 'user-123',
         created_at: new Date('2024-01-01'),
+        slug: 'abc1234/test-seed',
       }
 
       const mockTransaction = {
