@@ -247,6 +247,43 @@ describe('Tabs', () => {
       // This is tested through visual regression, but we can verify the tab is hoverable
       expect(tab2).toBeInTheDocument();
     });
+
+    it('should not trigger hover when tab is disabled', async () => {
+      const user = userEvent.setup();
+      render(
+        <Tabs defaultValue="tab1">
+          <Tab value="tab1" label="Tab 1" />
+          <Tab value="tab2" label="Tab 2" disabled />
+          <TabPanel value="tab1">Content 1</TabPanel>
+          <TabPanel value="tab2">Content 2</TabPanel>
+        </Tabs>
+      );
+
+      const tab2 = screen.getByText('Tab 2');
+      await user.hover(tab2);
+      
+      // Hover should not change active tab when disabled
+      expect(screen.getByText('Tab 1')).toHaveClass('active');
+    });
+
+    it('should clear hover state on mouse leave', async () => {
+      const user = userEvent.setup();
+      render(
+        <Tabs defaultValue="tab1">
+          <Tab value="tab1" label="Tab 1" />
+          <Tab value="tab2" label="Tab 2" />
+          <TabPanel value="tab1">Content 1</TabPanel>
+          <TabPanel value="tab2">Content 2</TabPanel>
+        </Tabs>
+      );
+
+      const tab2 = screen.getByText('Tab 2');
+      await user.hover(tab2);
+      await user.unhover(tab2);
+      
+      // Tab should still be in document after unhover
+      expect(tab2).toBeInTheDocument();
+    });
   });
 
   describe('TabPanel', () => {

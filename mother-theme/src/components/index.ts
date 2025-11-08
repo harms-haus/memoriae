@@ -48,6 +48,9 @@ export type { InputProps, TextareaProps } from './Input';
 export { PointerPanel } from './PointerPanel';
 export type { PointerPanelProps, PointerPosition } from './PointerPanel';
 
+export { Panel } from './Panel';
+export type { PanelProps } from './Panel';
+
 export { Timeline } from './Timeline';
 export type { TimelineProps, TimelineItem } from './Timeline';
 

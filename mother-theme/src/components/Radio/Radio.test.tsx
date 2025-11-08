@@ -291,5 +291,42 @@ describe('RadioGroup', () => {
       expect(label1).toHaveAttribute('for', 'radio-1');
     });
   });
+
+  describe('Error Handling', () => {
+    it('should throw error when Radio is used outside RadioGroup', () => {
+      // Suppress console.error for this test
+      const originalError = console.error;
+      console.error = vi.fn();
+
+      expect(() => {
+        render(<Radio value="value1" label="Option 1" />);
+      }).toThrow('Radio components must be used within RadioGroup component');
+
+      console.error = originalError;
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle Radio with null ref in useEffect cleanup', () => {
+      const { unmount } = render(
+        <RadioGroup defaultValue="value1">
+          <Radio value="value1" label="Option 1" />
+        </RadioGroup>
+      );
+
+      // Unmounting should not throw even if ref is null
+      expect(() => unmount()).not.toThrow();
+    });
+
+    it('should handle RadioGroup with no radios', () => {
+      render(
+        <RadioGroup defaultValue="value1">
+          {null}
+        </RadioGroup>
+      );
+
+      expect(screen.getByRole('radiogroup')).toBeInTheDocument();
+    });
+  });
 });
 

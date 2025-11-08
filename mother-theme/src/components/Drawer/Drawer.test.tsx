@@ -395,5 +395,59 @@ describe('Drawer', () => {
       expect(drawer).toHaveClass('custom-drawer');
     });
   });
+
+  describe('Backdrop Click', () => {
+    it('should close drawer when backdrop is clicked and closeOnBackdropClick is true', async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      const { container } = render(
+        <Drawer open={true} onOpenChange={onOpenChange} closeOnBackdropClick={true}>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      const overlay = container.querySelector('.drawer-overlay');
+      expect(overlay).toBeInTheDocument();
+      
+      if (overlay) {
+        await user.click(overlay as HTMLElement);
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+      }
+    });
+
+    it('should not close drawer when backdrop is clicked and closeOnBackdropClick is false', async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      const { container } = render(
+        <Drawer open={true} onOpenChange={onOpenChange} closeOnBackdropClick={false}>
+          <DrawerBody>Content</DrawerBody>
+        </Drawer>
+      );
+
+      const overlay = container.querySelector('.drawer-overlay');
+      expect(overlay).toBeInTheDocument();
+      
+      if (overlay) {
+        await user.click(overlay as HTMLElement);
+        expect(onOpenChange).not.toHaveBeenCalled();
+      }
+    });
+
+    it('should not close drawer when clicking inside drawer content', async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <Drawer open={true} onOpenChange={onOpenChange} closeOnBackdropClick={true}>
+          <DrawerBody>
+            <button>Click me</button>
+          </DrawerBody>
+        </Drawer>
+      );
+
+      const button = screen.getByText('Click me');
+      await user.click(button);
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+  });
 });
 
