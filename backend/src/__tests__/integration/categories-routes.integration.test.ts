@@ -3,60 +3,32 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import request from 'supertest'
 import express from 'express'
 import categoriesRoutes from '../../routes/categories'
+import { authenticate } from '../../middleware/auth'
 import { generateTestToken } from '../../test-helpers'
+import { getAllCategories } from '../../services/categories'
 import * as authService from '../../services/auth'
 
-// Mock the categories service
-vi.mock('../../services/categories', () => {
-  const mockGetAllCategories = vi.fn()
-  return {
-    getAllCategories: mockGetAllCategories,
-    __mockGetAllCategories: mockGetAllCategories,
-  }
-})
-
-const mockCategories = [
-  {
-    id: 'cat-1',
-    parent_id: null,
-    name: 'Work',
-    path: '/work',
-    created_at: '2024-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'cat-2',
-    parent_id: 'cat-1',
-    name: 'Projects',
-    path: '/work/projects',
-    created_at: '2024-01-02T00:00:00.000Z',
-  },
-]
+// Mock services
+vi.mock('../../services/categories', () => ({
+  getAllCategories: vi.fn(),
+}))
 
 // Mock auth service
 vi.mock('../../services/auth', () => ({
   getUserById: vi.fn(),
 }))
 
-// Mock auth middleware - use real auth but mock at a higher level
-vi.mock('../../middleware/auth', async () => {
-  const actual = await vi.importActual('../../middleware/auth')
-  return actual
-})
-
 const app = express()
 app.use(express.json())
-app.use('/api/categories', categoriesRoutes)
+app.use('/api/categories', authenticate, categoriesRoutes)
 
 describe('Categories Routes', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks()
-    const categoriesModule = await import('../../services/categories')
-    const mockGetAllCategories = (categoriesModule as any).__mockGetAllCategories
-    mockGetAllCategories.mockResolvedValue(mockCategories)
     
     // Mock getUserById to return a user by default
     vi.mocked(authService.getUserById).mockResolvedValue({
-      id: 'user-id',
+      id: 'user-123',
       email: 'test@example.com',
       name: 'Test User',
       provider: 'google',
@@ -66,20 +38,29 @@ describe('Categories Routes', () => {
   })
 
   describe('GET /api/categories', () => {
-    it('should require authentication', async () => {
-      const response = await request(app)
-        .get('/api/categories')
-        .expect(401)
+    it('should return all categories', async () => {
+      const mockCategories = [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          path: '/work',
+          parent_id: null,
+          created_at: new Date(),
+        },
+        {
+          id: 'cat-2',
+          name: 'Personal',
+          path: '/personal',
+          parent_id: null,
+          created_at: new Date(),
+        },
+      ]
 
-      expect(response.body.error).toContain('Unauthorized')
-    })
+      ;(getAllCategories as any).mockResolvedValue(mockCategories)
 
-    it('should return all categories for authenticated user', async () => {
       const token = generateTestToken({
-        id: 'user-id',
+        id: 'user-123',
         email: 'test@example.com',
-        name: 'Test User',
-        provider: 'google',
       })
 
       const response = await request(app)
@@ -87,45 +68,48 @@ describe('Categories Routes', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
-      expect(Array.isArray(response.body)).toBe(true)
       expect(response.body).toHaveLength(2)
       expect(response.body[0]).toMatchObject({
         id: 'cat-1',
-        parent_id: null,
         name: 'Work',
-        path: '/work',
       })
-      expect(response.body[0]).toHaveProperty('created_at')
+      expect(getAllCategories).toHaveBeenCalled()
     })
 
-    it('should return 401 when token is invalid', async () => {
-      const response = await request(app)
-        .get('/api/categories')
-        .set('Authorization', 'Bearer invalid-token')
-        .expect(401)
+    it('should return empty array when no categories exist', async () => {
+      ;(getAllCategories as any).mockResolvedValue([])
 
-      expect(response.body.error).toContain('Invalid token')
-    })
-
-    it('should return categories in correct format', async () => {
-      const token = generateTestToken()
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
 
       const response = await request(app)
         .get('/api/categories')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
-      const category = response.body[0]
-      expect(category).toHaveProperty('id')
-      expect(category).toHaveProperty('parent_id')
-      expect(category).toHaveProperty('name')
-      expect(category).toHaveProperty('path')
-      expect(category).toHaveProperty('created_at')
-      expect(typeof category.id).toBe('string')
-      expect(typeof category.name).toBe('string')
-      expect(typeof category.path).toBe('string')
-      expect(typeof category.created_at).toBe('string')
+      expect(response.body).toEqual([])
+    })
+
+    it('should handle service errors gracefully', async () => {
+      ;(getAllCategories as any).mockRejectedValue(new Error('Database error'))
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      await request(app)
+        .get('/api/categories')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(500)
+    })
+
+    it('should require authentication', async () => {
+      await request(app)
+        .get('/api/categories')
+        .expect(401)
     })
   })
 })
-

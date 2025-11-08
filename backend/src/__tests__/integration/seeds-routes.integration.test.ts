@@ -57,6 +57,9 @@ vi.mock('../../services/queue/queue', () => ({
   addAutomationJob: vi.fn().mockResolvedValue('job-id'),
   automationQueue: {
     add: vi.fn(),
+    getWaitingCount: vi.fn().mockResolvedValue(0),
+    getActiveCount: vi.fn().mockResolvedValue(0),
+    getJob: vi.fn(),
   },
 }))
 
@@ -311,6 +314,471 @@ describe('Seeds Routes', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({ content: 'Test content' })
         .expect(500)
+    })
+  })
+
+  describe('GET /api/seeds', () => {
+    it('should return all seeds for authenticated user', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Seed 1 content',
+            timestamp: new Date().toISOString(),
+            metadata: {},
+          },
+        },
+        {
+          id: 'seed-2',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Seed 2 content',
+            timestamp: new Date().toISOString(),
+            metadata: {},
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(2)
+      expect(SeedsService.getByUser).toHaveBeenCalledWith('user-123')
+    })
+
+    it('should return empty array when user has no seeds', async () => {
+      ;(SeedsService.getByUser as any).mockResolvedValue([])
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toEqual([])
+    })
+
+    it('should handle service errors gracefully', async () => {
+      ;(SeedsService.getByUser as any).mockRejectedValue(new Error('Database error'))
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      await request(app)
+        .get('/api/seeds')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(500)
+    })
+  })
+
+  describe('GET /api/seeds/:id', () => {
+    it('should return seed by ID', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/seed-123')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+        user_id: 'user-123',
+      })
+      expect(SeedsService.getById).toHaveBeenCalledWith('seed-123', 'user-123')
+    })
+
+    it('should return 404 when seed not found', async () => {
+      ;(SeedsService.getById as any).mockResolvedValue(null)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/non-existent')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+
+    // Note: Express routing handles trailing slashes, so this test is not applicable
+    // The route handler itself checks for id in req.params, which is tested in other cases
+
+    it('should handle service errors gracefully', async () => {
+      ;(SeedsService.getById as any).mockRejectedValue(new Error('Database error'))
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      await request(app)
+        .get('/api/seeds/seed-123')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(500)
+    })
+  })
+
+  describe('PUT /api/seeds/:id', () => {
+    it('should update seed content', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Updated content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.update as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .put('/api/seeds/seed-123')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ content: 'Updated content' })
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+      })
+      expect(SeedsService.update).toHaveBeenCalledWith('seed-123', 'user-123', { content: 'Updated content' })
+    })
+
+    it('should return 400 when content is not a string', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .put('/api/seeds/seed-123')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ content: 123 })
+        .expect(400)
+
+      expect(response.body).toMatchObject({
+        error: 'Content must be a string',
+      })
+    })
+
+    it('should return 404 when seed not found', async () => {
+      ;(SeedsService.update as any).mockResolvedValue(null)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .put('/api/seeds/non-existent')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ content: 'Updated content' })
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+
+    // Note: Express routing handles trailing slashes, so this test is not applicable
+    // The route handler itself checks for id in req.params, which is tested in other cases
+
+    it('should allow update without content (no-op)', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Original content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.update as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .put('/api/seeds/seed-123')
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(200)
+
+      expect(SeedsService.update).toHaveBeenCalledWith('seed-123', 'user-123', {})
+    })
+  })
+
+  describe('DELETE /api/seeds/:id', () => {
+    it('should delete seed', async () => {
+      ;(SeedsService.delete as any).mockResolvedValue(true)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      await request(app)
+        .delete('/api/seeds/seed-123')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(204)
+
+      expect(SeedsService.delete).toHaveBeenCalledWith('seed-123', 'user-123')
+    })
+
+    it('should return 404 when seed not found', async () => {
+      ;(SeedsService.delete as any).mockResolvedValue(false)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .delete('/api/seeds/non-existent')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+
+    it('should handle service errors gracefully', async () => {
+      ;(SeedsService.delete as any).mockRejectedValue(new Error('Database error'))
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      await request(app)
+        .delete('/api/seeds/seed-123')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(500)
+    })
+  })
+
+  describe('GET /api/seeds/:id/automations', () => {
+    it('should return list of automations for seed', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+
+      const mockAutomations = [
+        { id: 'auto-1', name: 'Tag Automation', description: 'Tags seeds', enabled: true },
+        { id: 'auto-2', name: 'Categorize Automation', description: 'Categorizes seeds', enabled: true },
+      ]
+
+      const { AutomationRegistry } = await import('../../services/automation/registry')
+      const mockRegistry = {
+        getAll: vi.fn(() => mockAutomations),
+      }
+      vi.mocked(AutomationRegistry.getInstance).mockReturnValue(mockRegistry as any)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/seed-123/automations')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(2)
+      expect(response.body[0]).toMatchObject({
+        id: 'auto-1',
+        name: 'Tag Automation',
+        enabled: true,
+      })
+    })
+
+    it('should return 404 when seed not found', async () => {
+      ;(SeedsService.getById as any).mockResolvedValue(null)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/non-existent/automations')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+  })
+
+  describe('POST /api/seeds/:id/automations/:automationId/run', () => {
+    it('should queue automation job for seed', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+
+      const mockAutomation = {
+        id: 'auto-1',
+        name: 'Tag Automation',
+        description: 'Tags seeds',
+        enabled: true,
+      }
+
+      const { AutomationRegistry } = await import('../../services/automation/registry')
+      const mockRegistry = {
+        getById: vi.fn(() => mockAutomation),
+      }
+      vi.mocked(AutomationRegistry.getInstance).mockReturnValue(mockRegistry as any)
+
+      const { addAutomationJob, automationQueue } = await import('../../services/queue/queue')
+      vi.mocked(addAutomationJob).mockResolvedValue('job-123')
+      if (automationQueue && typeof automationQueue === 'object') {
+        vi.mocked((automationQueue as any).getWaitingCount).mockResolvedValue(1)
+        vi.mocked((automationQueue as any).getActiveCount).mockResolvedValue(0)
+        vi.mocked((automationQueue as any).getJob).mockResolvedValue({
+          getState: vi.fn().mockResolvedValue('waiting'),
+        } as any)
+      }
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/seed-123/automations/auto-1/run')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(202)
+
+      expect(response.body).toMatchObject({
+        message: 'Automation queued',
+        jobId: 'job-123',
+        automation: {
+          id: 'auto-1',
+          name: 'Tag Automation',
+        },
+      })
+    })
+
+    it('should return 404 when seed not found', async () => {
+      ;(SeedsService.getById as any).mockResolvedValue(null)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/non-existent/automations/auto-1/run')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+
+    it('should return 404 when automation not found', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+
+      const { AutomationRegistry } = await import('../../services/automation/registry')
+      const mockRegistry = {
+        getById: vi.fn(() => null),
+      }
+      vi.mocked(AutomationRegistry.getInstance).mockReturnValue(mockRegistry as any)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/seed-123/automations/non-existent/run')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Automation not found',
+      })
     })
   })
 })
