@@ -60,7 +60,7 @@ export function showNotification(followup: DueFollowup): void {
 
   const notification = new Notification('Follow-up Due', {
     body: followup.message,
-    icon: '/favicon.ico', // You may want to add a custom icon
+    icon: '/favicon.svg', // Custom favicon
     tag: `followup-${followup.followup_id}`, // Prevent duplicate notifications
     requireInteraction: false,
   })
