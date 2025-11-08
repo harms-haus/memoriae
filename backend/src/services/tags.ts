@@ -195,7 +195,7 @@ export async function getSeedsByTagId(tagId: string): Promise<Seed[]> {
   // Get the seed rows for these transactions
   const seedIds = tagTransactions.map(t => t.seed_id)
   const seedRows = await db<SeedRow>('seeds')
-    .select('id', 'user_id', 'created_at')
+    .select('id', 'user_id', 'created_at', 'slug')
     .whereIn('id', seedIds)
 
   // Compute current state for each seed and combine with transaction timestamps

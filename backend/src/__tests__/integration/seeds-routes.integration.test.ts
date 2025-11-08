@@ -46,6 +46,7 @@ vi.mock('../../services/seeds', () => ({
   SeedsService: {
     create: vi.fn(),
     getById: vi.fn(),
+    getBySlug: vi.fn(),
     getByUser: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -92,6 +93,19 @@ describe('Seeds Routes', () => {
       provider: 'google',
       provider_id: 'provider-123',
       created_at: new Date(),
+    })
+
+    // Mock SeedsService.getById for resolveSeedId (used in PUT/DELETE routes)
+    vi.mocked(SeedsService.getById).mockImplementation(async (id: string, userId: string) => {
+      if (id === 'seed-123' && userId === 'user-123') {
+        return {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date(),
+          slug: null,
+        } as any
+      }
+      return null
     })
   })
 

@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { SeedView } from './SeedView'
 import type { Seed } from '../../types'
 
@@ -47,24 +48,40 @@ describe('SeedView Component', () => {
 
   describe('Rendering', () => {
     it('should render seed content', () => {
-      render(<SeedView seed={mockSeed} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={mockSeed} />
+        </MemoryRouter>
+      )
       expect(screen.getByText('Test seed content')).toBeInTheDocument()
     })
 
     it('should render tags', () => {
-      render(<SeedView seed={mockSeed} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={mockSeed} />
+        </MemoryRouter>
+      )
       expect(screen.getByTestId('tag-list')).toBeInTheDocument()
       expect(screen.getByTestId('tag-tag-1')).toBeInTheDocument()
       expect(screen.getByTestId('tag-tag-2')).toBeInTheDocument()
     })
 
     it('should render category', () => {
-      render(<SeedView seed={mockSeed} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={mockSeed} />
+        </MemoryRouter>
+      )
       expect(screen.getByText('/work')).toBeInTheDocument()
     })
 
     it('should render time', () => {
-      const { container } = render(<SeedView seed={mockSeed} />)
+      const { container } = render(
+        <MemoryRouter>
+          <SeedView seed={mockSeed} />
+        </MemoryRouter>
+      )
       // Time formatting may vary, just check it exists
       const timeElement = container.querySelector('.seed-view-time')
       expect(timeElement).toBeInTheDocument()
@@ -79,7 +96,11 @@ describe('SeedView Component', () => {
           tags: [],
         },
       }
-      render(<SeedView seed={seedWithoutTags} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={seedWithoutTags} />
+        </MemoryRouter>
+      )
       expect(screen.queryByTestId('tag-list')).not.toBeInTheDocument()
     })
 
@@ -91,21 +112,33 @@ describe('SeedView Component', () => {
           categories: [],
         },
       }
-      render(<SeedView seed={seedWithoutCategory} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={seedWithoutCategory} />
+        </MemoryRouter>
+      )
       expect(screen.queryByText('/work')).not.toBeInTheDocument()
     })
   })
 
   describe('Edit Mode', () => {
     it('should render textarea when isEditing is true', () => {
-      render(<SeedView seed={mockSeed} isEditing={true} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={mockSeed} isEditing={true} />
+        </MemoryRouter>
+      )
       const textarea = screen.getByRole('textbox')
       expect(textarea).toBeInTheDocument()
       expect(textarea).toHaveValue('Test seed content')
     })
 
     it('should render editable tags with remove buttons when isEditing is true', () => {
-      render(<SeedView seed={mockSeed} isEditing={true} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={mockSeed} isEditing={true} />
+        </MemoryRouter>
+      )
       // In edit mode, tags should be rendered with X buttons
       expect(screen.getByText('#work')).toBeInTheDocument()
       expect(screen.getByText('#important')).toBeInTheDocument()
@@ -121,15 +154,17 @@ describe('SeedView Component', () => {
       let editedContent = 'Test seed content'
       
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-          onContentChange={(value) => {
-            editedContent = value
-            onContentChange(value)
-          }}
-          editedContent={editedContent}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+            onContentChange={(value) => {
+              editedContent = value
+              onContentChange(value)
+            }}
+            editedContent={editedContent}
+          />
+        </MemoryRouter>
       )
       
       const textarea = screen.getByRole('textbox')
@@ -147,11 +182,13 @@ describe('SeedView Component', () => {
       const onTagRemove = vi.fn()
       
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-          onTagRemove={onTagRemove}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+            onTagRemove={onTagRemove}
+          />
+        </MemoryRouter>
       )
       
       const removeButtons = screen.getAllByRole('button', { name: /Remove tag/ })
@@ -169,11 +206,13 @@ describe('SeedView Component', () => {
       const onTagClick = vi.fn()
       
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-          onTagClick={onTagClick}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+            onTagClick={onTagClick}
+          />
+        </MemoryRouter>
       )
       
       // In edit mode, TagList is not used, so onTagClick won't be called
@@ -187,11 +226,13 @@ describe('SeedView Component', () => {
 
     it('should use editedContent when provided', () => {
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-          editedContent="Edited content"
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+            editedContent="Edited content"
+          />
+        </MemoryRouter>
       )
       
       const textarea = screen.getByRole('textbox')
@@ -202,11 +243,13 @@ describe('SeedView Component', () => {
       const editedTags = [{ id: 'tag-1', name: 'work' }]
       
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-          editedTags={editedTags}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+            editedTags={editedTags}
+          />
+        </MemoryRouter>
       )
       
       // Should only show one tag (tag-1)
@@ -220,10 +263,12 @@ describe('SeedView Component', () => {
 
     it('should fall back to original content when editedContent is undefined', () => {
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+          />
+        </MemoryRouter>
       )
       
       const textarea = screen.getByRole('textbox')
@@ -232,10 +277,12 @@ describe('SeedView Component', () => {
 
     it('should fall back to original tags when editedTags is undefined', () => {
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+          />
+        </MemoryRouter>
       )
       
       // Should show both tags
@@ -246,7 +293,11 @@ describe('SeedView Component', () => {
 
   describe('Non-Edit Mode', () => {
     it('should render content as div when not editing', () => {
-      render(<SeedView seed={mockSeed} isEditing={false} />)
+      render(
+        <MemoryRouter>
+          <SeedView seed={mockSeed} isEditing={false} />
+        </MemoryRouter>
+      )
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
       expect(screen.getByText('Test seed content')).toBeInTheDocument()
     })
@@ -256,11 +307,13 @@ describe('SeedView Component', () => {
       const onTagClick = vi.fn()
       
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={false}
-          onTagClick={onTagClick}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={false}
+            onTagClick={onTagClick}
+          />
+        </MemoryRouter>
       )
       
       const tagElement = screen.getByTestId('tag-tag-1')
@@ -278,11 +331,13 @@ describe('SeedView Component', () => {
       ])
       
       render(
-        <SeedView
-          seed={mockSeed}
-          isEditing={true}
-          tagColors={tagColors}
-        />
+        <MemoryRouter>
+          <SeedView
+            seed={mockSeed}
+            isEditing={true}
+            tagColors={tagColors}
+          />
+        </MemoryRouter>
       )
       
       // In edit mode, colors are applied via inline styles

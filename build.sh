@@ -57,6 +57,21 @@ else
 fi
 echo ""
 
+# Check for build failures and stop if any occurred
+if [ ${#BUILD_FAILURES[@]} -gt 0 ]; then
+  echo -e "${RED}=== BUILD PHASE FAILED ===${NC}"
+  echo -e "${RED}✗ Build failures detected. Stopping before test phase.${NC}"
+  echo ""
+  echo -e "${RED}Failed builds:${NC}"
+  for failure in "${BUILD_FAILURES[@]}"; do
+    echo -e "${RED}  - ${failure}${NC}"
+  done
+  exit 1
+fi
+
+echo -e "${GREEN}✓ All builds completed successfully${NC}"
+echo ""
+
 # Test phase (with coverage)
 echo -e "${BLUE}=== TEST PHASE (with coverage) ===${NC}"
 echo ""

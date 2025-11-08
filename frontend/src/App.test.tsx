@@ -54,7 +54,7 @@ vi.mock('./components/views/SeedsView', () => ({
       <div data-testid="seeds-view">
         <button
           data-testid="seed-1"
-          onClick={() => onSeedSelect?.('seed-1')}
+          onClick={() => onSeedSelect?.({ id: 'seed-1', slug: null })}
         >
           Seed 1
         </button>
@@ -90,9 +90,9 @@ vi.mock('./components/views/SeedDetailView', () => ({
 }))
 
 vi.mock('./components/views/TagDetailView', () => ({
-  TagDetailView: ({ tagId, onBack }: any) => (
+  TagDetailView: ({ tagName, onBack }: any) => (
     <div data-testid="tag-detail-view">
-      <div>Tag Detail: {tagId}</div>
+      <div>Tag Detail: {tagName}</div>
       <button data-testid="back-button" onClick={onBack}>
         Back
       </button>
@@ -209,11 +209,11 @@ describe('App', () => {
       expect(screen.getByText('Seed Detail: seed-123')).toBeInTheDocument()
     })
 
-    it('should render tag detail view at /tags/:id', () => {
-      renderAppWithRoute('/tags/tag-123')
+    it('should render tag detail view at /tags/:name', () => {
+      renderAppWithRoute('/tags/work')
 
       expect(screen.getByTestId('tag-detail-view')).toBeInTheDocument()
-      expect(screen.getByText('Tag Detail: tag-123')).toBeInTheDocument()
+      expect(screen.getByText('Tag Detail: work')).toBeInTheDocument()
     })
 
     it('should default to seeds view at /', () => {
@@ -238,8 +238,8 @@ describe('App', () => {
       expect(tabs).toHaveAttribute('data-value', 'seeds')
     })
 
-    it('should show tags tab as active on /tags/:id', () => {
-      renderAppWithRoute('/tags/tag-123')
+    it('should show tags tab as active on /tags/:name', () => {
+      renderAppWithRoute('/tags/work')
 
       const tabs = screen.getByTestId('tabs')
       expect(tabs).toHaveAttribute('data-value', 'tags')

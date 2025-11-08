@@ -5,16 +5,16 @@ import express from 'express'
 import tagsRoutes from '../../routes/tags'
 import { authenticate } from '../../middleware/auth'
 import { generateTestToken } from '../../test-helpers'
-import { getAllTags, getById, edit, setColor, getSeedsByTagId } from '../../services/tags'
+import { getAllTags, getByName, edit, setColor, getSeedsByTagName } from '../../services/tags'
 import * as authService from '../../services/auth'
 
 // Mock services
 vi.mock('../../services/tags', () => ({
   getAllTags: vi.fn(),
-  getById: vi.fn(),
+  getByName: vi.fn(),
   edit: vi.fn(),
   setColor: vi.fn(),
-  getSeedsByTagId: vi.fn(),
+  getSeedsByTagName: vi.fn(),
 }))
 
 // Mock auth service
@@ -115,8 +115,8 @@ describe('Tags Routes', () => {
     })
   })
 
-  describe('GET /api/tags/:id', () => {
-    it('should return tag by ID', async () => {
+  describe('GET /api/tags/:name', () => {
+    it('should return tag by name', async () => {
       const mockTag = {
         id: 'tag-1',
         name: 'work',
@@ -128,7 +128,7 @@ describe('Tags Routes', () => {
         transactions: [],
       }
 
-      ;(getById as any).mockResolvedValue(mockTag)
+      ;(getByName as any).mockResolvedValue(mockTag)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -136,7 +136,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/tags/tag-1')
+        .get('/api/tags/work')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
@@ -144,11 +144,11 @@ describe('Tags Routes', () => {
         id: 'tag-1',
         name: 'work',
       })
-      expect(getById).toHaveBeenCalledWith('tag-1')
+      expect(getByName).toHaveBeenCalledWith('work')
     })
 
     it('should return 404 when tag not found', async () => {
-      ;(getById as any).mockResolvedValue(null)
+      ;(getByName as any).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -169,7 +169,7 @@ describe('Tags Routes', () => {
     // The route handler itself checks for id in req.params, which is tested in other cases
 
     it('should handle service errors gracefully', async () => {
-      ;(getById as any).mockRejectedValue(new Error('Database error'))
+      ;(getByName as any).mockRejectedValue(new Error('Database error'))
 
       const token = generateTestToken({
         id: 'user-123',
@@ -183,13 +183,14 @@ describe('Tags Routes', () => {
     })
   })
 
-  describe('GET /api/tags/:id/seeds', () => {
+  describe('GET /api/tags/:name/seeds', () => {
     it('should return seeds for tag', async () => {
       const mockSeeds = [
         {
           id: 'seed-1',
           user_id: 'user-123',
           created_at: new Date(),
+          slug: 'abc1234/test-seed',
           currentState: {
             seed: 'Seed content',
             tags: [{ id: 'tag-1', name: 'work' }],
@@ -197,7 +198,7 @@ describe('Tags Routes', () => {
         },
       ]
 
-      ;(getSeedsByTagId as any).mockResolvedValue(mockSeeds)
+      ;(getSeedsByTagName as any).mockResolvedValue(mockSeeds)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -205,7 +206,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/tags/tag-1/seeds')
+        .get('/api/tags/work/seeds')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
@@ -213,11 +214,11 @@ describe('Tags Routes', () => {
       expect(response.body[0]).toMatchObject({
         id: 'seed-1',
       })
-      expect(getSeedsByTagId).toHaveBeenCalledWith('tag-1')
+      expect(getSeedsByTagName).toHaveBeenCalledWith('work')
     })
 
     it('should return empty array when tag has no seeds', async () => {
-      ;(getSeedsByTagId as any).mockResolvedValue([])
+      ;(getSeedsByTagName as any).mockResolvedValue([])
 
       const token = generateTestToken({
         id: 'user-123',
@@ -225,7 +226,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/tags/tag-1/seeds')
+        .get('/api/tags/work/seeds')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
@@ -236,9 +237,19 @@ describe('Tags Routes', () => {
     // The route handler itself checks for id in req.params, which is tested in other cases
   })
 
-  describe('PUT /api/tags/:id', () => {
+  describe('PUT /api/tags/:name', () => {
     it('should update tag name only', async () => {
       const mockTag = {
+        id: 'tag-1',
+        name: 'work',
+        color: '#ff0000',
+        currentState: {
+          name: 'work',
+          color: '#ff0000',
+        },
+        transactions: [],
+      }
+      const mockUpdatedTag = {
         id: 'tag-1',
         name: 'updated-work',
         color: '#ff0000',
@@ -246,9 +257,11 @@ describe('Tags Routes', () => {
           name: 'updated-work',
           color: '#ff0000',
         },
+        transactions: [],
       }
 
-      ;(edit as any).mockResolvedValue(mockTag)
+      ;(getByName as any).mockResolvedValue(mockTag)
+      ;(edit as any).mockResolvedValue(mockUpdatedTag)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -256,7 +269,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/tags/tag-1')
+        .put('/api/tags/work')
         .set('Authorization', `Bearer ${token}`)
         .send({ name: 'updated-work' })
         .expect(200)
@@ -265,6 +278,7 @@ describe('Tags Routes', () => {
         id: 'tag-1',
         name: 'updated-work',
       })
+      expect(getByName).toHaveBeenCalledWith('work')
       expect(edit).toHaveBeenCalledWith('tag-1', { name: 'updated-work' })
     })
 
@@ -272,14 +286,26 @@ describe('Tags Routes', () => {
       const mockTag = {
         id: 'tag-1',
         name: 'work',
+        color: '#ff0000',
+        currentState: {
+          name: 'work',
+          color: '#ff0000',
+        },
+        transactions: [],
+      }
+      const mockUpdatedTag = {
+        id: 'tag-1',
+        name: 'work',
         color: '#00ff00',
         currentState: {
           name: 'work',
           color: '#00ff00',
         },
+        transactions: [],
       }
 
-      ;(setColor as any).mockResolvedValue(mockTag)
+      ;(getByName as any).mockResolvedValue(mockTag)
+      ;(setColor as any).mockResolvedValue(mockUpdatedTag)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -287,7 +313,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/tags/tag-1')
+        .put('/api/tags/work')
         .set('Authorization', `Bearer ${token}`)
         .send({ color: '#00ff00' })
         .expect(200)
@@ -296,14 +322,30 @@ describe('Tags Routes', () => {
         id: 'tag-1',
         color: '#00ff00',
       })
+      expect(getByName).toHaveBeenCalledWith('work')
       expect(setColor).toHaveBeenCalledWith('tag-1', '#00ff00')
     })
 
     it('should update both name and color', async () => {
+      const mockTag = {
+        id: 'tag-1',
+        name: 'work',
+        color: '#ff0000',
+        currentState: {
+          name: 'work',
+          color: '#ff0000',
+        },
+        transactions: [],
+      }
       const mockTagAfterEdit = {
         id: 'tag-1',
         name: 'updated-work',
         color: '#ff0000',
+        currentState: {
+          name: 'updated-work',
+          color: '#ff0000',
+        },
+        transactions: [],
       }
       const mockTagAfterColor = {
         id: 'tag-1',
@@ -313,8 +355,10 @@ describe('Tags Routes', () => {
           name: 'updated-work',
           color: '#00ff00',
         },
+        transactions: [],
       }
 
+      ;(getByName as any).mockResolvedValue(mockTag)
       ;(edit as any).mockResolvedValue(mockTagAfterEdit)
       ;(setColor as any).mockResolvedValue(mockTagAfterColor)
 
@@ -324,7 +368,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/tags/tag-1')
+        .put('/api/tags/work')
         .set('Authorization', `Bearer ${token}`)
         .send({ name: 'updated-work', color: '#00ff00' })
         .expect(200)
@@ -334,15 +378,31 @@ describe('Tags Routes', () => {
         name: 'updated-work',
         color: '#00ff00',
       })
+      expect(getByName).toHaveBeenCalledWith('work')
       expect(edit).toHaveBeenCalledWith('tag-1', { name: 'updated-work' })
       expect(setColor).toHaveBeenCalledWith('tag-1', '#00ff00')
     })
 
     it('should clear color when color is null', async () => {
+      const mockTag = {
+        id: 'tag-1',
+        name: 'work',
+        color: '#ff0000',
+        currentState: {
+          name: 'work',
+          color: '#ff0000',
+        },
+        transactions: [],
+      }
       const mockTagAfterEdit = {
         id: 'tag-1',
         name: 'work',
         color: '#ff0000',
+        currentState: {
+          name: 'work',
+          color: '#ff0000',
+        },
+        transactions: [],
       }
       const mockTagAfterColor = {
         id: 'tag-1',
@@ -352,8 +412,10 @@ describe('Tags Routes', () => {
           name: 'work',
           color: null,
         },
+        transactions: [],
       }
 
+      ;(getByName as any).mockResolvedValue(mockTag)
       ;(edit as any).mockResolvedValue(mockTagAfterEdit)
       ;(setColor as any).mockResolvedValue(mockTagAfterColor)
 
@@ -363,7 +425,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/tags/tag-1')
+        .put('/api/tags/work')
         .set('Authorization', `Bearer ${token}`)
         .send({ name: 'work', color: null })
         .expect(200)
@@ -372,6 +434,7 @@ describe('Tags Routes', () => {
         id: 'tag-1',
         color: null,
       })
+      expect(getByName).toHaveBeenCalledWith('work')
       expect(setColor).toHaveBeenCalledWith('tag-1', null)
     })
 
@@ -382,7 +445,7 @@ describe('Tags Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/tags/tag-1')
+        .put('/api/tags/work')
         .set('Authorization', `Bearer ${token}`)
         .send({})
         .expect(400)

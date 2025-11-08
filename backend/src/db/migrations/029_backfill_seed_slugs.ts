@@ -1,5 +1,5 @@
 import type { Knex } from 'knex'
-import { generateSeedSlug } from '../utils/slug'
+import { generateSeedSlug } from '../../utils/slug'
 
 export async function up(knex: Knex): Promise<void> {
   // Get all seeds that don't have a slug yet

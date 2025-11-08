@@ -116,7 +116,9 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
 
   const handleSeedClick = (seedId: string) => {
     const seed = seeds.find(s => s.id === seedId)
-    onSeedSelect?.({ id: seedId, slug: seed?.slug })
+    if (seed) {
+      onSeedSelect?.({ id: seedId, slug: seed.slug ?? null })
+    }
   }
 
   const renderPanel = (index: number, width: number): React.ReactNode => {

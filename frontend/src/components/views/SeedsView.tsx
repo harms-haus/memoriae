@@ -12,7 +12,7 @@ import './Views.css'
 import './SeedsView.css'
 
 interface SeedsViewProps {
-  onSeedSelect?: (seedId: string) => void
+  onSeedSelect?: (seed: { id: string; slug?: string | null }) => void
   refreshRef?: React.MutableRefObject<(() => void) | null>
 }
 
@@ -360,7 +360,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
               <div
                 key={seed.id}
                 className="seeds-view-item-wrapper"
-                onClick={() => onSeedSelect?.({ id: seed.id, slug: seed.slug })}
+                onClick={() => onSeedSelect?.({ id: seed.id, slug: seed.slug ?? null })}
               >
                 <Panel
                   variant="elevated"

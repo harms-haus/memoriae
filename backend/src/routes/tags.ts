@@ -1,6 +1,6 @@
 // Tag routes
 import { Router, Request, Response, NextFunction } from 'express'
-import { getAllTags, getById, getByName, edit, setColor, getSeedsByTagId, getSeedsByTagName } from '../services/tags'
+import { getAllTags, getByName, edit, setColor, getSeedsByTagName } from '../services/tags'
 import { authenticate } from '../middleware/auth'
 
 const router = Router()

@@ -291,7 +291,7 @@ describe('TimelineView Component', () => {
         await user.click(seedContent)
       }
       
-      expect(onSeedSelect).toHaveBeenCalledWith('seed-1')
+      expect(onSeedSelect).toHaveBeenCalledWith({ id: 'seed-1', slug: null })
     })
   })
 
@@ -313,7 +313,7 @@ describe('TimelineView Component', () => {
       expect(tagButtons.length).toBeGreaterThan(0)
       await user.click(tagButtons[0]!)
       
-      expect(mockNavigate).toHaveBeenCalledWith('/tags/tag-1')
+      expect(mockNavigate).toHaveBeenCalledWith('/tags/work')
     })
   })
 

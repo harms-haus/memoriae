@@ -134,6 +134,7 @@ const mockSeeds: Seed[] = [
     id: 'seed-1',
     user_id: 'user-1',
     created_at: '2024-01-01T00:00:00Z',
+    slug: 'abc1234/test-seed',
     currentState: {
       seed: 'Test seed',
       timestamp: '2024-01-01T00:00:00Z',
@@ -160,10 +161,10 @@ describe('TagDetailView Component', () => {
     
     // Setup default API mocks
     vi.mocked(api.get).mockImplementation((url: string) => {
-      if (url === '/tags/tag-1') {
+      if (url === '/tags/work') {
         return Promise.resolve(mockTagDetail)
       }
-      if (url === '/tags/tag-1/seeds') {
+      if (url === '/tags/work/seeds') {
         return Promise.resolve(mockSeeds)
       }
       if (url === '/tags') {
@@ -179,7 +180,7 @@ describe('TagDetailView Component', () => {
       
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -189,7 +190,7 @@ describe('TagDetailView Component', () => {
     it('should render tag detail after loading', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -204,7 +205,7 @@ describe('TagDetailView Component', () => {
       
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -213,15 +214,15 @@ describe('TagDetailView Component', () => {
       })
     })
 
-    it('should show error when tagId is missing', async () => {
+    it('should show error when tagName is missing', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="" onBack={mockOnBack} />
+          <TagDetailView tagName="" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
       await waitFor(() => {
-        expect(screen.getByText('Tag ID is required')).toBeInTheDocument()
+        expect(screen.getByText('Tag name is required')).toBeInTheDocument()
       })
     })
   })
@@ -230,7 +231,7 @@ describe('TagDetailView Component', () => {
     it('should display tag name', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -242,7 +243,7 @@ describe('TagDetailView Component', () => {
     it('should display tag color', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -254,7 +255,7 @@ describe('TagDetailView Component', () => {
     it('should display usage stats', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -266,7 +267,7 @@ describe('TagDetailView Component', () => {
     it('should display created date', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -287,7 +288,7 @@ describe('TagDetailView Component', () => {
       const user = userEvent.setup()
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -315,7 +316,7 @@ describe('TagDetailView Component', () => {
       
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -342,7 +343,7 @@ describe('TagDetailView Component', () => {
       await user.click(saveButtons[0]!)
       
       await waitFor(() => {
-        expect(api.put).toHaveBeenCalledWith('/tags/tag-1', { name: 'updated-work' })
+        expect(api.put).toHaveBeenCalledWith('/tags/work', { name: 'updated-work' })
         expect(screen.getByText('updated-work')).toBeInTheDocument()
       })
     })
@@ -351,7 +352,7 @@ describe('TagDetailView Component', () => {
       const user = userEvent.setup()
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -386,7 +387,7 @@ describe('TagDetailView Component', () => {
       const user = userEvent.setup()
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -418,7 +419,7 @@ describe('TagDetailView Component', () => {
       const user = userEvent.setup()
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -446,7 +447,7 @@ describe('TagDetailView Component', () => {
       
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -483,7 +484,7 @@ describe('TagDetailView Component', () => {
         expect(api.put).toHaveBeenCalled()
         const callArgs = vi.mocked(api.put).mock.calls[0]
         expect(callArgs).toBeDefined()
-        expect(callArgs?.[0]).toBe('/tags/tag-1')
+        expect(callArgs?.[0]).toBe('/tags/work')
         // The color should contain '#00ff00' even if it has a prefix
         expect((callArgs?.[1] as any)?.color).toContain('#00ff00')
       })
@@ -493,7 +494,7 @@ describe('TagDetailView Component', () => {
       const user = userEvent.setup()
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -534,7 +535,7 @@ describe('TagDetailView Component', () => {
       
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -562,7 +563,7 @@ describe('TagDetailView Component', () => {
       await user.click(saveButtons[0]!)
       
       await waitFor(() => {
-        expect(api.put).toHaveBeenCalledWith('/tags/tag-1', { color: null })
+        expect(api.put).toHaveBeenCalledWith('/tags/work', { color: null })
       })
     })
   })
@@ -571,7 +572,7 @@ describe('TagDetailView Component', () => {
     it('should display transaction history', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -585,7 +586,7 @@ describe('TagDetailView Component', () => {
     it('should format transaction titles correctly', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -600,7 +601,7 @@ describe('TagDetailView Component', () => {
     it('should display seeds using this tag', async () => {
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -612,10 +613,10 @@ describe('TagDetailView Component', () => {
 
     it('should show empty state when no seeds use tag', async () => {
       vi.mocked(api.get).mockImplementation((url: string) => {
-        if (url === '/tags/tag-1') {
+        if (url === '/tags/work') {
           return Promise.resolve(mockTagDetail)
         }
-        if (url === '/tags/tag-1/seeds') {
+        if (url === '/tags/work/seeds') {
           return Promise.resolve([])
         }
         if (url === '/tags') {
@@ -626,7 +627,7 @@ describe('TagDetailView Component', () => {
       
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -639,7 +640,7 @@ describe('TagDetailView Component', () => {
       const user = userEvent.setup()
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       
@@ -652,7 +653,7 @@ describe('TagDetailView Component', () => {
         await user.click(seedItem)
       }
       
-      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-1')
+      expect(mockNavigate).toHaveBeenCalledWith('/seeds/abc1234/test-seed')
     })
   })
 
@@ -661,7 +662,7 @@ describe('TagDetailView Component', () => {
       const user = userEvent.setup()
       render(
         <MemoryRouter>
-          <TagDetailView tagId="tag-1" onBack={mockOnBack} />
+          <TagDetailView tagName="work" onBack={mockOnBack} />
         </MemoryRouter>
       )
       

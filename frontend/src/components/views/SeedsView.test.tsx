@@ -635,7 +635,7 @@ describe('SeedsView Component', () => {
         await user.click(seedWrapper)
       }
       
-      expect(onSeedSelect).toHaveBeenCalledWith('seed-1')
+      expect(onSeedSelect).toHaveBeenCalledWith({ id: 'seed-1', slug: null })
     })
   })
 

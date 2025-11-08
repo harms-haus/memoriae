@@ -6,6 +6,7 @@ import transactionsRoutes from '../../routes/transactions'
 import { authenticate } from '../../middleware/auth'
 import { generateTestToken } from '../../test-helpers'
 import { SeedTransactionsService } from '../../services/seed-transactions'
+import { SeedsService } from '../../services/seeds'
 import { computeSeedState } from '../../utils/seed-state'
 import * as authService from '../../services/auth'
 import db from '../../db/connection'
@@ -29,6 +30,13 @@ vi.mock('../../services/seed-transactions', () => ({
     getBySeedId: vi.fn(),
     getById: vi.fn(),
     create: vi.fn(),
+  },
+}))
+
+vi.mock('../../services/seeds', () => ({
+  SeedsService: {
+    getById: vi.fn(),
+    getBySlug: vi.fn(),
   },
 }))
 
@@ -57,6 +65,19 @@ describe('Transaction Routes', () => {
       provider: 'google',
       provider_id: 'provider-123',
       created_at: new Date(),
+    })
+
+    // Mock SeedsService.getById for resolveSeedId
+    vi.mocked(SeedsService.getById).mockImplementation(async (id: string, userId: string) => {
+      if (id === 'seed-123' && userId === 'user-123') {
+        return {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date(),
+          slug: null,
+        } as any
+      }
+      return null
     })
 
     // Mock database queries
@@ -155,24 +176,9 @@ describe('Transaction Routes', () => {
     })
 
     it('should verify seed ownership', async () => {
-      // The route checks: db('seeds').where({ id: seedId, user_id: userId }).first()
+      // The route uses resolveSeedId which calls SeedsService.getById
       // We need to mock it to return null when user_id doesn't match
-      const mockSeed = {
-        id: 'seed-123',
-        user_id: 'other-user', // Different from authenticated user
-      }
-      
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn((conditions: Record<string, any>) => {
-          // Check if the where conditions match the seed
-          // If user_id doesn't match, return null
-          const matches = conditions.id === mockSeed.id && conditions.user_id === mockSeed.user_id
-          return {
-            first: vi.fn().mockResolvedValue(matches ? mockSeed : null),
-          }
-        }),
-        first: vi.fn().mockResolvedValue(null),
-      } as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(null) // Seed not found or not owned
 
       const token = generateTestToken({
         id: 'user-123', // Authenticated user
@@ -695,10 +701,7 @@ describe('Transaction Routes', () => {
       }
 
       vi.mocked(SeedTransactionsService.getById).mockResolvedValue(mockTransaction as any)
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null), // Seed not found or not owned
-      } as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(null) // Seed not found or not owned
 
       const token = generateTestToken({
         id: 'user-123',
