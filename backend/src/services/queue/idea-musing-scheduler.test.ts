@@ -67,12 +67,18 @@ describe('IdeaMusingScheduler', () => {
       generateMusing: vi.fn(),
     }
 
+    // Make mockAutomation an instance of the mocked IdeaMusingAutomation class
+    // by setting its prototype to the mocked constructor's prototype
+    const MockedIdeaMusingAutomation = vi.mocked(IdeaMusingAutomation)
+    Object.setPrototypeOf(mockAutomation, MockedIdeaMusingAutomation.prototype)
+    // Set constructor so instanceof check passes
+    mockAutomation.constructor = MockedIdeaMusingAutomation
+
     const mockRegistry = {
       getByName: vi.fn().mockReturnValue(mockAutomation),
     }
 
     vi.mocked(AutomationRegistry.getInstance).mockReturnValue(mockRegistry as any)
-    vi.mocked(IdeaMusingAutomation).mockImplementation(() => mockAutomation)
 
     scheduler = new IdeaMusingScheduler()
   })
@@ -124,7 +130,7 @@ describe('IdeaMusingScheduler', () => {
       vi.mocked(db).mockReturnValue({
         where: vi.fn().mockReturnThis(),
         count: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({ count: 0 }),
+        first: vi.fn().mockResolvedValue({ count: 5 }), // Already ran today, so generateDailyMusings won't run
       } as any)
 
       // Set time to scheduled time
@@ -134,26 +140,58 @@ describe('IdeaMusingScheduler', () => {
       vi.setSystemTime(scheduledDate)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      // Wait for the immediate checkAndRun call and shouldRunToday promise
+      await vi.runOnlyPendingTimersAsync()
+      await vi.runOnlyPendingTimersAsync() // Wait for the async shouldRunToday
+      
+      // Stop scheduler to prevent interval from continuing
+      const stopPromise = scheduler.stop()
+      // Advance timers to allow stop()'s checkProcessing interval to fire
+      vi.advanceTimersByTime(200)
+      await vi.runOnlyPendingTimersAsync()
+      await stopPromise
 
       expect(db).toHaveBeenCalled()
     })
 
     it('should set up interval to check every hour', async () => {
-      vi.mocked(db).mockReturnValue({
+      const mockQueryBuilder = {
         where: vi.fn().mockReturnThis(),
         count: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({ count: 0 }),
-      } as any)
+        first: vi.fn().mockResolvedValue({ count: 5 }), // Already ran today, so generateDailyMusings won't run
+      }
+      vi.mocked(db).mockReturnValue(mockQueryBuilder as any)
+
+      // Set initial time to scheduled time
+      const [scheduleHour, scheduleMinute] = config.ideaMusing.scheduleTime.split(':').map(Number)
+      const scheduledDate = new Date()
+      scheduledDate.setUTCHours(scheduleHour, scheduleMinute, 0, 0)
+      vi.setSystemTime(scheduledDate)
 
       scheduler.start()
+      
+      // Wait for initial checkAndRun
+      await vi.runOnlyPendingTimersAsync()
+      await vi.runOnlyPendingTimersAsync()
 
-      // Advance time by 1 hour
+      // Advance time by 1 hour and set to scheduled time again to trigger interval
       vi.advanceTimersByTime(60 * 60 * 1000)
-      await vi.runAllTimersAsync()
+      const nextScheduledDate = new Date(scheduledDate.getTime() + 60 * 60 * 1000)
+      nextScheduledDate.setUTCHours(scheduleHour, scheduleMinute, 0, 0)
+      vi.setSystemTime(nextScheduledDate)
+      await vi.runOnlyPendingTimersAsync()
+      await vi.runOnlyPendingTimersAsync()
+      
+      // Stop scheduler to prevent further intervals
+      const stopPromise = scheduler.stop()
+      vi.advanceTimersByTime(200)
+      await vi.runOnlyPendingTimersAsync()
+      await stopPromise
 
-      // Should have checked multiple times
+      // Should have checked multiple times (db is called in shouldRunToday)
       expect(db).toHaveBeenCalled()
+      // Also verify the query builder methods were called
+      expect(mockQueryBuilder.where).toHaveBeenCalled()
     })
   })
 
@@ -179,13 +217,13 @@ describe('IdeaMusingScheduler', () => {
 
     it('should clear interval when stopping', async () => {
       scheduler.start()
-      const intervalId = (scheduler as any).intervalId
+      expect((scheduler as any).intervalId).not.toBeNull()
 
       const stopPromise = scheduler.stop()
-      await vi.runAllTimersAsync()
+      await vi.runOnlyPendingTimersAsync() // Wait for the checkProcessing interval
       await stopPromise
 
-      expect(intervalId).toBeNull()
+      expect((scheduler as any).intervalId).toBeNull()
     })
 
     it('should wait for in-progress processing to complete', async () => {
@@ -233,12 +271,17 @@ describe('IdeaMusingScheduler', () => {
       vi.mocked(db).mockReturnValue({
         where: vi.fn().mockReturnThis(),
         count: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({ count: 0 }),
+        first: vi.fn().mockResolvedValue({ count: 5 }), // Already ran today, so generateDailyMusings won't run
         select: vi.fn().mockResolvedValue([]),
       } as any)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.runOnlyPendingTimersAsync() // Wait for initial checkAndRun
+      await vi.runOnlyPendingTimersAsync() // Wait for shouldRunToday
+      const stopPromise = scheduler.stop() // Stop to prevent interval from continuing
+      vi.advanceTimersByTime(200)
+      await vi.runOnlyPendingTimersAsync()
+      await stopPromise
 
       expect(db).toHaveBeenCalled()
     })
@@ -247,7 +290,11 @@ describe('IdeaMusingScheduler', () => {
       ;(scheduler as any).isProcessing = true
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.runOnlyPendingTimersAsync() // Wait for initial checkAndRun
+      const stopPromise = scheduler.stop() // Stop to prevent interval from continuing
+      vi.advanceTimersByTime(200)
+      await vi.runOnlyPendingTimersAsync()
+      await stopPromise
 
       // Should not trigger generation
       expect(IdeaMusingsService.create).not.toHaveBeenCalled()
@@ -267,7 +314,12 @@ describe('IdeaMusingScheduler', () => {
       } as any)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.runOnlyPendingTimersAsync() // Wait for initial checkAndRun
+      await vi.runOnlyPendingTimersAsync() // Wait for shouldRunToday
+      const stopPromise = scheduler.stop() // Stop to prevent interval from continuing
+      vi.advanceTimersByTime(200)
+      await vi.runOnlyPendingTimersAsync()
+      await stopPromise
 
       expect(IdeaMusingsService.create).not.toHaveBeenCalled()
     })
@@ -339,6 +391,9 @@ describe('IdeaMusingScheduler', () => {
       })
       vi.mocked(IdeaMusingsService.create).mockResolvedValue(undefined)
       vi.mocked(IdeaMusingsService.recordShown).mockResolvedValue(undefined)
+
+      // Ensure automation is set (normally done by start())
+      ;(scheduler as any).automation = mockAutomation
 
       await scheduler.generateDailyMusings()
 
@@ -432,6 +487,9 @@ describe('IdeaMusingScheduler', () => {
       vi.mocked(createOpenRouterClient).mockReturnValue({} as any)
       vi.mocked(mockAutomation.identifyIdeaSeeds).mockResolvedValue([mockSeeds[0]])
 
+      // Ensure automation is set (normally done by start())
+      ;(scheduler as any).automation = mockAutomation
+
       await scheduler.generateDailyMusings()
 
       expect(mockAutomation.identifyIdeaSeeds).toHaveBeenCalledWith(
@@ -476,6 +534,9 @@ describe('IdeaMusingScheduler', () => {
       vi.mocked(IdeaMusingsService.create).mockResolvedValue(undefined)
       vi.mocked(IdeaMusingsService.recordShown).mockResolvedValue(undefined)
 
+      // Ensure automation is set (normally done by start())
+      ;(scheduler as any).automation = mockAutomation
+
       await scheduler.generateDailyMusings()
 
       // Should only process maxMusingsPerDay seeds
@@ -504,6 +565,10 @@ describe('IdeaMusingScheduler', () => {
         { id: 'user-2' },
       ]
 
+      // Set automation manually since we're calling generateDailyMusings directly
+      ;(scheduler as any).automation = mockAutomation
+
+      // Mock db to return a query builder that supports chaining
       vi.mocked(db).mockReturnValue({
         select: vi.fn().mockResolvedValue(mockUsers),
       } as any)
@@ -554,6 +619,9 @@ describe('IdeaMusingScheduler', () => {
       const mockSettings = {
         openrouter_api_key: 'test-key',
       }
+
+      // Set automation manually since we're calling generateDailyMusings directly
+      ;(scheduler as any).automation = mockAutomation
 
       vi.mocked(db).mockReturnValue({
         select: vi.fn().mockResolvedValue(mockUsers),

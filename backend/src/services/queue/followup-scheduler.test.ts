@@ -66,8 +66,9 @@ describe('FollowupNotificationScheduler', () => {
 
       scheduler.start()
 
-      // Wait for async check to complete
-      await vi.runAllTimersAsync()
+      // Wait for async check to complete by advancing timers and flushing promises
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       expect(db).toHaveBeenCalled()
     })
@@ -79,9 +80,13 @@ describe('FollowupNotificationScheduler', () => {
 
       scheduler.start()
 
+      // Wait for initial check
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
+
       // Advance time by 1 minute
-      vi.advanceTimersByTime(60000)
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(60000)
+      await Promise.resolve()
 
       // Should have been called at least twice (immediate + after 1 minute)
       expect(db).toHaveBeenCalled()
@@ -90,11 +95,20 @@ describe('FollowupNotificationScheduler', () => {
 
   describe('stop', () => {
     it('should stop the scheduler', async () => {
+      vi.mocked(db).mockReturnValue({
+        select: vi.fn().mockResolvedValue([]),
+      } as any)
+
       scheduler.start()
       expect(scheduler.isActive()).toBe(true)
 
+      // Wait for any in-progress check to complete
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
+
       const stopPromise = scheduler.stop()
-      await vi.runAllTimersAsync()
+      // Advance timers to allow stop() to complete (it polls every 100ms)
+      await vi.advanceTimersByTimeAsync(200)
       await stopPromise
 
       expect(scheduler.isActive()).toBe(false)
@@ -102,21 +116,32 @@ describe('FollowupNotificationScheduler', () => {
 
     it('should resolve immediately if not running', async () => {
       const stopPromise = scheduler.stop()
-      await vi.runAllTimersAsync()
+      // Should resolve immediately without waiting
       await stopPromise
 
       expect(scheduler.isActive()).toBe(false)
     })
 
     it('should clear interval when stopping', async () => {
+      vi.mocked(db).mockReturnValue({
+        select: vi.fn().mockResolvedValue([]),
+      } as any)
+
       scheduler.start()
-      const intervalId = (scheduler as any).intervalId
+      // Verify interval was set
+      expect((scheduler as any).intervalId).not.toBeNull()
+
+      // Wait for any in-progress check
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       const stopPromise = scheduler.stop()
-      await vi.runAllTimersAsync()
+      // Advance timers to allow stop() to complete
+      await vi.advanceTimersByTimeAsync(200)
       await stopPromise
 
-      expect(intervalId).toBeNull()
+      // Check current intervalId after stop
+      expect((scheduler as any).intervalId).toBeNull()
     })
 
     it('should wait for in-progress check to complete', async () => {
@@ -174,7 +199,8 @@ describe('FollowupNotificationScheduler', () => {
       vi.mocked(NotificationService.checkDueFollowups).mockResolvedValue([])
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       expect(NotificationService.checkDueFollowups).toHaveBeenCalledTimes(2)
       expect(NotificationService.checkDueFollowups).toHaveBeenCalledWith('user-1')
@@ -213,7 +239,8 @@ describe('FollowupNotificationScheduler', () => {
       } as any)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       expect(NotificationService.checkDueFollowups).not.toHaveBeenCalled()
     })
@@ -252,7 +279,8 @@ describe('FollowupNotificationScheduler', () => {
       vi.mocked(FollowupService.snooze).mockResolvedValue(undefined)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       expect(FollowupService.snooze).toHaveBeenCalledWith('followup-1', 90, 'automatic')
     })
@@ -290,7 +318,8 @@ describe('FollowupNotificationScheduler', () => {
       vi.mocked(FollowupService.getById).mockResolvedValue(mockFollowupState as any)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       expect(FollowupService.snooze).not.toHaveBeenCalled()
     })
@@ -322,7 +351,8 @@ describe('FollowupNotificationScheduler', () => {
       vi.mocked(FollowupService.getById).mockResolvedValue(mockFollowupState as any)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       expect(FollowupService.snooze).not.toHaveBeenCalled()
     })
@@ -342,7 +372,8 @@ describe('FollowupNotificationScheduler', () => {
         .mockResolvedValueOnce([])
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       // Should still process user-2 even if user-1 fails
       expect(NotificationService.checkDueFollowups).toHaveBeenCalledTimes(2)
@@ -354,7 +385,8 @@ describe('FollowupNotificationScheduler', () => {
       } as any)
 
       scheduler.start()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
 
       // Should not throw, just log error
       expect(scheduler.isActive()).toBe(true)
@@ -372,9 +404,16 @@ describe('FollowupNotificationScheduler', () => {
     })
 
     it('should return false when stopped', async () => {
+      vi.mocked(db).mockReturnValue({
+        select: vi.fn().mockResolvedValue([]),
+      } as any)
+
       scheduler.start()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
+
       const stopPromise = scheduler.stop()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(200)
       await stopPromise
 
       expect(scheduler.isActive()).toBe(false)

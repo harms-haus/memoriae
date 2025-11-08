@@ -1,84 +1,123 @@
 // App integration tests - test Express app setup, CORS, routing, error handling
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import request from 'supertest'
+
+// Mock config before importing app (since app imports config)
+vi.mock('../../config', () => ({
+  config: {
+    port: 3000,
+    database: {
+      url: 'postgresql://test:test@localhost:5432/test',
+    },
+    jwt: {
+      secret: 'test-jwt-secret',
+      expiresIn: '7d',
+    },
+    oauth: {
+      google: {
+        clientId: 'test-google-client-id',
+        clientSecret: 'test-google-client-secret',
+        redirectUri: 'http://localhost:3000/api/auth/google/callback',
+      },
+      github: {
+        clientId: 'test-github-client-id',
+        clientSecret: 'test-github-client-secret',
+        redirectUri: 'http://localhost:3000/api/auth/github/callback',
+      },
+    },
+    frontend: {
+      url: 'http://localhost:5173',
+      allowedOrigins: ['http://localhost:5173'],
+    },
+    redis: {
+      url: 'redis://localhost:6379',
+    },
+    openrouter: {
+      apiUrl: 'https://openrouter.ai/api/v1',
+    },
+    queue: {
+      checkInterval: 30000,
+    },
+    ideaMusing: {
+      scheduleTime: '02:00',
+      maxMusingsPerDay: 10,
+      excludeDays: 2,
+    },
+  },
+}))
+
 import app from '../../app'
 import { config } from '../../config'
 
 // Mock all route modules to isolate app.ts testing
-vi.mock('../../routes/auth', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    router.get('/status', (req: any, res: any) => res.json({ status: 'auth' }))
-    return router
-  }),
-}))
+vi.mock('../../routes/auth', () => {
+  const express = require('express')
+  const router = express.Router()
+  router.get('/status', (req: any, res: any) => res.json({ status: 'auth' }))
+  return {
+    default: router,
+  }
+})
 
-vi.mock('../../routes/transactions', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    router.get('/test', (req: any, res: any) => res.json({ status: 'transactions' }))
-    return router
-  }),
-}))
+vi.mock('../../routes/transactions', () => {
+  const express = require('express')
+  const router = express.Router()
+  router.get('/test', (req: any, res: any) => res.json({ status: 'transactions' }))
+  return {
+    default: router,
+  }
+})
 
-vi.mock('../../routes/seeds', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    router.get('/test', (req: any, res: any) => res.json({ status: 'seeds' }))
-    return router
-  }),
-}))
+vi.mock('../../routes/seeds', () => {
+  const express = require('express')
+  const router = express.Router()
+  router.get('/test', (req: any, res: any) => res.json({ status: 'seeds' }))
+  return {
+    default: router,
+  }
+})
 
-vi.mock('../../routes/categories', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    return router
-  }),
-}))
+vi.mock('../../routes/categories', () => {
+  const express = require('express')
+  return {
+    default: express.Router(),
+  }
+})
 
-vi.mock('../../routes/tags', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    return router
-  }),
-}))
+vi.mock('../../routes/tags', () => {
+  const express = require('express')
+  return {
+    default: express.Router(),
+  }
+})
 
-vi.mock('../../routes/settings', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    return router
-  }),
-}))
+vi.mock('../../routes/settings', () => {
+  const express = require('express')
+  return {
+    default: express.Router(),
+  }
+})
 
-vi.mock('../../routes/search', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    return router
-  }),
-}))
+vi.mock('../../routes/search', () => {
+  const express = require('express')
+  return {
+    default: express.Router(),
+  }
+})
 
-vi.mock('../../routes/followups', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    return router
-  }),
-}))
+vi.mock('../../routes/followups', () => {
+  const express = require('express')
+  return {
+    default: express.Router(),
+  }
+})
 
-vi.mock('../../routes/idea-musings', () => ({
-  default: vi.fn(() => {
-    const express = require('express')
-    const router = express.Router()
-    return router
-  }),
-}))
+vi.mock('../../routes/idea-musings', () => {
+  const express = require('express')
+  return {
+    default: express.Router(),
+  }
+})
 
 // Mock path and fs for production static file serving
 vi.mock('path', () => ({

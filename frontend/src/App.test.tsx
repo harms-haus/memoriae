@@ -5,21 +5,45 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import App from './App'
 
+// Use vi.hoisted to ensure routeStore is accessible to the mock
+const routeStore = vi.hoisted(() => ({ current: '/' }))
+
+// Mock BrowserRouter to use MemoryRouter with test route
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    ...actual,
+    BrowserRouter: ({ children }: any) => {
+      // Read route from hoisted store at render time
+      return <MemoryRouter initialEntries={[routeStore.current]}>{children}</MemoryRouter>
+    },
+  }
+})
+
+// Test helper to render App with a specific route
+function renderAppWithRoute(route: string) {
+  routeStore.current = route
+  return render(<App />)
+}
+
 // Mock AuthContext
 const mockLogin = vi.fn()
 const mockLogout = vi.fn()
 const mockCheckAuth = vi.fn()
 
+const mockUseAuth = vi.fn(() => ({
+  authenticated: true,
+  loading: false,
+  user: { id: 'user-123', email: 'test@example.com', name: 'Test User' },
+  error: null,
+  login: mockLogin,
+  logout: mockLogout,
+  checkAuth: mockCheckAuth,
+}))
+
 vi.mock('./contexts/AuthContext', () => ({
   AuthProvider: ({ children }: any) => children,
-  useAuth: () => ({
-    authenticated: true,
-    loading: false,
-    user: { id: 'user-123', email: 'test@example.com', name: 'Test User' },
-    login: mockLogin,
-    logout: mockLogout,
-    checkAuth: mockCheckAuth,
-  }),
+  useAuth: () => mockUseAuth(),
 }))
 
 // Mock lazy-loaded components
@@ -143,87 +167,57 @@ vi.mock('lucide-react', () => ({
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset route to default
+    routeStore.current = '/'
   })
 
   describe('Routing', () => {
     it('should render seeds view at /seeds', () => {
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
     })
 
     it('should render categories view at /categories', () => {
-      render(
-        <MemoryRouter initialEntries={['/categories']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/categories')
 
       expect(screen.getByTestId('categories-view')).toBeInTheDocument()
     })
 
     it('should render tags view at /tags', () => {
-      render(
-        <MemoryRouter initialEntries={['/tags']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/tags')
 
       expect(screen.getByTestId('tags-view')).toBeInTheDocument()
     })
 
     it('should render settings view at /settings', () => {
-      render(
-        <MemoryRouter initialEntries={['/settings']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/settings')
 
       expect(screen.getByTestId('settings-view')).toBeInTheDocument()
     })
 
     it('should render musings view at /musings', () => {
-      render(
-        <MemoryRouter initialEntries={['/musings']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/musings')
 
       expect(screen.getByTestId('musings-view')).toBeInTheDocument()
     })
 
     it('should render seed detail view at /seeds/:id', () => {
-      render(
-        <MemoryRouter initialEntries={['/seeds/seed-123']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds/seed-123')
 
       expect(screen.getByTestId('seed-detail-view')).toBeInTheDocument()
       expect(screen.getByText('Seed Detail: seed-123')).toBeInTheDocument()
     })
 
     it('should render tag detail view at /tags/:id', () => {
-      render(
-        <MemoryRouter initialEntries={['/tags/tag-123']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/tags/tag-123')
 
       expect(screen.getByTestId('tag-detail-view')).toBeInTheDocument()
       expect(screen.getByText('Tag Detail: tag-123')).toBeInTheDocument()
     })
 
     it('should default to seeds view at /', () => {
-      render(
-        <MemoryRouter initialEntries={['/']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/')
 
       expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
     })
@@ -231,33 +225,21 @@ describe('App', () => {
 
   describe('Tab Navigation', () => {
     it('should show seeds tab as active on /seeds', () => {
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       const tabs = screen.getByTestId('tabs')
       expect(tabs).toHaveAttribute('data-value', 'seeds')
     })
 
     it('should show seeds tab as active on /seeds/:id', () => {
-      render(
-        <MemoryRouter initialEntries={['/seeds/seed-123']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds/seed-123')
 
       const tabs = screen.getByTestId('tabs')
       expect(tabs).toHaveAttribute('data-value', 'seeds')
     })
 
     it('should show tags tab as active on /tags/:id', () => {
-      render(
-        <MemoryRouter initialEntries={['/tags/tag-123']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/tags/tag-123')
 
       const tabs = screen.getByTestId('tabs')
       expect(tabs).toHaveAttribute('data-value', 'tags')
@@ -265,11 +247,7 @@ describe('App', () => {
 
     it('should handle tab change', async () => {
       const user = userEvent.setup()
-      const { container } = render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       const categoriesTab = screen.getByTestId('tab-categories')
       await user.click(categoriesTab)
@@ -283,55 +261,35 @@ describe('App', () => {
 
   describe('Seed Composer', () => {
     it('should show composer FAB on seeds view', () => {
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       const fab = screen.getByLabelText('Create new seed')
       expect(fab).toBeInTheDocument()
     })
 
     it('should show composer FAB on categories view', () => {
-      render(
-        <MemoryRouter initialEntries={['/categories']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/categories')
 
       const fab = screen.getByLabelText('Create new seed')
       expect(fab).toBeInTheDocument()
     })
 
     it('should show composer FAB on tags view', () => {
-      render(
-        <MemoryRouter initialEntries={['/tags']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/tags')
 
       const fab = screen.getByLabelText('Create new seed')
       expect(fab).toBeInTheDocument()
     })
 
     it('should not show composer FAB on settings view', () => {
-      render(
-        <MemoryRouter initialEntries={['/settings']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/settings')
 
       const fab = screen.queryByLabelText('Create new seed')
       expect(fab).not.toBeInTheDocument()
     })
 
     it('should not show composer FAB on seed detail view', () => {
-      render(
-        <MemoryRouter initialEntries={['/seeds/seed-123']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds/seed-123')
 
       const fab = screen.queryByLabelText('Create new seed')
       expect(fab).not.toBeInTheDocument()
@@ -339,11 +297,7 @@ describe('App', () => {
 
     it('should open composer when FAB is clicked', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       const fab = screen.getByLabelText('Create new seed')
       await user.click(fab)
@@ -353,11 +307,7 @@ describe('App', () => {
 
     it('should close composer when close button is clicked', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       // Open composer
       const fab = screen.getByLabelText('Create new seed')
@@ -377,11 +327,7 @@ describe('App', () => {
 
     it('should close composer when seed is created', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       // Open composer
       const fab = screen.getByLabelText('Create new seed')
@@ -401,11 +347,7 @@ describe('App', () => {
   describe('Seed Selection', () => {
     it('should navigate to seed detail when seed is selected', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       const seedButton = screen.getByTestId('seed-1')
       await user.click(seedButton)
@@ -418,20 +360,17 @@ describe('App', () => {
 
   describe('Loading State', () => {
     it('should show loading when auth is loading', () => {
-      vi.mocked(require('./contexts/AuthContext').useAuth).mockReturnValue({
+      mockUseAuth.mockReturnValue({
         authenticated: false,
         loading: true,
-        user: null,
+        user: null as any,
+        error: null,
         login: mockLogin,
         logout: mockLogout,
         checkAuth: mockCheckAuth,
       })
 
-      render(
-        <MemoryRouter>
-          <App />
-        </MemoryRouter>
-      )
+      render(<App />)
 
       expect(screen.getByText('Loading...')).toBeInTheDocument()
     })
@@ -439,20 +378,17 @@ describe('App', () => {
 
   describe('Authentication', () => {
     it('should show login page when not authenticated', () => {
-      vi.mocked(require('./contexts/AuthContext').useAuth).mockReturnValue({
+      mockUseAuth.mockReturnValue({
         authenticated: false,
         loading: false,
-        user: null,
+        user: null as any,
+        error: null,
         login: mockLogin,
         logout: mockLogout,
         checkAuth: mockCheckAuth,
       })
 
-      render(
-        <MemoryRouter>
-          <App />
-        </MemoryRouter>
-      )
+      render(<App />)
 
       expect(screen.getByText('Memoriae')).toBeInTheDocument()
       expect(screen.getByText('Sign in to continue')).toBeInTheDocument()
@@ -460,55 +396,54 @@ describe('App', () => {
 
     it('should handle Google login', async () => {
       const user = userEvent.setup()
-      vi.mocked(require('./contexts/AuthContext').useAuth).mockReturnValue({
+      mockUseAuth.mockReturnValue({
         authenticated: false,
         loading: false,
-        user: null,
+        user: null as any,
+        error: null,
         login: mockLogin,
         logout: mockLogout,
         checkAuth: mockCheckAuth,
       })
 
-      render(
-        <MemoryRouter>
-          <App />
-        </MemoryRouter>
-      )
+      render(<App />)
 
       const googleButton = screen.getByText('Sign in with Google')
       await user.click(googleButton)
 
-      expect(mockLogin).toHaveBeenCalledWith('google', undefined)
+      // The login function passes window.location.pathname if not '/login'
+      // Since we're at '/', it will pass '/'
+      expect(mockLogin).toHaveBeenCalledWith('google', '/')
     })
 
     it('should handle GitHub login', async () => {
       const user = userEvent.setup()
-      vi.mocked(require('./contexts/AuthContext').useAuth).mockReturnValue({
+      mockUseAuth.mockReturnValue({
         authenticated: false,
         loading: false,
-        user: null,
+        user: null as any,
+        error: null,
         login: mockLogin,
         logout: mockLogout,
         checkAuth: mockCheckAuth,
       })
 
-      render(
-        <MemoryRouter>
-          <App />
-        </MemoryRouter>
-      )
+      render(<App />)
 
       const githubButton = screen.getByText('Sign in with GitHub')
       await user.click(githubButton)
 
-      expect(mockLogin).toHaveBeenCalledWith('github', undefined)
+      // The login function passes window.location.pathname if not '/login'
+      // Since we're at '/', it will pass '/'
+      expect(mockLogin).toHaveBeenCalledWith('github', '/')
     })
 
     it('should handle OAuth errors in URL', () => {
-      vi.mocked(require('./contexts/AuthContext').useAuth).mockReturnValue({
+      mockUseAuth.mockReturnValue({
         authenticated: false,
         loading: false,
-        user: null,
+        user: null as any,
+        error: null,
         login: mockLogin,
         logout: mockLogout,
         checkAuth: mockCheckAuth,
@@ -521,11 +456,7 @@ describe('App', () => {
         writable: true,
       })
 
-      render(
-        <MemoryRouter initialEntries={['/login?error=oauth_failed']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/login?error=oauth_failed')
 
       expect(screen.getByText('Authentication failed. Please try again.')).toBeInTheDocument()
 

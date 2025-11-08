@@ -155,16 +155,27 @@ describe('Transaction Routes', () => {
     })
 
     it('should verify seed ownership', async () => {
+      // The route checks: db('seeds').where({ id: seedId, user_id: userId }).first()
+      // We need to mock it to return null when user_id doesn't match
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'other-user', // Different from authenticated user
+      }
+      
       vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'other-user',
+        where: vi.fn((conditions: Record<string, any>) => {
+          // Check if the where conditions match the seed
+          // If user_id doesn't match, return null
+          const matches = conditions.id === mockSeed.id && conditions.user_id === mockSeed.user_id
+          return {
+            first: vi.fn().mockResolvedValue(matches ? mockSeed : null),
+          }
         }),
+        first: vi.fn().mockResolvedValue(null),
       } as any)
 
       const token = generateTestToken({
-        id: 'user-123',
+        id: 'user-123', // Authenticated user
         email: 'test@example.com',
       })
 

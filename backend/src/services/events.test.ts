@@ -5,18 +5,37 @@ import db from '../db/connection'
 import type { Operation } from 'fast-json-patch'
 
 // Mock database connection
-vi.mock('../db/connection', () => ({
-  default: vi.fn(() => ({
-    select: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    returning: vi.fn(),
-    update: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    raw: vi.fn((sql: string, params: any[]) => params[0]),
-  })),
-}))
+vi.mock('../db/connection', () => {
+  const mockRaw = vi.fn((sql: string, params: any[]) => {
+    // Return the first param (the JSON stringified patch)
+    return params[0]
+  })
+
+  const createMockQueryBuilder = (methods: Record<string, any> = {}) => {
+    const builder: any = {
+      select: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      returning: vi.fn(),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      first: vi.fn(),
+      where: vi.fn().mockImplementation((...args: any[]) => {
+        // Return a new builder that supports chaining
+        return createMockQueryBuilder(methods)
+      }),
+      ...methods,
+    }
+    return builder
+  }
+
+  return {
+    default: Object.assign(
+      vi.fn((table: string) => createMockQueryBuilder()),
+      { raw: mockRaw }
+    ),
+  }
+})
 
 describe('EventsService', () => {
   beforeEach(() => {
@@ -33,17 +52,19 @@ describe('EventsService', () => {
         id: 'event-123',
         seed_id: 'seed-123',
         event_type: 'ADD_TAG',
-        patch_json: mockPatch,
+        patch_json: mockPatch, // PostgreSQL JSONB returns parsed objects
         enabled: true,
         created_at: new Date('2024-01-01'),
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        insert: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([mockEvent]),
-        raw: vi.fn((sql: string, params: any[]) => params[0]),
-      } as any)
+      const mockReturning = vi.fn().mockResolvedValue([mockEvent])
+      const mockInsert = vi.fn().mockReturnValue({ returning: mockReturning })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        insert: mockInsert,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.create({
         seed_id: 'seed-123',
@@ -76,17 +97,13 @@ describe('EventsService', () => {
         automation_id: null,
       }
 
-      const mockDb = {
-        insert: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([mockEvent]),
-        raw: vi.fn((sql: string, params: any[]) => {
-          // Verify JSONB casting is used
-          expect(sql).toContain('::jsonb')
-          return params[0]
-        }),
-      }
+      const mockReturning = vi.fn().mockResolvedValue([mockEvent])
+      const mockInsert = vi.fn().mockReturnValue({ returning: mockReturning })
 
-      vi.mocked(db).mockReturnValue(mockDb as any)
+      vi.mocked(db).mockImplementation((table: string) => ({
+        insert: mockInsert,
+        returning: mockReturning,
+      } as any))
 
       await EventsService.create({
         seed_id: 'seed-123',
@@ -94,7 +111,8 @@ describe('EventsService', () => {
         patch_json: mockPatch,
       })
 
-      expect(mockDb.raw).toHaveBeenCalled()
+      // Verify db.raw was called with JSONB casting
+      expect(db.raw).toHaveBeenCalledWith('?::jsonb', [JSON.stringify(mockPatch)])
     })
 
     it('should set enabled to true by default', async () => {
@@ -112,11 +130,13 @@ describe('EventsService', () => {
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        insert: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([mockEvent]),
-        raw: vi.fn((sql: string, params: any[]) => params[0]),
-      } as any)
+      const mockReturning = vi.fn().mockResolvedValue([mockEvent])
+      const mockInsert = vi.fn().mockReturnValue({ returning: mockReturning })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        insert: mockInsert,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.create({
         seed_id: 'seed-123',
@@ -142,11 +162,13 @@ describe('EventsService', () => {
         automation_id: 'auto-1',
       }
 
-      vi.mocked(db).mockReturnValue({
-        insert: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([mockEvent]),
-        raw: vi.fn((sql: string, params: any[]) => params[0]),
-      } as any)
+      const mockReturning = vi.fn().mockResolvedValue([mockEvent])
+      const mockInsert = vi.fn().mockReturnValue({ returning: mockReturning })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        insert: mockInsert,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.create({
         seed_id: 'seed-123',
@@ -173,11 +195,13 @@ describe('EventsService', () => {
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        insert: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([mockEvent]),
-        raw: vi.fn((sql: string, params: any[]) => params[0]),
-      } as any)
+      const mockReturning = vi.fn().mockResolvedValue([mockEvent])
+      const mockInsert = vi.fn().mockReturnValue({ returning: mockReturning })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        insert: mockInsert,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.create({
         seed_id: 'seed-123',
@@ -219,13 +243,15 @@ describe('EventsService', () => {
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        insert: vi.fn().mockReturnThis(),
-        returning: vi.fn()
-          .mockResolvedValueOnce([mockEvent1])
-          .mockResolvedValueOnce([mockEvent2]),
-        raw: vi.fn((sql: string, params: any[]) => params[0]),
-      } as any)
+      const mockReturning = vi.fn()
+        .mockResolvedValueOnce([mockEvent1])
+        .mockResolvedValueOnce([mockEvent2])
+      const mockInsert = vi.fn().mockReturnValue({ returning: mockReturning })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        insert: mockInsert,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.createMany([
         {
@@ -275,10 +301,13 @@ describe('EventsService', () => {
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(mockEvent),
-      } as any)
+      const mockFirst = vi.fn().mockResolvedValue(mockEvent)
+      const mockWhere = vi.fn().mockReturnValue({ first: mockFirst })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        first: mockFirst,
+      } as any))
 
       const result = await EventsService.getById('event-123')
 
@@ -292,10 +321,13 @@ describe('EventsService', () => {
     })
 
     it('should return null when event not found', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null),
-      } as any)
+      const mockFirst = vi.fn().mockResolvedValue(null)
+      const mockWhere = vi.fn().mockReturnValue({ first: mockFirst })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        first: mockFirst,
+      } as any))
 
       const result = await EventsService.getById('non-existent')
 
@@ -334,10 +366,13 @@ describe('EventsService', () => {
         },
       ]
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue(mockEvents),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue(mockEvents)
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        orderBy: mockOrderBy,
+      } as any))
 
       const result = await EventsService.getBySeedId('seed-123')
 
@@ -355,10 +390,13 @@ describe('EventsService', () => {
     })
 
     it('should return empty array when seed has no events', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([]),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue([])
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        orderBy: mockOrderBy,
+      } as any))
 
       const result = await EventsService.getBySeedId('seed-123')
 
@@ -378,16 +416,18 @@ describe('EventsService', () => {
         },
       ]
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue(mockEvents),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue(mockEvents)
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        orderBy: mockOrderBy,
+      } as any))
 
       await EventsService.getBySeedId('seed-123')
 
-      // Verify orderBy is called with 'created_at' and 'asc'
-      const orderByCall = vi.mocked(db().orderBy as any)
-      expect(orderByCall).toHaveBeenCalled()
+      // Verify orderBy is called
+      expect(mockOrderBy).toHaveBeenCalled()
     })
   })
 
@@ -409,10 +449,18 @@ describe('EventsService', () => {
         },
       ]
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue(mockEvents),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue(mockEvents)
+      
+      // Create a chainable mock that supports where().where().orderBy()
+      const createChainableBuilder = () => {
+        const builder: any = {
+          where: vi.fn().mockImplementation(() => createChainableBuilder()),
+          orderBy: mockOrderBy,
+        }
+        return builder
+      }
+
+      vi.mocked(db).mockImplementation((table: string) => createChainableBuilder())
 
       const result = await EventsService.getEnabledBySeedId('seed-123')
 
@@ -433,10 +481,14 @@ describe('EventsService', () => {
         },
       ]
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue(mockEvents),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue(mockEvents)
+      const mockWhere2 = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+      const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2, orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere1,
+        orderBy: mockOrderBy,
+      } as any))
 
       const result = await EventsService.getEnabledBySeedId('seed-123')
 
@@ -445,10 +497,14 @@ describe('EventsService', () => {
     })
 
     it('should return empty array when no enabled events exist', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([]),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue([])
+      const mockWhere2 = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+      const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2, orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere1,
+        orderBy: mockOrderBy,
+      } as any))
 
       const result = await EventsService.getEnabledBySeedId('seed-123')
 
@@ -472,11 +528,15 @@ describe('EventsService', () => {
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        update: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([mockEvent]),
-      } as any)
+      const mockReturning = vi.fn().mockResolvedValue([mockEvent])
+      const mockUpdate = vi.fn().mockReturnValue({ returning: mockReturning })
+      const mockWhere = vi.fn().mockReturnValue({ update: mockUpdate })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        update: mockUpdate,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.toggle('event-123', true)
 
@@ -501,11 +561,15 @@ describe('EventsService', () => {
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        update: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([mockEvent]),
-      } as any)
+      const mockReturning = vi.fn().mockResolvedValue([mockEvent])
+      const mockUpdate = vi.fn().mockReturnValue({ returning: mockReturning })
+      const mockWhere = vi.fn().mockReturnValue({ update: mockUpdate })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        update: mockUpdate,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.toggle('event-123', false)
 
@@ -516,11 +580,15 @@ describe('EventsService', () => {
     })
 
     it('should return null when event not found', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        update: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([]),
-      } as any)
+      const mockReturning = vi.fn().mockResolvedValue([])
+      const mockUpdate = vi.fn().mockReturnValue({ returning: mockReturning })
+      const mockWhere = vi.fn().mockReturnValue({ update: mockUpdate })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        update: mockUpdate,
+        returning: mockReturning,
+      } as any))
 
       const result = await EventsService.toggle('non-existent', true)
 
@@ -530,10 +598,13 @@ describe('EventsService', () => {
 
   describe('delete', () => {
     it('should soft delete event by disabling it', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        update: vi.fn().mockResolvedValue(1),
-      } as any)
+      const mockUpdate = vi.fn().mockResolvedValue(1)
+      const mockWhere = vi.fn().mockReturnValue({ update: mockUpdate })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        update: mockUpdate,
+      } as any))
 
       const result = await EventsService.delete('event-123', false)
 
@@ -541,10 +612,13 @@ describe('EventsService', () => {
     })
 
     it('should hard delete event when hardDelete is true', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        delete: vi.fn().mockResolvedValue(1),
-      } as any)
+      const mockDelete = vi.fn().mockResolvedValue(1)
+      const mockWhere = vi.fn().mockReturnValue({ delete: mockDelete })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        delete: mockDelete,
+      } as any))
 
       const result = await EventsService.delete('event-123', true)
 
@@ -552,10 +626,13 @@ describe('EventsService', () => {
     })
 
     it('should return false when event not found (soft delete)', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        update: vi.fn().mockResolvedValue(0),
-      } as any)
+      const mockUpdate = vi.fn().mockResolvedValue(0)
+      const mockWhere = vi.fn().mockReturnValue({ update: mockUpdate })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        update: mockUpdate,
+      } as any))
 
       const result = await EventsService.delete('non-existent', false)
 
@@ -563,10 +640,13 @@ describe('EventsService', () => {
     })
 
     it('should return false when event not found (hard delete)', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        delete: vi.fn().mockResolvedValue(0),
-      } as any)
+      const mockDelete = vi.fn().mockResolvedValue(0)
+      const mockWhere = vi.fn().mockReturnValue({ delete: mockDelete })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        delete: mockDelete,
+      } as any))
 
       const result = await EventsService.delete('non-existent', true)
 
@@ -574,16 +654,17 @@ describe('EventsService', () => {
     })
 
     it('should set updated_at when soft deleting', async () => {
-      const mockDb = {
-        where: vi.fn().mockReturnThis(),
-        update: vi.fn().mockResolvedValue(1),
-      }
+      const mockUpdate = vi.fn().mockResolvedValue(1)
+      const mockWhere = vi.fn().mockReturnValue({ update: mockUpdate })
 
-      vi.mocked(db).mockReturnValue(mockDb as any)
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        update: mockUpdate,
+      } as any))
 
       await EventsService.delete('event-123', false)
 
-      expect(mockDb.update).toHaveBeenCalledWith({
+      expect(mockUpdate).toHaveBeenCalledWith({
         enabled: false,
         updated_at: expect.any(Date),
       })
@@ -617,10 +698,13 @@ describe('EventsService', () => {
         },
       ]
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue(mockEvents),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue(mockEvents)
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        orderBy: mockOrderBy,
+      } as any))
 
       const result = await EventsService.getByAutomationId('auto-1')
 
@@ -630,10 +714,13 @@ describe('EventsService', () => {
     })
 
     it('should return empty array when automation has no events', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([]),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue([])
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        orderBy: mockOrderBy,
+      } as any))
 
       const result = await EventsService.getByAutomationId('auto-1')
 
@@ -653,28 +740,33 @@ describe('EventsService', () => {
         },
       ]
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue(mockEvents),
-      } as any)
+      const mockOrderBy = vi.fn().mockResolvedValue(mockEvents)
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        orderBy: mockOrderBy,
+      } as any))
 
       await EventsService.getByAutomationId('auto-1')
 
       // Verify orderBy is called
-      const orderByCall = vi.mocked(db().orderBy as any)
-      expect(orderByCall).toHaveBeenCalled()
+      expect(mockOrderBy).toHaveBeenCalled()
     })
   })
 
   describe('verifySeedOwnership', () => {
     it('should return true when seed belongs to user', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'seed-123',
+        user_id: 'user-123',
+      })
+      const mockWhere = vi.fn().mockReturnValue({ first: mockFirst })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        first: mockFirst,
+      } as any))
 
       const result = await EventsService.verifySeedOwnership('seed-123', 'user-123')
 
@@ -682,10 +774,13 @@ describe('EventsService', () => {
     })
 
     it('should return false when seed does not belong to user', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null),
-      } as any)
+      const mockFirst = vi.fn().mockResolvedValue(null)
+      const mockWhere = vi.fn().mockReturnValue({ first: mockFirst })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        first: mockFirst,
+      } as any))
 
       const result = await EventsService.verifySeedOwnership('seed-123', 'user-123')
 
@@ -693,10 +788,13 @@ describe('EventsService', () => {
     })
 
     it('should return false when seed not found', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null),
-      } as any)
+      const mockFirst = vi.fn().mockResolvedValue(null)
+      const mockWhere = vi.fn().mockReturnValue({ first: mockFirst })
+
+      vi.mocked(db).mockImplementation((table: string) => ({
+        where: mockWhere,
+        first: mockFirst,
+      } as any))
 
       const result = await EventsService.verifySeedOwnership('non-existent', 'user-123')
 
