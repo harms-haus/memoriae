@@ -1,18 +1,9 @@
-import React, { useRef } from 'react'
+import React, { useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Tabs, Tab, TabPanel } from '@mother/components/Tabs'
 import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
-import {
-  SeedsView,
-  CategoriesView,
-  TagsView,
-  SettingsView,
-  SeedDetailView,
-  TagDetailView,
-  MusingsView,
-} from './components/views'
 import { SeedComposer } from './components/SeedComposer'
 import './components/SeedComposer/SeedComposer.css'
 import { useFollowupNotifications } from './hooks/useFollowupNotifications'
@@ -24,6 +15,15 @@ import {
   Plus,
   Lightbulb
 } from 'lucide-react'
+
+// Lazy load view components for code splitting (import from individual files for better chunking)
+const SeedsView = lazy(() => import('./components/views/SeedsView').then(m => ({ default: m.SeedsView })))
+const CategoriesView = lazy(() => import('./components/views/CategoriesView').then(m => ({ default: m.CategoriesView })))
+const TagsView = lazy(() => import('./components/views/TagsView').then(m => ({ default: m.TagsView })))
+const SettingsView = lazy(() => import('./components/views/SettingsView').then(m => ({ default: m.SettingsView })))
+const SeedDetailView = lazy(() => import('./components/views/SeedDetailView').then(m => ({ default: m.SeedDetailView })))
+const TagDetailView = lazy(() => import('./components/views/TagDetailView').then(m => ({ default: m.TagDetailView })))
+const MusingsView = lazy(() => import('./components/views/MusingsView').then(m => ({ default: m.MusingsView })))
 
 export type ViewType = 'seeds' | 'categories' | 'tags' | 'settings' | 'musings'
 
@@ -203,22 +203,32 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
             expand={true}
           >
             <TabPanel value="seeds">
-              <SeedsView 
-                onSeedSelect={handleSeedSelect}
-                refreshRef={seedsViewRefreshRef}
-              />
+              <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+                <SeedsView 
+                  onSeedSelect={handleSeedSelect}
+                  refreshRef={seedsViewRefreshRef}
+                />
+              </Suspense>
             </TabPanel>
             <TabPanel value="musings">
-              <MusingsView />
+              <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+                <MusingsView />
+              </Suspense>
             </TabPanel>
             <TabPanel value="categories">
-              <CategoriesView refreshRef={categoriesViewRefreshRef} />
+              <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+                <CategoriesView refreshRef={categoriesViewRefreshRef} />
+              </Suspense>
             </TabPanel>
             <TabPanel value="tags">
-              <TagsView />
+              <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+                <TagsView />
+              </Suspense>
             </TabPanel>
             <TabPanel value="settings">
-              <SettingsView />
+              <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+                <SettingsView />
+              </Suspense>
             </TabPanel>
 
             <Tab value="seeds">
@@ -316,10 +326,12 @@ function SeedDetailWrapper() {
         display: 'flex',
         flexDirection: 'column',
       }}>
-        <SeedDetailView
-          seedId={id}
-          onBack={() => navigate('/seeds')}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+          <SeedDetailView
+            seedId={id}
+            onBack={() => navigate('/seeds')}
+          />
+        </Suspense>
       </div>
     </div>
   )
@@ -349,10 +361,12 @@ function TagDetailWrapper() {
         display: 'flex',
         flexDirection: 'column',
       }}>
-        <TagDetailView
-          tagId={id}
-          onBack={() => navigate('/tags')}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+          <TagDetailView
+            tagId={id}
+            onBack={() => navigate('/tags')}
+          />
+        </Suspense>
       </div>
     </div>
   )

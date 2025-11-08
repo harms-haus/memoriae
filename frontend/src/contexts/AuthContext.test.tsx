@@ -14,6 +14,8 @@ vi.mock('../services/api', () => {
     setToken: vi.fn(),
     loadToken: vi.fn(),
     getToken: vi.fn().mockReturnValue(null),
+    get: vi.fn().mockResolvedValue({ timezone: null }), // Mock for settings endpoint
+    put: vi.fn().mockResolvedValue({}), // Mock for settings update
   }
   return {
     api: mockApi,

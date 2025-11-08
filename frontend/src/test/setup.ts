@@ -1,9 +1,24 @@
 import '@testing-library/jest-dom'
-import { afterEach, beforeAll } from 'vitest'
+import { afterEach, beforeAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
-// Ensure localStorage is properly set up in test environment
+// WebSocket error suppression is handled in vitest.config.ts for earlier initialization
+
+// Suppress all console methods for expected errors/logs in tests
+// Components log errors/warnings/info for error handling tests, which is expected behavior
+// Tests can restore the original if they need to verify error logging
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let consoleErrorSpy: any
+let consoleWarnSpy: any
+let consoleLogSpy: any
+
 beforeAll(() => {
+  // Suppress all console methods by default in tests
+  // This prevents expected logs from cluttering test output
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+  
   // jsdom should provide localStorage, but ensure it has all methods
   if (typeof localStorage !== 'undefined') {
     if (!localStorage.getItem) {
@@ -34,5 +49,18 @@ afterEach(() => {
   // Clear localStorage between tests
   if (typeof localStorage !== 'undefined' && typeof localStorage.clear === 'function') {
     localStorage.clear()
+  }
+  // Restore console mocks after vi.clearAllMocks() might have cleared them
+  if (consoleErrorSpy) {
+    consoleErrorSpy.mockRestore()
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  }
+  if (consoleWarnSpy) {
+    consoleWarnSpy.mockRestore()
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  }
+  if (consoleLogSpy) {
+    consoleLogSpy.mockRestore()
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   }
 })

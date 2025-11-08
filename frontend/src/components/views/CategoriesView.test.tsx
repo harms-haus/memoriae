@@ -126,13 +126,16 @@ describe('CategoriesView', () => {
   it('should show filtered seeds when category selected', async () => {
     const user = userEvent.setup()
     
-    // Setup mock to return categories first, then seeds when category is selected
+    // Setup mock to return categories first, then seeds and tags when category is selected
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url === '/categories') {
         return Promise.resolve(mockCategories)
       }
       if (url === '/seeds') {
         return Promise.resolve(mockSeeds)
+      }
+      if (url === '/tags') {
+        return Promise.resolve([])
       }
       return Promise.resolve([])
     })
@@ -147,16 +150,11 @@ describe('CategoriesView', () => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
     })
 
-    // Select a category - this triggers loadFilteredSeeds and loadCategoryDetails
+    // Select a category - this triggers loadFilteredSeeds
     const selectButton = screen.getByTestId('select-category-button')
     await user.click(selectButton)
 
-    // Wait for filtered seeds to appear - need to wait for both API calls
-    await waitFor(() => {
-      expect(screen.getByText(/Seeds in "Work"/)).toBeInTheDocument()
-    }, { timeout: 5000 })
-
-    // Check that seeds are displayed
+    // Wait for filtered seeds to appear - need to wait for both API calls (seeds and tags)
     await waitFor(() => {
       expect(screen.getByText('Test seed content')).toBeInTheDocument()
     }, { timeout: 3000 })
@@ -167,7 +165,8 @@ describe('CategoriesView', () => {
     
     vi.mocked(api.get)
       .mockResolvedValueOnce(mockCategories)
-      .mockResolvedValueOnce(mockSeeds)
+      .mockResolvedValueOnce(mockSeeds) // seeds
+      .mockResolvedValueOnce([]) // tags
       .mockResolvedValueOnce(mockCategories)
 
     render(
@@ -184,19 +183,19 @@ describe('CategoriesView', () => {
     const selectButton = screen.getByTestId('select-category-button')
     await user.click(selectButton)
 
-    // Wait for filtered seeds panel - it may show "Category" if category details haven't loaded yet
+    // Wait for filtered seeds to load
     await waitFor(() => {
-      expect(screen.getByText(/Seeds in/)).toBeInTheDocument()
+      expect(screen.getByText('Test seed content')).toBeInTheDocument()
     }, { timeout: 5000 })
 
     // Click clear button
-    const clearButton = screen.getByText('Clear')
+    const clearButton = screen.getByText('CLEAR')
     await user.click(clearButton)
 
     // Filtered seeds panel should disappear
     // Wait for the state to update and component to re-render
     await waitFor(() => {
-      expect(screen.queryByText(/Seeds in/)).not.toBeInTheDocument()
+      expect(screen.queryByText('Test seed content')).not.toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
@@ -209,6 +208,10 @@ describe('CategoriesView', () => {
       }
       if (url === '/seeds') {
         // Never resolves for seeds - keeps loading state
+        return new Promise(() => {})
+      }
+      if (url === '/tags') {
+        // Never resolves for tags either - keeps loading state
         return new Promise(() => {})
       }
       return Promise.resolve([])
@@ -224,23 +227,17 @@ describe('CategoriesView', () => {
       expect(screen.getByTestId('category-tree')).toBeInTheDocument()
     })
 
-    // Select a category - this triggers loadFilteredSeeds (which hangs) and loadCategoryDetails
+    // Select a category - this triggers loadFilteredSeeds (which hangs)
     const selectButton = screen.getByTestId('select-category-button')
     await user.click(selectButton)
 
-    // Wait for the panel to appear - verify the component handles async loading
-    // The loading state may be transient, but the panel should appear
+    // The component should show loading state
+    // Since the API calls hang, we just verify the component doesn't crash
+    // and that the category selection was registered
     await waitFor(() => {
-      // Panel should appear when category is selected
-      expect(screen.getByText(/Seeds in/)).toBeInTheDocument()
-    }, { timeout: 3000 })
-    
-    // Verify loading state is handled (either shows loading text or has moved past it)
-    // The important part is that the component doesn't crash and handles the async state
-    const hasLoading = screen.queryByText('Loading...') || screen.queryByText('Loading seeds...')
-    const hasSeeds = screen.queryByText('Test seed content')
-    // Component should either be loading or have completed (both are valid states)
-    expect(hasLoading || hasSeeds || screen.queryByText(/0 seeds/)).toBeTruthy()
+      // Should show loading state
+      expect(screen.getByText('Loading seeds...')).toBeInTheDocument()
+    }, { timeout: 2000 })
   })
 
   it('should handle error state for filtered seeds', async () => {
@@ -286,6 +283,9 @@ describe('CategoriesView', () => {
       if (url === '/seeds') {
         return Promise.resolve(mockSeeds)
       }
+      if (url === '/tags') {
+        return Promise.resolve([])
+      }
       return Promise.resolve([])
     })
 
@@ -325,6 +325,9 @@ describe('CategoriesView', () => {
       if (url === '/seeds') {
         return Promise.resolve(mockSeeds)
       }
+      if (url === '/tags') {
+        return Promise.resolve([])
+      }
       return Promise.resolve([])
     })
 
@@ -344,7 +347,7 @@ describe('CategoriesView', () => {
 
     // Should show filtered seeds
     await waitFor(() => {
-      expect(screen.getByText(/Seeds in "Work"/)).toBeInTheDocument()
+      expect(screen.getByText('Test seed content')).toBeInTheDocument()
     }, { timeout: 5000 })
 
     // Click again to deselect

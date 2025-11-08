@@ -98,8 +98,8 @@ describe('ApiClient', () => {
 
   describe('Idea Musings Methods', () => {
     it('should call getDailyMusings with correct endpoint', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      // Get the actual client instance used by api
+      const client = (api as any).client
       const mockMusings = [
         {
           id: 'musing-1',
@@ -111,107 +111,103 @@ describe('ApiClient', () => {
         },
       ]
 
-      mockAxiosInstance.get.mockResolvedValue({ data: mockMusings })
+      client.get.mockResolvedValue({ data: mockMusings })
 
       const result = await api.getDailyMusings()
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/idea-musings')
+      expect(client.get).toHaveBeenCalledWith('/idea-musings', undefined)
       expect(result).toEqual(mockMusings)
     })
 
     it('should call getMusingsBySeedId with correct endpoint', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      const client = (api as any).client
       const seedId = 'seed-123'
 
-      mockAxiosInstance.get.mockResolvedValue({ data: [] })
+      client.get.mockResolvedValue({ data: [] })
 
       await api.getMusingsBySeedId(seedId)
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/idea-musings/seed/${seedId}`)
+      expect(client.get).toHaveBeenCalledWith(`/idea-musings/seed/${seedId}`, undefined)
     })
 
     it('should call dismissMusing with correct endpoint', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      const client = (api as any).client
       const musingId = 'musing-123'
 
-      mockAxiosInstance.post.mockResolvedValue({ data: { id: musingId, dismissed: true } })
+      client.post.mockResolvedValue({ data: { id: musingId, dismissed: true } })
 
       await api.dismissMusing(musingId)
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(`/idea-musings/${musingId}/dismiss`)
+      expect(client.post).toHaveBeenCalledWith(`/idea-musings/${musingId}/dismiss`, undefined, undefined)
     })
 
     it('should call regenerateMusing with correct endpoint', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      const client = (api as any).client
       const musingId = 'musing-123'
 
-      mockAxiosInstance.post.mockResolvedValue({ data: { id: musingId } })
+      client.post.mockResolvedValue({ data: { id: musingId } })
 
       await api.regenerateMusing(musingId)
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(`/idea-musings/${musingId}/regenerate`)
+      expect(client.post).toHaveBeenCalledWith(`/idea-musings/${musingId}/regenerate`, undefined, undefined)
     })
 
     it('should call applyIdea with correct params', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      const client = (api as any).client
       const musingId = 'musing-123'
       const ideaIndex = 0
 
-      mockAxiosInstance.post.mockResolvedValue({ data: { preview: 'Preview content' } })
+      client.post.mockResolvedValue({ data: { preview: 'Preview content' } })
 
       await api.applyIdea(musingId, ideaIndex)
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(client.post).toHaveBeenCalledWith(
         `/idea-musings/${musingId}/apply-idea`,
-        { ideaIndex, confirm: undefined }
+        { ideaIndex, confirm: undefined },
+        undefined
       )
     })
 
     it('should call applyIdea with confirm flag', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      const client = (api as any).client
       const musingId = 'musing-123'
       const ideaIndex = 0
 
-      mockAxiosInstance.post.mockResolvedValue({ data: { applied: true } })
+      client.post.mockResolvedValue({ data: { applied: true } })
 
       await api.applyIdea(musingId, ideaIndex, true)
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(client.post).toHaveBeenCalledWith(
         `/idea-musings/${musingId}/apply-idea`,
-        { ideaIndex, confirm: true }
+        { ideaIndex, confirm: true },
+        undefined
       )
     })
 
     it('should call promptLLM with correct params', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      const client = (api as any).client
       const musingId = 'musing-123'
       const prompt = 'Tell me more about this idea'
 
-      mockAxiosInstance.post.mockResolvedValue({ data: { preview: 'LLM response' } })
+      client.post.mockResolvedValue({ data: { preview: 'LLM response' } })
 
       await api.promptLLM(musingId, prompt)
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(client.post).toHaveBeenCalledWith(
         `/idea-musings/${musingId}/prompt-llm`,
-        { prompt, confirm: undefined }
+        { prompt, confirm: undefined },
+        undefined
       )
     })
 
     it('should call generateMusings with correct endpoint', async () => {
-      const axios = await import('axios')
-      const mockAxiosInstance = (axios.default.create as any)()
+      const client = (api as any).client
 
-      mockAxiosInstance.post.mockResolvedValue({ data: { message: 'Generated 5 musings', musingsCreated: 5 } })
+      client.post.mockResolvedValue({ data: { message: 'Generated 5 musings', musingsCreated: 5 } })
 
       const result = await api.generateMusings()
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/idea-musings/generate')
+      expect(client.post).toHaveBeenCalledWith('/idea-musings/generate', undefined, undefined)
       expect(result.musingsCreated).toBe(5)
     })
   })

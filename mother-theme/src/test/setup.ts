@@ -6,6 +6,33 @@ import '../styles/theme.css';
 // Import component CSS files for tests
 import '../components/PointerPanel/PointerPanel.css';
 
+// Suppress all console methods in tests to reduce output clutter
+// These are expected errors/logs from error handling tests and jsdom limitations
+// Always suppress in test environment (vitest sets NODE_ENV to 'test')
+const originalError = console.error;
+const originalWarn = console.warn;
+const originalLog = console.log;
+
+// Suppress all console.error in tests (expected errors from error handling tests)
+console.error = () => {
+  // Suppress all errors in tests - they're expected from error handling tests
+};
+
+// Suppress all console.warn in tests
+console.warn = () => {
+  // Suppress all warnings in tests
+};
+
+// Suppress all console.log in tests
+console.log = () => {
+  // Suppress all logs in tests
+};
+
+// Store originals in case tests need to restore them
+(global as any).__originalConsoleError = originalError;
+(global as any).__originalConsoleWarn = originalWarn;
+(global as any).__originalConsoleLog = originalLog;
+
 // Mock getComputedStyle for jsdom (which doesn't support CSS stylesheets)
 // This allows tests to check computed styles from CSS classes
 beforeAll(() => {

@@ -10,6 +10,28 @@ import { createOpenRouterClient } from '../openrouter/client'
 import { type UserSettings } from '../settings'
 
 /**
+ * Log helpers that only log when not in test environment
+ * Prevents test output clutter while keeping useful logs in development/production
+ */
+function workerLog(...args: unknown[]): void {
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(...args)
+  }
+}
+
+function workerError(...args: unknown[]): void {
+  if (process.env.NODE_ENV !== 'test') {
+    console.error(...args)
+  }
+}
+
+function workerWarn(...args: unknown[]): void {
+  if (process.env.NODE_ENV !== 'test') {
+    console.warn(...args)
+  }
+}
+
+/**
  * Queue connection options (same as in queue.ts)
  */
 function getQueueConnection(): ConnectionOptions {
@@ -65,7 +87,7 @@ async function getUserSettings(userId: string): Promise<UserSettings> {
 export async function processAutomationJob(job: Job<AutomationJobData>): Promise<void> {
   const { seedId, automationId, userId } = job.data
 
-  console.log(`[Worker] Processing automation job ${job.id}: ${automationId} for seed: ${seedId} (user: ${userId})`)
+  workerLog(`[Worker] Processing automation job ${job.id}: ${automationId} for seed: ${seedId} (user: ${userId})`)
 
   try {
     // 1. Get the automation from registry
@@ -173,59 +195,59 @@ export const automationWorker = new Worker<AutomationJobData>(
 
 // Worker event handlers for logging and monitoring
 automationWorker.on('completed', (job) => {
-  console.log(`[Worker] Job ${job.id} completed successfully`)
+  workerLog(`[Worker] Job ${job.id} completed successfully`)
 })
 
 automationWorker.on('failed', (job, error) => {
-  console.error(`[Worker] Job ${job?.id} failed:`, error)
+    workerError(`[Worker] Job ${job?.id} failed:`, error)
   if (error instanceof Error) {
-    console.error(`[Worker] Error stack:`, error.stack)
+      workerError(`[Worker] Error stack:`, error.stack)
   }
 })
 
 automationWorker.on('error', (error) => {
-  console.error('[Worker] Worker error:', error)
+  workerError('[Worker] Worker error:', error)
   if (error instanceof Error) {
-    console.error('[Worker] Error message:', error.message)
-    console.error('[Worker] Error stack:', error.stack)
+    workerError('[Worker] Error message:', error.message)
+    workerError('[Worker] Error stack:', error.stack)
   }
 })
 
 automationWorker.on('active', (job) => {
-  console.log(`[Worker] Job ${job.id} is now active (processing)`)
+  workerLog(`[Worker] Job ${job.id} is now active (processing)`)
 })
 
 automationWorker.on('stalled', (jobId) => {
-  console.warn(`[Worker] Job ${jobId} stalled (taking too long)`)
+  workerWarn(`[Worker] Job ${jobId} stalled (taking too long)`)
 })
 
 automationWorker.on('ready', () => {
-  console.log('[Worker] ✓ Worker is ready and listening for jobs')
+  workerLog('[Worker] ✓ Worker is ready and listening for jobs')
 })
 
 automationWorker.on('closing', () => {
-  console.log('[Worker] Worker is closing...')
+  workerLog('[Worker] Worker is closing...')
 })
 
 // Check if worker is actually running after a short delay
 setTimeout(() => {
-  console.log(`[Worker] Worker status check - isRunning: ${automationWorker.isRunning()}, isPaused: ${automationWorker.isPaused()}`)
+  workerLog(`[Worker] Worker status check - isRunning: ${automationWorker.isRunning()}, isPaused: ${automationWorker.isPaused()}`)
   if (!automationWorker.isRunning()) {
-    console.error('[Worker] ⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
+    workerError('[Worker] ⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
   }
 }, 2000)
 
 // Log worker initialization
-console.log('[Worker] Automation worker created, connecting to Redis...')
-console.log(`[Worker] Queue name: automation`)
+workerLog('[Worker] Automation worker created, connecting to Redis...')
+workerLog(`[Worker] Queue name: automation`)
 // Type guard to check if connection has host/port (not ClusterOptions)
 const hasHostPort = (conn: ConnectionOptions): conn is { host: string; port: number; password?: string } => {
   return 'host' in conn && 'port' in conn
 }
 if (hasHostPort(queueConnection)) {
-  console.log(`[Worker] Connection: ${queueConnection.host}:${queueConnection.port}`)
+  workerLog(`[Worker] Connection: ${queueConnection.host}:${queueConnection.port}`)
 } else {
-  console.log(`[Worker] Connection: cluster mode`)
+  workerLog(`[Worker] Connection: cluster mode`)
 }
 
 // Test Redis connection
@@ -255,16 +277,16 @@ if (hasHostPort(queueConnection)) {
   testConnection.connect()
     .then(() => testConnection.ping())
     .then(() => {
-      console.log('[Worker] ✓ Redis connection test successful')
+      workerLog('[Worker] ✓ Redis connection test successful')
       testConnection.quit()
     })
     .catch((error) => {
-      console.error('[Worker] ✗ Redis connection test failed:', error.message)
-      console.error('[Worker] Make sure Redis is running and accessible')
+      workerError('[Worker] ✗ Redis connection test failed:', error.message)
+      workerError('[Worker] Make sure Redis is running and accessible')
       testConnection.quit().catch(() => {}) // Ignore quit errors
     })
 } else {
-  console.log('[Worker] Skipping Redis connection test (cluster mode)')
+  workerLog('[Worker] Skipping Redis connection test (cluster mode)')
 }
 
 

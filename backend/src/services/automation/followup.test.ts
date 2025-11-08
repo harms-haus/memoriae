@@ -5,12 +5,20 @@ import type { Seed, SeedState } from '../seeds'
 import type { OpenRouterClient, OpenRouterChatCompletionResponse } from '../openrouter/client'
 import type { AutomationContext, CategoryChange } from './base'
 import { FollowupService } from '../followups'
+import { SettingsService } from '../settings'
 
 // Mock FollowupService
 vi.mock('../followups', () => ({
   FollowupService: {
     getBySeedId: vi.fn(),
     create: vi.fn(),
+  },
+}))
+
+// Mock SettingsService
+vi.mock('../settings', () => ({
+  SettingsService: {
+    getByUserId: vi.fn(),
   },
 }))
 
@@ -55,6 +63,14 @@ describe('FollowupAutomation', () => {
       openrouter: mockOpenRouter,
       userId: 'user-123',
     }
+
+    // Mock SettingsService to return default settings
+    vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+      openrouter_api_key: null,
+      openrouter_model: null,
+      openrouter_model_name: null,
+      timezone: null,
+    })
   })
 
   describe('basic properties', () => {

@@ -87,7 +87,8 @@ describe('TagCloud Component', () => {
   const mockOnTagSelect = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    // Clear mocks but preserve the implementation
+    mockApiGet.mockClear()
     // Reset API mock to return successful response with mock seeds and empty tags array
     mockApiGet.mockImplementation((url: string) => {
       if (url === '/seeds') {
@@ -101,7 +102,8 @@ describe('TagCloud Component', () => {
   })
 
   afterEach(() => {
-    vi.restoreAllMocks()
+    // Just clear call history, don't restore (which would break the mock)
+    mockApiGet.mockClear()
   })
 
   // ========================================
@@ -174,15 +176,18 @@ describe('TagCloud Component', () => {
       </MemoryRouter>
     )
 
+      // Wait for loading to complete and tags to render
       await waitFor(() => {
-        // Check that tags are rendered with correct counts
+        // First ensure loading is done
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
+        // Then check that tags are rendered with correct counts
         expect(screen.getByTitle(/react \(2 seeds\)/)).toBeInTheDocument()
         expect(screen.getByTitle(/typescript \(2 seeds\)/)).toBeInTheDocument()
         expect(screen.getByTitle(/nodejs \(2 seeds\)/)).toBeInTheDocument()
-        expect(screen.getByTitle('frontend (1 seed)')).toBeInTheDocument()
-        expect(screen.getByTitle('backend (1 seed)')).toBeInTheDocument()
-        expect(screen.getByTitle('fullstack (1 seed)')).toBeInTheDocument()
-      })
+        expect(screen.getByTitle(/frontend \(1 seed\)/)).toBeInTheDocument()
+        expect(screen.getByTitle(/backend \(1 seed\)/)).toBeInTheDocument()
+        expect(screen.getByTitle(/fullstack \(1 seed\)/)).toBeInTheDocument()
+      }, { timeout: 3000 })
     })
 
     it('sorts tags by frequency (descending)', async () => {
@@ -192,15 +197,18 @@ describe('TagCloud Component', () => {
       </MemoryRouter>
     )
 
+      // Wait for loading to complete and tags to render
       await waitFor(() => {
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
         const tagElements = screen.getAllByRole('link')
+        expect(tagElements.length).toBeGreaterThan(0)
         const tagTitles = tagElements.map(el => el.getAttribute('title'))
         
         // Tags should be sorted by frequency (2, 2, 2, 1, 1, 1)
         expect(tagTitles[0]).toContain('react (2 seeds)')
         expect(tagTitles[1]).toContain('typescript (2 seeds)')
         expect(tagTitles[2]).toContain('nodejs (2 seeds)')
-      })
+      }, { timeout: 3000 })
     })
 
     it('applies correct size classes based on frequency', async () => {
@@ -210,15 +218,17 @@ describe('TagCloud Component', () => {
       </MemoryRouter>
     )
 
+      // Wait for loading to complete and tags to render
       await waitFor(() => {
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
         // Most frequent tags (2/2 = 1.0) should be size-xl (not lg)
         const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         expect(reactTag).toHaveClass('tag-cloud-size-xl')
         
         // Least frequent tags (1/2 = 0.5) should be size-md
-        const frontendTag = screen.getByTitle('frontend (1 seed)')
+        const frontendTag = screen.getByTitle(/frontend \(1 seed\)/)
         expect(frontendTag).toHaveClass('tag-cloud-size-md')
-      })
+      }, { timeout: 3000 })
     })
 
     it('applies consistent colors based on tag name', async () => {
@@ -229,17 +239,20 @@ describe('TagCloud Component', () => {
     )
 
       await waitFor(() => {
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
         // Tags should have color styles applied via inline styles
         const reactTag = screen.getByTitle(/react \(2 seeds\)/)
+        expect(reactTag).toBeInTheDocument()
         const reactColor = reactTag.style.color
         expect(reactColor).toBeTruthy()
         expect(typeof reactColor).toBe('string')
         
         const typescriptTag = screen.getByTitle(/typescript \(2 seeds\)/)
+        expect(typescriptTag).toBeInTheDocument()
         const typescriptColor = typescriptTag.style.color
         expect(typescriptColor).toBeTruthy()
         expect(typeof typescriptColor).toBe('string')
-      })
+      }, { timeout: 3000 })
     })
 
     it('handles tag click events', async () => {
@@ -250,9 +263,14 @@ describe('TagCloud Component', () => {
     )
 
       await waitFor(() => {
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
         const reactTag = screen.getByTitle(/react \(2 seeds\)/)
-        fireEvent.click(reactTag)
-      })
+        expect(reactTag).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      const reactTag = screen.getByTitle(/react \(2 seeds\)/)
+      // Component requires modifier key (Ctrl/Cmd/Shift) to call onTagSelect
+      fireEvent.click(reactTag, { ctrlKey: true })
 
       expect(mockOnTagSelect).toHaveBeenCalledWith('react')
     })
@@ -266,6 +284,7 @@ describe('TagCloud Component', () => {
       )
 
       await waitFor(() => {
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
         const reactTag = screen.getByTitle(/react \(2 seeds\)/)
         const typescriptTag = screen.getByTitle(/typescript \(2 seeds\)/)
         const nodejsTag = screen.getByTitle(/nodejs \(2 seeds\)/)
@@ -273,7 +292,7 @@ describe('TagCloud Component', () => {
         expect(reactTag).toHaveClass('tag-cloud-item-selected')
         expect(typescriptTag).toHaveClass('tag-cloud-item-selected')
         expect(nodejsTag).not.toHaveClass('tag-cloud-item-selected')
-      })
+      }, { timeout: 3000 })
     })
 
     it('displays correct tag and seed counts', async () => {
@@ -284,10 +303,11 @@ describe('TagCloud Component', () => {
     )
 
       await waitFor(() => {
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
         const badges = screen.getAllByTestId('badge')
         expect(badges[0]).toHaveTextContent('6 tags') // 6 unique tags
         expect(badges[1]).toHaveTextContent('3 seeds') // 3 seeds
-      })
+      }, { timeout: 3000 })
     })
 
     it('retries loading when retry button is clicked', async () => {
@@ -361,9 +381,14 @@ describe('TagCloud Component', () => {
     )
 
       await waitFor(() => {
+        expect(screen.queryByText('Loading tags...')).not.toBeInTheDocument()
         const reactTag = screen.getByTitle(/react \(2 seeds\)/)
-        expect(() => fireEvent.click(reactTag)).not.toThrow()
-      })
+        expect(reactTag).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      const reactTag = screen.getByTitle(/react \(2 seeds\)/)
+      // Should not throw even without onTagSelect prop
+      expect(() => fireEvent.click(reactTag)).not.toThrow()
     })
 
     it('handles empty selectedTags prop', async () => {
@@ -373,10 +398,15 @@ describe('TagCloud Component', () => {
         </MemoryRouter>
       )
 
+      // Wait for tags to render (this also implies loading is complete)
       await waitFor(() => {
         const reactTag = screen.getByTitle(/react \(2 seeds\)/)
-        expect(reactTag).not.toHaveClass('tag-cloud-item-selected')
-      })
+        expect(reactTag).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      // Verify the tag is not selected when selectedTags is empty
+      const reactTag = screen.getByTitle(/react \(2 seeds\)/)
+      expect(reactTag).not.toHaveClass('tag-cloud-item-selected')
     })
   })
 

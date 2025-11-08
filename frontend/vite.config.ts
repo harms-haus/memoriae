@@ -21,8 +21,8 @@ export default defineConfig({
     port: 5173,
     host: true, // Listen on all addresses
     strictPort: false, // Try next available port if 5173 is taken
-    // Enable HMR (Hot Module Replacement)
-    hmr: {
+    // Enable HMR (Hot Module Replacement) - disabled during tests
+    hmr: process.env.NODE_ENV === 'test' ? false : {
       protocol: 'ws',
       host: 'localhost',
       port: 5173,
@@ -45,14 +45,16 @@ export default defineConfig({
         // Vite will forward /api/* to http://localhost:3000/api/*
         // Configure timeouts for long-running requests
         timeout: 60000,
-        // Handle connection errors
+        // Handle connection errors (only log in development, not tests)
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
-            console.log('Proxy error:', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log(`[PROXY] ${req.method} ${req.url} -> ${proxyReq.getHeader('host')}${proxyReq.path}`);
-          });
+          if (process.env.NODE_ENV !== 'test') {
+            proxy.on('error', (err, _req, _res) => {
+              console.log('Proxy error:', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log(`[PROXY] ${req.method} ${req.url} -> ${proxyReq.getHeader('host')}${proxyReq.path}`);
+            });
+          }
         },
       },
     },
@@ -64,9 +66,48 @@ export default defineConfig({
     // Optimize chunks
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          axios: ['axios'],
+        manualChunks: (id) => {
+          // Split node_modules into separate chunks
+          if (id.includes('node_modules')) {
+            // React core
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+              return 'vendor-react'
+            }
+            // React Router
+            if (id.includes('react-router')) {
+              return 'vendor-router'
+            }
+            // Lucide icons (can be large)
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons'
+            }
+            // Markdown rendering
+            if (id.includes('react-markdown') || id.includes('remark') || id.includes('rehype')) {
+              return 'vendor-markdown'
+            }
+            // Date/time library
+            if (id.includes('luxon')) {
+              return 'vendor-datetime'
+            }
+            // Tree components
+            if (id.includes('@headless-tree')) {
+              return 'vendor-tree'
+            }
+            // Color picker
+            if (id.includes('react-colorful')) {
+              return 'vendor-color'
+            }
+            // Axios
+            if (id.includes('axios')) {
+              return 'vendor-axios'
+            }
+            // Other vendor libraries
+            return 'vendor-misc'
+          }
+          // Split mother-theme components
+          if (id.includes('mother-theme')) {
+            return 'mother-theme'
+          }
         },
       },
     },
@@ -77,12 +118,6 @@ export default defineConfig({
     // Exclude from pre-bundling (will be loaded on demand)
     exclude: [],
   },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/*.integration.test.{ts,tsx}'],
-    exclude: ['node_modules/**', 'dist/**'],
-  },
+  // Test configuration moved to vitest.config.ts for earlier initialization
 })
 

@@ -3,6 +3,16 @@ import { Queue, ConnectionOptions } from 'bullmq'
 import { config } from '../../config'
 
 /**
+ * Log helper that only logs when not in test environment
+ * Prevents test output clutter while keeping useful logs in development/production
+ */
+function queueLog(...args: unknown[]): void {
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(...args)
+  }
+}
+
+/**
  * Data payload for automation queue jobs
  */
 export interface AutomationJobData {
@@ -49,15 +59,15 @@ function getQueueConnection(): ConnectionOptions {
 const queueConnection = getQueueConnection()
 
 // Log queue initialization
-console.log('[Queue] Initializing automation queue...')
+queueLog('[Queue] Initializing automation queue...')
 // Type guard to check if connection has host/port (not ClusterOptions)
 const hasHostPort = (conn: ConnectionOptions): conn is { host: string; port: number; password?: string } => {
   return 'host' in conn && 'port' in conn
 }
 if (hasHostPort(queueConnection)) {
-  console.log(`[Queue] Connection: ${queueConnection.host}:${queueConnection.port}`)
+  queueLog(`[Queue] Connection: ${queueConnection.host}:${queueConnection.port}`)
 } else {
-  console.log(`[Queue] Connection: cluster mode`)
+  queueLog(`[Queue] Connection: cluster mode`)
 }
 
 /**
@@ -93,7 +103,7 @@ export async function addAutomationJob(
   data: AutomationJobData,
   options?: { makeUnique?: boolean }
 ): Promise<string> {
-  console.log(`[Queue] Adding job: automation=${data.automationId}, seed=${data.seedId}, user=${data.userId}, priority=${data.priority || 0}`)
+  queueLog(`[Queue] Adding job: automation=${data.automationId}, seed=${data.seedId}, user=${data.userId}, priority=${data.priority || 0}`)
   
   // Generate job ID - if makeUnique is true, add timestamp to allow re-running same automation
   const baseJobId = `${data.automationId}-${data.seedId}`
@@ -108,7 +118,7 @@ export async function addAutomationJob(
     }
   )
 
-  console.log(`[Queue] Job added with ID: ${job.id}`)
+  queueLog(`[Queue] Job added with ID: ${job.id}`)
   return job.id!
 }
 
