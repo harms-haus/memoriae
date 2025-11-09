@@ -220,10 +220,8 @@ describe('MusingsView', () => {
 
   it('should reload musings after successful generation', async () => {
     const user = userEvent.setup()
-    vi.mocked(api.getDailyMusings)
-      .mockResolvedValueOnce([]) // Initial load (first render)
-      .mockResolvedValueOnce([]) // Initial load (second render - React 19 behavior)
-      .mockResolvedValueOnce(mockMusings) // After generation
+    // Use mockResolvedValue for initial loads (handles React 19 double invocation)
+    vi.mocked(api.getDailyMusings).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
     vi.mocked(api.generateMusings).mockResolvedValue({
       message: 'Generated 2 musings',
@@ -240,6 +238,10 @@ describe('MusingsView', () => {
       expect(screen.getByText('Generate Musings Now')).toBeInTheDocument()
     })
 
+    // Clear the mock to reset call count, then set up for reload after generation
+    vi.mocked(api.getDailyMusings).mockClear()
+    vi.mocked(api.getDailyMusings).mockResolvedValueOnce(mockMusings)
+
     const generateButton = screen.getByText('Generate Musings Now')
     await user.click(generateButton)
 
@@ -247,7 +249,8 @@ describe('MusingsView', () => {
       expect(screen.getByTestId('musing-item-musing-1')).toBeInTheDocument()
     })
 
-    expect(api.getDailyMusings).toHaveBeenCalledTimes(3)
+    // After generation, getDailyMusings should be called once (for reload)
+    expect(api.getDailyMusings).toHaveBeenCalledTimes(1)
   })
 
   it('should display error message on generation failure', async () => {
