@@ -162,14 +162,14 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
    */
   useEffect(() => {
     if (stage === 'medium' && textareaRef.current) {
-      const timeout = setTimeout(() => {
+      const timeout = window.setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus()
           const cursorPos = cursorPositionRef.current || content.length
           textareaRef.current.setSelectionRange(cursorPos, cursorPos)
         }
       }, 100)
-      return () => clearTimeout(timeout)
+      return () => window.clearTimeout(timeout)
     }
     return undefined
   }, [stage, content.length])
@@ -179,12 +179,12 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
    */
   useEffect(() => {
     if (showLargeModal && textareaRef.current) {
-      const timeout = setTimeout(() => {
+      const timeout = window.setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus()
         }
       }, 100)
-      return () => clearTimeout(timeout)
+      return () => window.clearTimeout(timeout)
     }
     return undefined
   }, [showLargeModal])
@@ -214,9 +214,9 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
     const showUi = () => {
       setUiVisible(true)
       if (uiTimeoutRef.current) {
-        clearTimeout(uiTimeoutRef.current)
+        window.clearTimeout(uiTimeoutRef.current)
       }
-      uiTimeoutRef.current = setTimeout(() => {
+      uiTimeoutRef.current = window.setTimeout(() => {
         setUiVisible(false)
       }, 2000)
     }
@@ -239,7 +239,7 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
       container.removeEventListener('touchstart', handleTouchStart)
       container.removeEventListener('scroll', handleScroll, true)
       if (uiTimeoutRef.current) {
-        clearTimeout(uiTimeoutRef.current)
+        window.clearTimeout(uiTimeoutRef.current)
       }
     }
   }, [showLargeModal])
@@ -349,7 +349,7 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
     handleContentChange(newContent)
 
     // Restore cursor position
-    setTimeout(() => {
+    window.setTimeout(() => {
       if (textarea) {
         const newPosition = start + before.length + (selectedText ? selectedText.length + after.length : after.length)
         textarea.setSelectionRange(newPosition, newPosition)
