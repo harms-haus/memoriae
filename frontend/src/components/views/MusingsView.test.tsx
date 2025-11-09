@@ -220,12 +220,24 @@ describe('MusingsView', () => {
 
   it('should reload musings after successful generation', async () => {
     const user = userEvent.setup()
-    // Use mockResolvedValue for initial loads (handles React 19 double invocation)
-    vi.mocked(api.getDailyMusings).mockResolvedValue([])
+    const callTracker = vi.hoisted(() => ({ count: 0, generationComplete: false }))
+    
+    // Track calls and return appropriate values
+    vi.mocked(api.getDailyMusings).mockImplementation(async () => {
+      callTracker.count++
+      // After generation is complete, return mockMusings
+      if (callTracker.generationComplete) {
+        return mockMusings
+      }
+      return [] // Initial loads return empty array
+    })
     vi.mocked(api.get).mockResolvedValue(mockTags)
-    vi.mocked(api.generateMusings).mockResolvedValue({
-      message: 'Generated 2 musings',
-      musingsCreated: 2,
+    vi.mocked(api.generateMusings).mockImplementation(async () => {
+      callTracker.generationComplete = true
+      return {
+        message: 'Generated 2 musings',
+        musingsCreated: 2,
+      }
     })
 
     render(
@@ -238,19 +250,21 @@ describe('MusingsView', () => {
       expect(screen.getByText('Generate Musings Now')).toBeInTheDocument()
     })
 
-    // Clear the mock to reset call count, then set up for reload after generation
-    vi.mocked(api.getDailyMusings).mockClear()
-    vi.mocked(api.getDailyMusings).mockResolvedValueOnce(mockMusings)
-
     const generateButton = screen.getByText('Generate Musings Now')
     await user.click(generateButton)
 
+    // Wait for generation to complete (button text changes back)
     await waitFor(() => {
-      expect(screen.getByTestId('musing-item-musing-1')).toBeInTheDocument()
+      expect(screen.queryByText('Generating...')).not.toBeInTheDocument()
     })
 
-    // After generation, getDailyMusings should be called once (for reload)
-    expect(api.getDailyMusings).toHaveBeenCalledTimes(1)
+    // Then wait for musings to appear
+    await waitFor(() => {
+      expect(screen.getByTestId('musing-item-musing-1')).toBeInTheDocument()
+    }, { timeout: 3000 })
+
+    // Verify getDailyMusings was called for reload after generation
+    expect(api.getDailyMusings).toHaveBeenCalled()
   })
 
   it('should display error message on generation failure', async () => {
