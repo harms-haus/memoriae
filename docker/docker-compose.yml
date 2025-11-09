@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16
-    container_name: memoriae-postgres-dev
+    container_name: memoriae-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-memoriae}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memoriae}
@@ -11,37 +11,35 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - memoriae-postgres-data-dev:/var/lib/postgresql/data
+      - memoriae-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memoriae}"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
     networks:
-      - memoriae-network-dev
+      - memoriae-network
 
   redis:
     image: redis:7-alpine
-    container_name: memoriae-redis-dev
+    container_name: memoriae-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
-      - memoriae-redis-data-dev:/data
+      - memoriae-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 3s
       retries: 5
     restart: unless-stopped
     networks:
-      - memoriae-network-dev
+      - memoriae-network
 
   memoriae:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.dev
-    container_name: memoriae-dev
+    image: ghcr.io/harms-haus/memoriae:latest
+    container_name: memoriae-app
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,38 +47,26 @@ services:
         condition: service_healthy
     ports:
       - "${PORT:-3123}:3123"
-      - "5173:5173"   # Frontend Vite dev server
-      - "9229:9229"   # Node.js debugging
-    volumes:
-      # Mount source code for hot reload
-      - ../backend:/app/backend:rw
-      - ../frontend:/app/frontend:rw
-      - ../mother-theme:/app/mother-theme:rw
-      # Exclude node_modules from volume mount (use container's node_modules)
-      - /app/backend/node_modules
-      - /app/frontend/node_modules
-      - /app/mother-theme/node_modules
     env_file:
       - ../.env
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-memoriae}:${POSTGRES_PASSWORD:-memoriae}@postgres:5432/${POSTGRES_DB:-memoriae}
       - REDIS_URL=redis://redis:6379
       - PORT=${PORT:-3123}
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - JWT_SECRET=${JWT_SECRET}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_API_URL=${OPENROUTER_API_URL:-https://openrouter.ai/api/v1}
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
-    stdin_open: true
-    tty: true
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3123}
     restart: unless-stopped
     networks:
-      - memoriae-network-dev
+      - memoriae-network
 
 volumes:
-  memoriae-postgres-data-dev:
-  memoriae-redis-data-dev:
+  memoriae-postgres-data:
+  memoriae-redis-data:
 
 networks:
-  memoriae-network-dev:
+  memoriae-network:
     driver: bridge
+

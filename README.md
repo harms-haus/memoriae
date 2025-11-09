@@ -2,6 +2,24 @@
 
 A powerful, AI-enhanced memory and note-taking web application that helps you capture, organize, and evolve your thoughts over time. Memoriae uses an immutable timeline system to track changes to your memories, with intelligent automation that suggests tags and categories using AI.
 
+## Build Status
+
+| Component | Status | Coverage |
+|-----------|--------|----------|
+| **CI Tests** | [![CI](https://github.com/harms-haus/memoriae/workflows/CI/badge.svg)](https://github.com/harms-haus/memoriae/actions/workflows/ci.yml) | [View Coverage](https://github.com/harms-haus/memoriae/actions/workflows/ci.yml) |
+| **Build** | [![Build](https://github.com/harms-haus/memoriae/workflows/Build/badge.svg)](https://github.com/harms-haus/memoriae/actions/workflows/build.yml) | [View Builds](https://github.com/harms-haus/memoriae/actions/workflows/build.yml) |
+| **Publish** | [![Publish](https://github.com/harms-haus/memoriae/workflows/Publish/badge.svg)](https://github.com/harms-haus/memoriae/actions/workflows/publish.yml) | [View Releases](https://github.com/harms-haus/memoriae/actions/workflows/publish.yml) |
+
+**Test Results:**
+- ✅ **Mother Theme**: [View Tests](https://github.com/harms-haus/memoriae/actions/workflows/ci.yml)
+- ✅ **Backend**: [View Tests](https://github.com/harms-haus/memoriae/actions/workflows/ci.yml)
+- ✅ **Frontend**: [View Tests](https://github.com/harms-haus/memoriae/actions/workflows/ci.yml)
+
+**Packages:**
+- 📦 [@harms-haus/mother](https://www.npmjs.com/package/@harms-haus/mother) - Theme library and React components
+- 📦 [@harms-haus/memoriae-server](https://www.npmjs.com/package/@harms-haus/memoriae-server) - Backend API server
+- 📦 [@harms-haus/memoriae](https://www.npmjs.com/package/@harms-haus/memoriae) - Frontend web application
+
 ![Memoriae](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -113,24 +131,21 @@ Default automations:
 
 3. **Configure environment variables**
 
-   Create `backend/.env`:
-   ```env
-   DATABASE_URL=postgresql://user:password@localhost:5432/memoriae
-   OPENROUTER_API_URL=https://openrouter.ai/api/v1
-   JWT_SECRET=your-secret-key-here
-   OAUTH_GOOGLE_CLIENT_ID=your-google-client-id
-   OAUTH_GOOGLE_CLIENT_SECRET=your-google-client-secret
-   OAUTH_GITHUB_CLIENT_ID=your-github-client-id
-   OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
-   REDIS_URL=redis://localhost:6379
-   QUEUE_CHECK_INTERVAL=30000
-   PORT=3000
+   Copy `.env.example` to `.env` and fill in your values:
+   ```bash
+   cp .env.example .env
    ```
 
-   Create `frontend/.env`:
-   ```env
-   VITE_API_URL=http://localhost:3000/api
-   ```
+   Edit `.env` with your configuration. Required variables:
+   - `JWT_SECRET` - Generate a strong secret: `openssl rand -base64 32`
+   - `DATABASE_URL` - PostgreSQL connection string
+   - `REDIS_URL` - Redis connection string
+   
+   Optional variables:
+   - `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET`
+   - `OAUTH_GITHUB_CLIENT_ID` / `OAUTH_GITHUB_CLIENT_SECRET`
+   - `OPENROUTER_API_KEY` - For AI features
+   - `VITE_API_URL` - Frontend API URL (defaults to http://localhost:3123/api)
 
 4. **Set up the database**
    ```bash
@@ -156,17 +171,129 @@ Default automations:
 
 7. **Access the application**
    - Frontend: http://localhost:5173 (or your Vite port)
-   - Backend API: http://localhost:3000/api
+   - Backend API: http://localhost:3123/api
 
-### Docker Setup (Optional)
+### Docker Setup
 
-A `docker-compose.yml` is available for local development:
+#### Development Environment
+
+For local development with hot reload, use the development docker-compose configuration:
 
 ```bash
-docker-compose up -d
+# Start all services (postgres, redis, memoriae with hot reload)
+docker-compose -f docker/docker-compose.dev.yml up -d
+
+# Or use the build script
+./scripts/docker-compose-build.sh dev
+docker-compose -f docker/docker-compose.dev.yml up -d
 ```
 
-This starts PostgreSQL and Redis containers automatically.
+The application will be available at:
+- Frontend: http://localhost:5173 (Vite dev server with hot reload)
+- Backend API: http://localhost:3123/api
+
+#### Production Docker Deployment
+
+For production deployment, use the install script:
+
+```bash
+# Install and start production environment
+npm run install-docker
+
+# Or use the script directly
+./docker/scripts/install-docker.sh
+```
+
+The script will:
+- Check for `.env` file (creates from `.env.example` if missing)
+- Validate required environment variables
+- Pull or build the memoriae Docker image
+- Start all services (PostgreSQL, Redis, Memoriae)
+
+**Options:**
+- `npm run install-docker -- --rebuild` - Force rebuild of containers
+- `npm run install-docker -- --stop` - Stop all containers
+- `npm run install-docker -- --clean` - Stop and remove containers and volumes
+
+The application will be available at `http://localhost:3123` (or your configured port).
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+### Workflows
+
+- **CI** (`.github/workflows/ci.yml`): Runs tests with coverage for all packages on every push and pull request
+- **Build** (`.github/workflows/build.yml`): Builds all packages when pushing to main or creating version tags
+- **Publish** (`.github/workflows/publish.yml`): Publishes packages to NPM and Docker registry (manual or on version tags)
+
+### Test Results
+
+View test results and build status in the [GitHub Actions tab](https://github.com/harms-haus/memoriae/actions) or check the build status badges at the top of this README.
+
+### Publishing Packages
+
+The project consists of three npm packages:
+
+- **@harms-haus/mother**: Theme library and React components
+- **@harms-haus/memoriae-server**: Backend API server
+- **@harms-haus/memoriae**: Frontend web application
+
+#### Publishing to NPM
+
+**Prerequisites:**
+- NPM account with access to `@harms-haus` scope
+- `NPM_TOKEN` secret configured in GitHub repository settings
+
+**Manual Publishing:**
+
+```bash
+# Publish individual packages
+./scripts/publish-mother.sh [version]
+./scripts/publish-backend.sh [version]
+./scripts/publish-frontend.sh [version]
+
+# Publish all packages
+./scripts/publish-all.sh [version]
+```
+
+**Automatic Publishing:**
+
+- Create a git tag starting with `v` (e.g., `v1.0.0`)
+- Push the tag: `git push origin v1.0.0`
+- The publish workflow will automatically build and publish all packages
+
+#### Publishing Docker Images
+
+**Prerequisites:**
+- GitHub Container Registry access (automatic for public repos)
+- Or Docker Hub credentials configured as `DOCKER_USERNAME` and `DOCKER_PASSWORD` secrets
+
+**Manual Publishing:**
+
+```bash
+# Build the image
+./scripts/docker-build.sh [tag]
+
+# Push to registry
+./scripts/docker-push.sh [tag] [registry]
+```
+
+**Automatic Publishing:**
+
+- Create a git tag starting with `v` (e.g., `v1.0.0`)
+- Push the tag: `git push origin v1.0.0`
+- The publish workflow will automatically build and push the Docker image to `ghcr.io/harms-haus/memoriae`
+
+### GitHub Secrets
+
+The following secrets need to be configured in GitHub repository settings:
+
+- `NPM_TOKEN`: NPM authentication token for publishing packages
+- `DOCKER_USERNAME`: Docker registry username (optional, for Docker Hub)
+- `DOCKER_PASSWORD`: Docker registry password (optional, for Docker Hub)
+
+For public repositories, `GITHUB_TOKEN` is automatically provided for GitHub Container Registry.
 
 ## Usage
 

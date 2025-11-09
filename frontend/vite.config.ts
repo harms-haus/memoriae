@@ -1,10 +1,21 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import dotenv from 'dotenv'
+
+// Load .env from project root (one level up from frontend/)
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Load env vars from root .env file
+  const env = loadEnv(mode, path.resolve(__dirname, '..'), '')
+  
+  // Get backend port from env (default to 3123)
+  const backendPort = env.PORT || '3123'
+  
+  return {
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -36,7 +47,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: `http://localhost:${backendPort}`,
         changeOrigin: true,
         secure: false,
         // WebSocket proxy for HMR (if backend uses WS)
@@ -119,5 +130,6 @@ export default defineConfig({
     exclude: [],
   },
   // Test configuration moved to vitest.config.ts for earlier initialization
+  }
 })
 

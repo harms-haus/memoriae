@@ -1,10 +1,12 @@
 // Environment configuration
 import dotenv from 'dotenv'
+import path from 'path'
 
-dotenv.config()
+// Load .env from project root (one level up from backend/src)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 export const config = {
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '3123', 10),
   database: {
     url: process.env.DATABASE_URL || '',
   },
@@ -16,12 +18,12 @@ export const config = {
     google: {
       clientId: process.env.OAUTH_GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.OAUTH_GOOGLE_CLIENT_SECRET || '',
-      redirectUri: process.env.OAUTH_GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback',
+      redirectUri: process.env.OAUTH_GOOGLE_REDIRECT_URI || 'http://localhost:3123/api/auth/google/callback',
     },
     github: {
       clientId: process.env.OAUTH_GITHUB_CLIENT_ID || '',
       clientSecret: process.env.OAUTH_GITHUB_CLIENT_SECRET || '',
-      redirectUri: process.env.OAUTH_GITHUB_REDIRECT_URI || 'http://localhost:3000/api/auth/github/callback',
+      redirectUri: process.env.OAUTH_GITHUB_REDIRECT_URI || 'http://localhost:3123/api/auth/github/callback',
     },
   },
   frontend: {

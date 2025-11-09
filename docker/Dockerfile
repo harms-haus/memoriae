@@ -106,7 +106,7 @@ RUN chown -R postgres:postgres /var/lib/postgresql/16/main \
 RUN chown -R redis:redis /var/lib/redis
 
 # Expose ports
-EXPOSE 3000 5432 6379
+EXPOSE 3123 5432 6379
 
 # Set entrypoint
 ENTRYPOINT ["/init.sh"]

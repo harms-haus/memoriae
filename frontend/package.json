@@ -1,22 +1,40 @@
 {
-  "name": "memoriae-frontend",
+  "name": "@harms-haus/memoriae",
   "version": "0.1.0",
   "type": "module",
+  "files": [
+    "dist",
+    "public",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harms-haus/memoriae.git",
+    "directory": "frontend"
+  },
+  "keywords": [
+    "memoriae",
+    "webapp",
+    "react",
+    "frontend",
+    "memory",
+    "notes"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/harms-haus/memoriae#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint . --ext ts,tsx --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:run": "vitest run",
-    "test:unit": "vitest run --exclude 'src/__tests__/integration/**'",
-    "test:integration": "vitest run src/__tests__/integration/",
-    "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "pre-commit": "npm run type-check && npm run test:run"
+    "test:watch": "vitest",
+    "bt": "npm run build && npm run test:coverage",
+    "bt:watch": "npm run build && npm run test:watch",
+    "publish": "./scripts/publish.sh",
+    "dev": "vite",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@headless-tree/core": "^1.5.1",
@@ -47,6 +65,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "jsdom": "^23.0.1",
+    "dotenv": "^16.3.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
     "vitest": "^1.1.0"

@@ -1,21 +1,39 @@
 {
-  "name": "mother-theme",
+  "name": "@harms-haus/mother",
   "version": "0.1.0",
   "description": "Memoriae theme library and React components",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/styles",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harms-haus/memoriae.git",
+    "directory": "mother-theme"
+  },
+  "keywords": [
+    "react",
+    "components",
+    "theme",
+    "design-system",
+    "ui-library"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "type-check": "tsc --noEmit",
     "build": "tsc",
-    "examples": "vite --config vite.examples.config.ts",
-    "examples:build": "vite build --config vite.examples.config.ts",
     "test": "vitest run --no-watch",
-    "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ct": "playwright test -c playwright-ct.config.ts",
-    "test:ct:ui": "playwright test -c playwright-ct.config.ts --ui",
-    "test:visual": "playwright test -c playwright-ct.config.ts --grep @visual"
+    "test:watch": "vitest",
+    "bt": "npm run build && npm run test:coverage",
+    "bt:watch": "npm run build && npm run test:watch",
+    "publish": "./scripts/publish.sh"
   },
   "dependencies": {
     "lucide-react": "^0.552.0",

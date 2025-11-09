@@ -1,29 +1,44 @@
 {
-  "name": "memoriae-backend",
+  "name": "@harms-haus/memoriae-server",
   "version": "0.1.0",
   "description": "Memoriae backend API",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "src/db/migrations",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harms-haus/memoriae.git",
+    "directory": "backend"
+  },
+  "keywords": [
+    "memoriae",
+    "api",
+    "backend",
+    "express",
+    "postgresql",
+    "redis"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:run": "vitest run",
-    "test:unit": "vitest run --exclude 'src/__tests__/integration/**'",
-    "test:integration": "vitest run src/__tests__/integration/",
     "test:coverage": "vitest run --coverage",
-    "pre-commit": "npm run type-check && npm run test:run",
+    "test:watch": "vitest",
+    "bt": "npm run build && npm run test:coverage",
+    "bt:watch": "npm run build && npm run test:watch",
+    "publish": "./scripts/publish.sh",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
     "migrate": "NODE_OPTIONS='-r ts-node/register' knex migrate:latest --knexfile src/db/knexfile.ts",
     "migrate:rollback": "NODE_OPTIONS='-r ts-node/register' knex migrate:rollback --knexfile src/db/knexfile.ts",
     "migrate:make": "NODE_OPTIONS='-r ts-node/register' knex migrate:make --knexfile src/db/knexfile.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@types/knex": "^0.15.2",
     "axios": "^1.13.1",

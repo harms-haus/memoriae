@@ -15,8 +15,8 @@ const getApiUrl = (): string => {
     return '/api'
   }
   
-  // In development, default to localhost (Vite proxy will handle it)
-  return 'http://localhost:3000/api'
+  // In development, default to localhost:3123 (Vite proxy will handle it)
+  return 'http://localhost:3123/api'
 }
 
 const API_URL = getApiUrl()
@@ -127,7 +127,7 @@ class ApiClient {
     // For OAuth redirects, we need to navigate directly to the backend
     // (not through fetch), so use full URL in development
     // In production, backend serves frontend so relative URL works
-    const baseUrl = import.meta.env.PROD ? '' : 'http://localhost:3000'
+    const baseUrl = import.meta.env.PROD ? '' : 'http://localhost:3123'
     return `${baseUrl}/api/auth/google?${params.toString()}`
   }
 
@@ -139,7 +139,7 @@ class ApiClient {
     // For OAuth redirects, we need to navigate directly to the backend
     // (not through fetch), so use full URL in development
     // In production, backend serves frontend so relative URL works
-    const baseUrl = import.meta.env.PROD ? '' : 'http://localhost:3000'
+    const baseUrl = import.meta.env.PROD ? '' : 'http://localhost:3123'
     return `${baseUrl}/api/auth/github?${params.toString()}`
   }
 

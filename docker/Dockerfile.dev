@@ -93,12 +93,12 @@ RUN chown -R redis:redis /var/lib/redis
 ENV NODE_ENV=development
 
 # Expose ports
-# 3000 - Backend API
+# 3123 - Backend API
 # 5173 - Frontend Vite dev server
 # 9229 - Node.js debugging
 # 5432 - PostgreSQL
 # 6379 - Redis
-EXPOSE 3000 5173 9229 5432 6379
+EXPOSE 3123 5173 9229 5432 6379
 
 # Set entrypoint
 ENTRYPOINT ["/init.sh"]

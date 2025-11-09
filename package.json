@@ -4,10 +4,26 @@
   "private": true,
   "description": "Memoriae - Memory and note-taking application",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "dev": "./docker/scripts/dev.sh",
+    "install-docker": "./docker/scripts/install-docker.sh",
+    "build": "cd mother-theme && npm run build && cd ../backend && npm run build && cd ../frontend && npm run build",
+    "test": "cd mother-theme && npm run test && cd ../backend && npm run test && cd ../frontend && npm run test",
+    "test:coverage": "cd mother-theme && npm run test:coverage && cd ../backend && npm run test:coverage && cd ../frontend && npm run test:coverage",
+    "test:watch": "cd mother-theme && npm run test:watch & cd ../backend && npm run test:watch & cd ../frontend && npm run test:watch",
+    "bt": "cd mother-theme && npm run bt && cd ../backend && npm run bt && cd ../frontend && npm run bt",
+    "bt:watch": "cd mother-theme && npm run bt:watch & cd ../backend && npm run bt:watch & cd ../frontend && npm run bt:watch",
+    "publish-npm:mother": "./scripts/publish-npm-mother.sh",
+    "publish-npm:memoriae-server": "./scripts/publish-npm-memoriae-server.sh",
+    "publish-npm:memoriae": "./scripts/publish-npm-memoriae.sh",
+    "publish-docker": "./docker/scripts/docker-build.sh && ./docker/scripts/docker-push.sh"
   },
+  "workspaces": [
+    "mother-theme",
+    "backend",
+    "frontend"
+  ],
   "devDependencies": {
     "husky": "^8.0.3"
   }
 }
-

@@ -5,16 +5,21 @@ This document provides comprehensive guidance for AI agents working on the Memor
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
-2. [Architecture & Patterns](#architecture--patterns)
-3. [File Structure](#file-structure)
-4. [Style Guide Integration](#style-guide-integration)
-5. [Frontend Patterns](#frontend-patterns)
-6. [Backend Patterns](#backend-patterns)
-7. [Database Patterns](#database-patterns)
-8. [Key Systems](#key-systems)
-9. [Common Tasks](#common-tasks)
-10. [Testing & Quality](#testing--quality)
-11. [Security Considerations](#security-considerations)
+2. [Dependencies & Requirements](#dependencies--requirements)
+3. [Development Setup](#development-setup)
+4. [Building & Testing Scripts](#building--testing-scripts)
+5. [File Structure](#file-structure)
+6. [Architecture & Patterns](#architecture--patterns)
+7. [Style Guide Integration](#style-guide-integration)
+8. [Frontend Patterns](#frontend-patterns)
+9. [Backend Patterns](#backend-patterns)
+10. [Database Patterns](#database-patterns)
+11. [Key Systems](#key-systems)
+12. [Development Workflows](#development-workflows)
+13. [Common Tasks](#common-tasks)
+14. [Testing & Quality](#testing--quality)
+15. [Security Considerations](#security-considerations)
+16. [Useful Scripts & Files](#useful-scripts--files)
 
 ## Project Overview
 
@@ -36,6 +41,369 @@ This document provides comprehensive guidance for AI agents working on the Memor
 - **Queue**: BullMQ with Redis
 - **AI**: OpenRouter API (user-provided keys)
 - **Auth**: OAuth 2.0 (Google + GitHub), JWT
+
+## Dependencies & Requirements
+
+### System Requirements
+
+- **Node.js**: 18+ (required for all packages)
+- **npm**: Comes with Node.js (or use yarn/pnpm)
+- **PostgreSQL**: 14+ (for database)
+- **Redis**: 6+ (for job queue)
+- **Docker/Podman**: Optional, for containerized development (supports both Docker and Podman)
+
+### Workspace Structure
+
+This is a **monorepo** using npm workspaces with three packages:
+
+1. **`mother-theme`** - Theme library and React components (`@harms-haus/mother`)
+2. **`backend`** - Backend API server (`@harms-haus/memoriae-server`)
+3. **`frontend`** - Frontend web application (`@harms-haus/memoriae`)
+
+### Key Dependencies
+
+#### Backend (`backend/package.json`)
+
+**Runtime Dependencies:**
+- `express` - Web framework
+- `knex` - SQL query builder and migrations
+- `pg` - PostgreSQL client
+- `bullmq` - Job queue with Redis
+- `jsonwebtoken` - JWT authentication
+- `fast-json-patch` - JSON Patch (RFC 6902) operations
+- `axios` - HTTP client for OpenRouter API
+- `cors` - CORS middleware
+- `dotenv` - Environment variable management
+- `luxon` - Date/time handling
+- `uuid` - UUID generation
+
+**Development Dependencies:**
+- `typescript` - TypeScript compiler
+- `tsx` - TypeScript execution (for dev server)
+- `ts-node` - TypeScript execution (for migrations)
+- `vitest` - Test framework
+- `@vitest/coverage-v8` - Coverage reporting
+- `supertest` - HTTP testing
+- `eslint` - Linting
+- `@typescript-eslint/*` - TypeScript ESLint plugins
+
+#### Frontend (`frontend/package.json`)
+
+**Runtime Dependencies:**
+- `react` / `react-dom` - React framework (v19)
+- `react-router-dom` - Routing
+- `axios` - HTTP client
+- `react-markdown` - Markdown rendering
+- `remark-gfm` - GitHub Flavored Markdown
+- `lucide-react` - Icon library
+- `react-colorful` - Color picker
+- `luxon` - Date/time handling
+- `@headless-tree/core` / `@headless-tree/react` - Tree component
+
+**Development Dependencies:**
+- `typescript` - TypeScript compiler
+- `vite` - Build tool and dev server
+- `@vitejs/plugin-react` - React plugin for Vite
+- `vitest` - Test framework
+- `@vitest/coverage-v8` - Coverage reporting
+- `@vitest/ui` - Test UI
+- `@testing-library/react` - React testing utilities
+- `@testing-library/jest-dom` - DOM matchers
+- `@testing-library/user-event` - User interaction simulation
+- `jsdom` - DOM environment for tests
+- `eslint` - Linting
+
+#### Mother Theme (`mother-theme/package.json`)
+
+**Runtime Dependencies:**
+- `react` / `react-dom` - React framework (v19)
+- `lucide-react` - Icon library
+
+**Development Dependencies:**
+- `typescript` - TypeScript compiler
+- `vite` - Build tool
+- `vitest` - Test framework
+- `@playwright/experimental-ct-react` - Component testing
+- `playwright` - E2E testing
+- `@testing-library/react` - React testing utilities
+
+### TypeScript Configuration
+
+All packages use **strict TypeScript** with these key settings:
+
+- `strict: true` - All strict checks enabled
+- `noImplicitAny: true` - No implicit any types
+- `noUncheckedIndexedAccess: true` - Safe array/object access
+- `exactOptionalPropertyTypes: true` - Exact optional property types
+- `noUnusedLocals: true` - Error on unused locals
+- `noImplicitReturns: true` - All code paths must return
+
+**Backend** (`backend/tsconfig.json`):
+- Target: ES2022
+- Module: CommonJS
+- Output: `dist/` directory
+
+**Frontend** (`frontend/tsconfig.json`):
+- Target: ES2020
+- Module: ESNext
+- JSX: react-jsx
+- Path aliases: `@/*` → `src/*`, `@mother/*` → `../mother-theme/src/*`
+
+**Mother Theme** (`mother-theme/tsconfig.json`):
+- Target: ES2020
+- Module: ESNext
+- Output: `dist/` directory with declarations
+
+### Environment Variables
+
+All environment variables are loaded from `.env` in the project root. The backend's `config.ts` loads from `../../.env`.
+
+**Required Variables:**
+- `JWT_SECRET` - Secret for JWT token signing (generate with `openssl rand -base64 32`)
+- `DATABASE_URL` - PostgreSQL connection string (or use `DB_HOST`, `DB_USER`, etc.)
+- `REDIS_URL` - Redis connection string
+
+**Optional Variables:**
+- `PORT` - Backend port (default: 3123)
+- `FRONTEND_URL` - Frontend URL for CORS (default: http://localhost:5173)
+- `FRONTEND_ALLOWED_ORIGINS` - Comma-separated list of allowed origins
+- `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` - Google OAuth
+- `OAUTH_GITHUB_CLIENT_ID` / `OAUTH_GITHUB_CLIENT_SECRET` - GitHub OAuth
+- `OPENROUTER_API_KEY` - OpenRouter API key for AI features
+- `OPENROUTER_API_URL` - OpenRouter API URL (default: https://openrouter.ai/api/v1)
+- `QUEUE_CHECK_INTERVAL` - Pressure check interval in ms (default: 30000)
+- `IDEA_MUSING_SCHEDULE_TIME` - Schedule time for idea musing (default: 02:00)
+- `IDEA_MUSING_MAX_PER_DAY` - Max musings per day (default: 10)
+- `IDEA_MUSING_EXCLUDE_DAYS` - Days to exclude from musing (default: 2)
+
+## Development Setup
+
+### Initial Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/harms-haus/memoriae.git
+   cd memoriae
+   ```
+
+2. **Install dependencies** (from project root)
+   ```bash
+   npm install
+   ```
+   This installs dependencies for all workspaces (mother-theme, backend, frontend).
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your values
+   ```
+
+4. **Set up PostgreSQL and Redis**
+   
+   **Option A: Using Docker/Podman (Recommended)**
+   ```bash
+   npm run dev
+   # This starts postgres, redis, and the app with hot reload
+   ```
+
+   **Option B: Local Installation**
+   ```bash
+   # Start PostgreSQL (varies by OS)
+   # Start Redis (varies by OS)
+   redis-server
+   ```
+
+5. **Run database migrations**
+   ```bash
+   cd backend
+   npm run migrate
+   ```
+
+### Development Modes
+
+#### Local Development (No Docker)
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
+npm run dev  # Uses tsx watch for hot reload
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev  # Vite dev server with HMR
+```
+
+**Terminal 3 - Redis (if not using Docker):**
+```bash
+redis-server
+```
+
+**Terminal 4 - PostgreSQL (if not using Docker):**
+```bash
+# Start PostgreSQL service
+```
+
+#### Docker Development (Recommended)
+
+**Start all services with hot reload:**
+```bash
+npm run dev
+# Or directly:
+./docker/scripts/dev.sh
+```
+
+**Options:**
+- `npm run dev -- --rebuild` - Force rebuild containers
+- `npm run dev -- --stop` - Stop all containers
+- `npm run dev -- --logs` - View logs
+- `npm run dev -- --clean` - Stop and remove everything
+
+**Services available:**
+- Frontend: http://localhost:5173 (Vite dev server with HMR)
+- Backend API: http://localhost:3123/api
+- Node.js debugging: localhost:9229
+
+**Accessing containers:**
+```bash
+docker exec -it memoriae-dev bash
+# Or with podman:
+podman exec -it memoriae-dev bash
+```
+
+#### Production Docker Setup
+
+**Install and start production environment:**
+```bash
+npm run install-docker
+# Or directly:
+./docker/scripts/install-docker.sh
+```
+
+**Options:**
+- `npm run install-docker -- --rebuild` - Force rebuild
+- `npm run install-docker -- --stop` - Stop containers
+- `npm run install-docker -- --clean` - Stop and remove everything
+
+## Building & Testing Scripts
+
+### Root-Level Scripts (`package.json`)
+
+**Development:**
+- `npm run dev` - Start Docker development environment
+- `npm run install-docker` - Install/setup production Docker environment
+
+**Building:**
+- `npm run build` - Build all packages (mother-theme → backend → frontend)
+  - Runs `npm run build` in each workspace sequentially
+
+**Testing:**
+- `npm test` - Run tests for all packages
+  - Runs `npm test` in each workspace sequentially
+- `npm run test:coverage` - Run tests with coverage for all packages
+- `npm run test:watch` - Run tests in watch mode for all packages (parallel)
+- `npm run bt` - Build and test with coverage for all packages
+- `npm run bt:watch` - Build and test in watch mode for all packages (parallel)
+
+**Publishing:**
+- `npm run publish-npm:mother` - Publish mother-theme to NPM
+- `npm run publish-npm:memoriae-server` - Publish backend to NPM
+- `npm run publish-npm:memoriae` - Publish frontend to NPM
+- `npm run publish-docker` - Build and push Docker image
+
+### Backend Scripts (`backend/package.json`)
+
+**Development:**
+- `npm run dev` - Start dev server with hot reload (`tsx watch src/index.ts`)
+- `npm start` - Start production server (`node dist/index.js`)
+
+**Building:**
+- `npm run build` - Compile TypeScript (`tsc`)
+  - Output: `backend/dist/`
+
+**Testing:**
+- `npm test` - Run tests (`vitest run`)
+- `npm run test:coverage` - Run tests with coverage
+- `npm run test:watch` - Run tests in watch mode
+- `npm run bt` - Build then test with coverage
+- `npm run bt:watch` - Build then test in watch mode
+
+**Database:**
+- `npm run migrate` - Run pending migrations
+- `npm run migrate:rollback` - Rollback last migration
+- `npm run migrate:make <name>` - Create new migration
+
+**Publishing:**
+- `npm run publish` - Publish to NPM (`./scripts/publish.sh`)
+
+### Frontend Scripts (`frontend/package.json`)
+
+**Development:**
+- `npm run dev` - Start Vite dev server with HMR
+- `npm run preview` - Preview production build
+
+**Building:**
+- `npm run build` - Build for production (`tsc && vite build`)
+  - Output: `frontend/dist/`
+  - Includes TypeScript compilation and Vite bundling
+
+**Testing:**
+- `npm test` - Run tests (`vitest run`)
+- `npm run test:coverage` - Run tests with coverage
+- `npm run test:watch` - Run tests in watch mode
+- `npm run bt` - Build then test with coverage
+- `npm run bt:watch` - Build then test in watch mode
+
+**Publishing:**
+- `npm run publish` - Publish to NPM (`./scripts/publish.sh`)
+
+### Mother Theme Scripts (`mother-theme/package.json`)
+
+**Building:**
+- `npm run build` - Compile TypeScript (`tsc`)
+  - Output: `mother-theme/dist/` with declarations
+
+**Testing:**
+- `npm test` - Run tests (`vitest run --no-watch`)
+- `npm run test:coverage` - Run tests with coverage
+- `npm run test:watch` - Run tests in watch mode
+- `npm run bt` - Build then test with coverage
+- `npm run bt:watch` - Build then test in watch mode
+
+**Publishing:**
+- `npm run publish` - Publish to NPM (`./scripts/publish.sh`)
+
+### Testing Configuration
+
+**Vitest** is used for all packages:
+
+- **Backend** (`backend/vitest.config.ts`):
+  - Environment: `node`
+  - Setup file: `src/test-setup.ts`
+  - Coverage: v8 provider, excludes test files and integration tests
+  - Test files: `src/**/*.test.ts`, `src/**/*.spec.ts`, `src/**/*.integration.test.ts`
+
+- **Frontend** (`frontend/vitest.config.ts`):
+  - Environment: `jsdom` (browser-like)
+  - Setup file: `src/test/setup.ts`
+  - Suppresses WebSocket errors from Vite HMR during tests
+  - Path aliases: `@/*` → `src/*`, `@mother/*` → `../mother-theme/src/*`
+  - Test files: `src/**/*.{test,spec}.{ts,tsx}`, `src/**/*.integration.test.{ts,tsx}`
+
+- **Mother Theme** (`mother-theme/vitest.config.ts`):
+  - Environment: `jsdom`
+  - Setup file: `src/test/setup.ts`
+  - Excludes component test files (`*.ct.tsx`) and visual tests
+  - Test files: `src/**/*.{test,spec}.{ts,tsx}`
+
+### CI/CD Scripts
+
+GitHub Actions workflows (`.github/workflows/`):
+
+- **`ci.yml`** - Runs tests with coverage on every push/PR
+- **`build.yml`** - Builds all packages on main branch or version tags
+- **`publish.yml`** - Publishes packages to NPM and Docker registry (manual or on version tags)
 
 ## Architecture & Patterns
 
@@ -666,6 +1034,154 @@ const parent = await db('categories')
   .first();
 ```
 
+## Development Workflows
+
+### Daily Development Workflow
+
+1. **Start development environment**
+   ```bash
+   npm run dev
+   ```
+
+2. **Make changes** - Hot reload is enabled for both frontend and backend
+
+3. **Run tests** (in watch mode)
+   ```bash
+   # In separate terminal
+   npm run test:watch
+   ```
+
+4. **Check build** (before committing)
+   ```bash
+   npm run bt  # Build and test with coverage
+   ```
+
+5. **Commit changes** - Husky hooks run automatically
+
+### Adding a New Feature
+
+1. **Create feature branch**
+   ```bash
+   git checkout -b feature/my-feature
+   ```
+
+2. **Make changes** - Follow patterns in this guide
+
+3. **Write tests** - Add tests alongside code
+
+4. **Run tests**
+   ```bash
+   npm run bt  # Build and test
+   ```
+
+5. **Check coverage** - Ensure new code is covered
+
+6. **Commit and push**
+   ```bash
+   git commit -m "feat: add my feature"
+   git push origin feature/my-feature
+   ```
+
+### Database Migration Workflow
+
+1. **Create migration**
+   ```bash
+   cd backend
+   npm run migrate:make add_new_table
+   ```
+
+2. **Edit migration file** in `backend/src/db/migrations/`
+
+3. **Test migration**
+   ```bash
+   npm run migrate        # Apply
+   npm run migrate:rollback  # Rollback
+   npm run migrate        # Apply again
+   ```
+
+4. **Commit migration file** - Migrations are version controlled
+
+### Testing Workflow
+
+**Unit Tests:**
+- Test individual functions/utilities
+- Place in same directory as source: `utils/jsonpatch.test.ts`
+- Use `vitest` with appropriate environment (node/jsdom)
+
+**Integration Tests:**
+- Test API endpoints with database
+- Place in `src/__tests__/integration/`
+- Use `supertest` for HTTP testing
+- Use test database (configured in test setup)
+
+**Component Tests:**
+- Test React components
+- Place in same directory: `components/SeedEditor/SeedEditor.test.tsx`
+- Use `@testing-library/react`
+- Mock API calls and contexts
+
+**Running Tests:**
+```bash
+# All tests
+npm test
+
+# Watch mode (recommended during development)
+npm run test:watch
+
+# With coverage
+npm run test:coverage
+
+# Specific package
+cd backend && npm test
+cd frontend && npm test
+cd mother-theme && npm test
+```
+
+### Debugging Workflow
+
+**Backend Debugging:**
+- Use Node.js debugger (port 9229 in Docker)
+- Add `debugger;` statements
+- Use `console.log` for quick debugging (remove before commit)
+- Check logs: `docker logs memoriae-dev` or `npm run dev -- --logs`
+
+**Frontend Debugging:**
+- Use browser DevTools
+- React DevTools extension recommended
+- Vite HMR shows errors in browser console
+- Check Network tab for API calls
+
+**Database Debugging:**
+- Connect to PostgreSQL:
+  ```bash
+  docker exec -it memoriae-postgres-dev psql -U memoriae -d memoriae
+  ```
+- Check Redis:
+  ```bash
+  docker exec -it memoriae-redis-dev redis-cli
+  ```
+
+### Code Quality Workflow
+
+**Before Committing:**
+1. Run linter (if configured)
+2. Run tests: `npm run bt`
+3. Check TypeScript compilation: `npm run build`
+4. Review changes: `git diff`
+
+**TypeScript Strict Mode:**
+- All packages use strict mode
+- Fix type errors before committing
+- Avoid `any` - use proper types
+- Use type assertions sparingly
+
+**Code Style:**
+- Follow existing patterns
+- Use 2-space indentation
+- Trailing commas
+- Semicolons
+- JSDoc for public functions
+
 ## Common Tasks
 
 ### Adding a New API Endpoint
@@ -941,6 +1457,220 @@ const event = {
 <div className="panel panel-elevated">
   <button className="btn-primary">Action</button>
 </div>
+```
+
+## Useful Scripts & Files
+
+### Docker Scripts (`docker/scripts/`)
+
+**`dev.sh`** - Development environment management
+- Starts postgres, redis, and memoriae with hot reload
+- Supports Docker and Podman
+- Options: `--rebuild`, `--stop`, `--logs`, `--clean`
+
+**`install-docker.sh`** - Production environment setup
+- Validates environment variables
+- Pulls or builds Docker image
+- Starts production containers
+- Options: `--rebuild`, `--stop`, `--clean`
+
+**`docker-build.sh`** - Build Docker image
+- Builds memoriae image
+- Tags with version or latest
+
+**`docker-push.sh`** - Push Docker image
+- Pushes to GitHub Container Registry or Docker Hub
+
+**`docker-compose-build.sh`** - Build compose services
+- Builds all services in docker-compose files
+
+### Publish Scripts (`*/scripts/publish.sh`)
+
+Each package has a `publish.sh` script:
+- **`backend/scripts/publish.sh`** - Publishes `@harms-haus/memoriae-server`
+- **`frontend/scripts/publish.sh`** - Publishes `@harms-haus/memoriae`
+- **`mother-theme/scripts/publish.sh`** - Publishes `@harms-haus/mother`
+
+These scripts:
+1. Build the package
+2. Run tests
+3. Check version
+4. Publish to NPM
+5. Tag git repository
+
+### Database Scripts
+
+**`docker/run-migrations.sh`** - Run migrations in Docker
+- Executes migrations inside container
+
+**`backend/run-migrations.ts`** - Migration runner script
+- Can be run directly: `tsx run-migrations.ts`
+
+**`backend/check-tables.ts`** - Database table checker
+- Verifies database schema
+
+### Configuration Files
+
+**`.env.example`** - Environment variable template
+- Copy to `.env` and fill in values
+- Never commit `.env` to git
+
+**`docker/docker-compose.dev.yml`** - Development compose file
+- Defines dev services (postgres, redis, memoriae)
+- Hot reload enabled
+- Debugging ports exposed
+
+**`docker/docker-compose.prod.yml`** - Production compose file
+- Production configuration
+- Used with base `docker-compose.yml`
+
+**`docker/Dockerfile.dev`** - Development Dockerfile
+- Multi-stage build
+- Development dependencies included
+- Hot reload support
+
+**`docker/Dockerfile`** - Production Dockerfile
+- Optimized production build
+- Minimal dependencies
+
+### GitHub Actions Workflows (`.github/workflows/`)
+
+**`ci.yml`** - Continuous Integration
+- Runs on every push and PR
+- Tests all packages with coverage
+- Reports coverage
+
+**`build.yml`** - Build workflow
+- Runs on main branch and version tags
+- Builds all packages
+- Verifies builds succeed
+
+**`publish.yml`** - Publish workflow
+- Manual trigger or on version tags (v*)
+- Publishes to NPM
+- Builds and pushes Docker image
+- Requires NPM_TOKEN secret
+
+### Key Configuration Files
+
+**`backend/src/config.ts`** - Backend configuration
+- Loads from `.env`
+- Exports typed config object
+- Centralized configuration
+
+**`backend/src/db/knexfile.ts`** - Knex configuration
+- Database connection settings
+- Migration configuration
+- Used by migration scripts
+
+**`frontend/vite.config.ts`** - Vite configuration
+- Build configuration
+- Plugin setup
+- Path aliases
+
+**`frontend/src/services/api.ts`** - API client
+- Axios instance configuration
+- Base URL from environment
+- Request/response interceptors
+
+### Test Setup Files
+
+**`backend/src/test-setup.ts`** - Backend test setup
+- Global test configuration
+- Database setup/teardown
+- Test helpers
+
+**`frontend/src/test/setup.ts`** - Frontend test setup
+- jsdom configuration
+- Testing library setup
+- Global mocks
+
+**`mother-theme/src/test/setup.ts`** - Mother theme test setup
+- Component testing setup
+- Global test utilities
+
+### Useful Patterns
+
+**Path Aliases:**
+- Frontend: `@/*` → `src/*`, `@mother/*` → `../mother-theme/src/*`
+- Mother Theme: `@/*` → `src/*`
+- Use aliases instead of relative paths when possible
+
+**Import Organization:**
+```typescript
+// External dependencies
+import React from 'react';
+import axios from 'axios';
+
+// Internal modules
+import { SeedsService } from '../services/seeds';
+import { useSeedContext } from '../contexts/SeedContext';
+
+// Types
+import type { Seed, Event } from '../types';
+
+// Relative imports
+import './Component.css';
+```
+
+**Environment Detection:**
+```typescript
+// Backend
+const isDev = process.env.NODE_ENV === 'development';
+
+// Frontend
+const isDev = import.meta.env.DEV;
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3123/api';
+```
+
+**Error Handling Pattern:**
+```typescript
+try {
+  const result = await someAsyncOperation();
+  return result;
+} catch (error) {
+  // Log error (structured logging)
+  console.error('Operation failed', { error, context });
+  
+  // Return error or throw
+  throw new Error('User-friendly error message');
+}
+```
+
+**Database Query Pattern:**
+```typescript
+// Always use parameterized queries
+const seeds = await db('seeds')
+  .where({ user_id: userId })
+  .where('created_at', '>', since)
+  .orderBy('created_at', 'desc')
+  .limit(limit);
+```
+
+**API Route Pattern:**
+```typescript
+router.get('/endpoint', authenticate, async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const result = await Service.method(userId, req.query);
+    res.json(result);
+  } catch (error) {
+    next(error); // Let error handler middleware handle it
+  }
+});
+```
+
+**Component Pattern:**
+```typescript
+export function MyComponent({ prop1, prop2 }: Props) {
+  const { data, loading, error } = useContext();
+  const api = useApi();
+
+  if (loading) return <Loading />;
+  if (error) return <Error message={error} />;
+
+  return <div className="panel">{/* JSX */}</div>;
+}
 ```
 
 ---
