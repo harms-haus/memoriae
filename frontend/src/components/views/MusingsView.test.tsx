@@ -221,7 +221,8 @@ describe('MusingsView', () => {
   it('should reload musings after successful generation', async () => {
     const user = userEvent.setup()
     vi.mocked(api.getDailyMusings)
-      .mockResolvedValueOnce([]) // Initial load
+      .mockResolvedValueOnce([]) // Initial load (first render)
+      .mockResolvedValueOnce([]) // Initial load (second render - React 19 behavior)
       .mockResolvedValueOnce(mockMusings) // After generation
     vi.mocked(api.get).mockResolvedValue(mockTags)
     vi.mocked(api.generateMusings).mockResolvedValue({
@@ -246,7 +247,7 @@ describe('MusingsView', () => {
       expect(screen.getByTestId('musing-item-musing-1')).toBeInTheDocument()
     })
 
-    expect(api.getDailyMusings).toHaveBeenCalledTimes(2)
+    expect(api.getDailyMusings).toHaveBeenCalledTimes(3)
   })
 
   it('should display error message on generation failure', async () => {
