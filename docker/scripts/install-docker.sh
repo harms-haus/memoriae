@@ -73,20 +73,28 @@ for arg in "$@"; do
     esac
 done
 
+# Check for .env file (needed for stop/clean too, but we'll handle it gracefully)
+ENV_FILE="${PROJECT_DIR}/.env"
+
 # Stop containers if requested
 if [ "$STOP" = true ] || [ "$CLEAN" = true ]; then
     echo -e "${YELLOW}Stopping containers...${NC}"
-    $COMPOSE_CMD $COMPOSE_FILES down
+    if [ -f "$ENV_FILE" ]; then
+        $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES down
+    else
+        $COMPOSE_CMD $COMPOSE_FILES down
+    fi
     if [ "$CLEAN" = true ]; then
         echo -e "${YELLOW}Removing volumes...${NC}"
-        $COMPOSE_CMD $COMPOSE_FILES down -v
+        if [ -f "$ENV_FILE" ]; then
+            $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES down -v
+        else
+            $COMPOSE_CMD $COMPOSE_FILES down -v
+        fi
         echo -e "${GREEN}Cleanup complete${NC}"
     fi
     exit 0
 fi
-
-# Check for .env file
-ENV_FILE="${PROJECT_DIR}/.env"
 if [ ! -f "$ENV_FILE" ]; then
     echo -e "${YELLOW}No .env file found.${NC}"
     echo "Creating .env file from .env.example..."
@@ -148,18 +156,31 @@ fi
 
 # Pull latest images for postgres and redis
 echo -e "${YELLOW}Pulling latest base images...${NC}"
-$COMPOSE_CMD $COMPOSE_FILES pull postgres redis || true
+if [ -f "$ENV_FILE" ]; then
+    $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES pull postgres redis || true
+else
+    $COMPOSE_CMD $COMPOSE_FILES pull postgres redis || true
+fi
 
 # Start containers
 echo -e "${GREEN}Starting production environment...${NC}"
-$COMPOSE_CMD $COMPOSE_FILES up -d
+if [ -f "$ENV_FILE" ]; then
+    $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES up -d
+else
+    $COMPOSE_CMD $COMPOSE_FILES up -d
+fi
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
 sleep 5
 
 # Check service health
-if $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"; then
+if [ -f "$ENV_FILE" ]; then
+    COMPOSE_PS_CMD="$COMPOSE_CMD --env-file \"$ENV_FILE\" $COMPOSE_FILES ps"
+else
+    COMPOSE_PS_CMD="$COMPOSE_CMD $COMPOSE_FILES ps"
+fi
+if eval "$COMPOSE_PS_CMD" | grep -q "Up"; then
     echo -e "${GREEN}✓ Production environment started successfully!${NC}"
     echo ""
     echo -e "${BLUE}Services available at:${NC}"
@@ -173,18 +194,34 @@ if $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"; then
     echo "  npm run install-docker -- --rebuild - Rebuild containers"
     echo ""
     echo -e "${YELLOW}To view logs:${NC}"
-    echo "  $COMPOSE_CMD $COMPOSE_FILES logs -f"
+    if [ -f "$ENV_FILE" ]; then
+        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES logs -f"
+    else
+        echo "  $COMPOSE_CMD $COMPOSE_FILES logs -f"
+    fi
     echo ""
     echo -e "${YELLOW}To check status:${NC}"
-    echo "  $COMPOSE_CMD $COMPOSE_FILES ps"
+    if [ -f "$ENV_FILE" ]; then
+        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES ps"
+    else
+        echo "  $COMPOSE_CMD $COMPOSE_FILES ps"
+    fi
     echo ""
     echo -e "${YELLOW}To restart:${NC}"
-    echo "  $COMPOSE_CMD $COMPOSE_FILES restart"
+    if [ -f "$ENV_FILE" ]; then
+        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES restart"
+    else
+        echo "  $COMPOSE_CMD $COMPOSE_FILES restart"
+    fi
     echo ""
     echo -e "${GREEN}Memoriae is now running in production mode!${NC}"
 else
     echo -e "${YELLOW}Some services may not have started. Check logs:${NC}"
-    echo "  $COMPOSE_CMD $COMPOSE_FILES logs"
+    if [ -f "$ENV_FILE" ]; then
+        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES logs"
+    else
+        echo "  $COMPOSE_CMD $COMPOSE_FILES logs"
+    fi
     exit 1
 fi
 
