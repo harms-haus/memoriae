@@ -49,16 +49,13 @@ RUN chown -R redis:redis /var/lib/redis
 # Create application directory
 WORKDIR /app
 
-# Copy package files
+# Copy root package files (for workspace setup)
+COPY package*.json ./
+COPY mother-theme/package*.json ./mother-theme/
 COPY backend/package*.json ./backend/
 COPY frontend/package*.json ./frontend/
 
-# Install backend dependencies (including dev dependencies for build)
-WORKDIR /app/backend
-RUN npm ci
-
-# Install frontend dependencies
-WORKDIR /app/frontend
+# Install all dependencies from root (workspace setup)
 RUN npm ci
 
 # Copy backend source
