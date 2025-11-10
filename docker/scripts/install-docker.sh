@@ -26,10 +26,21 @@ if command -v podman &> /dev/null && command -v podman-compose &> /dev/null; the
     DOCKER_CMD="podman"
     COMPOSE_CMD="podman-compose"
     echo -e "${BLUE}Using Podman${NC}"
-elif command -v docker &> /dev/null && command -v docker-compose &> /dev/null; then
-    DOCKER_CMD="docker"
-    COMPOSE_CMD="docker-compose"
-    echo -e "${BLUE}Using Docker${NC}"
+elif command -v docker &> /dev/null; then
+    # Check for docker compose (plugin) first, then docker-compose (standalone)
+    if docker compose version &> /dev/null; then
+        DOCKER_CMD="docker"
+        COMPOSE_CMD="docker compose"
+        echo -e "${BLUE}Using Docker (compose plugin)${NC}"
+    elif command -v docker-compose &> /dev/null; then
+        DOCKER_CMD="docker"
+        COMPOSE_CMD="docker-compose"
+        echo -e "${BLUE}Using Docker (standalone compose)${NC}"
+    else
+        echo -e "${RED}Error: Docker found but compose not available${NC}"
+        echo "Please install Docker Compose plugin or docker-compose"
+        exit 1
+    fi
 else
     echo -e "${RED}Error: Neither Docker nor Podman with compose found${NC}"
     echo "Please install Docker or Podman with compose support"
