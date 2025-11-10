@@ -22,9 +22,11 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Detect docker or podman
+USE_PODMAN=false
 if command -v podman &> /dev/null && command -v podman-compose &> /dev/null; then
     DOCKER_CMD="podman"
     COMPOSE_CMD="podman-compose"
+    USE_PODMAN=true
     echo -e "${BLUE}Using Podman${NC}"
 elif command -v docker &> /dev/null; then
     # Check for docker compose (plugin) first, then docker-compose (standalone)
@@ -79,18 +81,10 @@ ENV_FILE="${PROJECT_DIR}/.env"
 # Stop containers if requested
 if [ "$STOP" = true ] || [ "$CLEAN" = true ]; then
     echo -e "${YELLOW}Stopping containers...${NC}"
-    if [ -f "$ENV_FILE" ]; then
-        $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES down
-    else
-        $COMPOSE_CMD $COMPOSE_FILES down
-    fi
+    $COMPOSE_CMD $COMPOSE_FILES down
     if [ "$CLEAN" = true ]; then
         echo -e "${YELLOW}Removing volumes...${NC}"
-        if [ -f "$ENV_FILE" ]; then
-            $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES down -v
-        else
-            $COMPOSE_CMD $COMPOSE_FILES down -v
-        fi
+        $COMPOSE_CMD $COMPOSE_FILES down -v
         echo -e "${GREEN}Cleanup complete${NC}"
     fi
     exit 0
@@ -137,6 +131,12 @@ fi
 
 echo -e "${GREEN}✓ Environment variables validated${NC}"
 
+# Export environment variables for docker-compose
+# docker-compose needs these in the environment for variable substitution
+set -a  # automatically export all variables
+source "$ENV_FILE"
+set +a  # stop automatically exporting
+
 # Build if needed or if --rebuild is specified
 if [ "$REBUILD" = true ]; then
     echo -e "${YELLOW}Rebuilding containers...${NC}"
@@ -156,31 +156,29 @@ fi
 
 # Pull latest images for postgres and redis
 echo -e "${YELLOW}Pulling latest base images...${NC}"
-if [ -f "$ENV_FILE" ]; then
-    $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES pull postgres redis || true
-else
-    $COMPOSE_CMD $COMPOSE_FILES pull postgres redis || true
-fi
+$COMPOSE_CMD $COMPOSE_FILES pull postgres redis || true
 
 # Start containers
 echo -e "${GREEN}Starting production environment...${NC}"
-if [ -f "$ENV_FILE" ]; then
-    $COMPOSE_CMD --env-file "$ENV_FILE" $COMPOSE_FILES up -d
-else
-    $COMPOSE_CMD $COMPOSE_FILES up -d
+# Workaround for Podman sysctl permission issue
+if [ "$USE_PODMAN" = true ]; then
+    # Try to set sysctl on host to allow unprivileged ports (if not already set)
+    # This helps avoid the "permission denied" error when Podman tries to set it
+    if [ -w /proc/sys/net/ipv4/ip_unprivileged_port_start ] 2>/dev/null; then
+        CURRENT_VALUE=$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start 2>/dev/null || echo "0")
+        if [ "$CURRENT_VALUE" != "0" ]; then
+            echo -e "${YELLOW}Note: ip_unprivileged_port_start is set to $CURRENT_VALUE${NC}"
+        fi
+    fi
 fi
+$COMPOSE_CMD $COMPOSE_FILES up -d
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
 sleep 5
 
 # Check service health
-if [ -f "$ENV_FILE" ]; then
-    COMPOSE_PS_CMD="$COMPOSE_CMD --env-file \"$ENV_FILE\" $COMPOSE_FILES ps"
-else
-    COMPOSE_PS_CMD="$COMPOSE_CMD $COMPOSE_FILES ps"
-fi
-if eval "$COMPOSE_PS_CMD" | grep -q "Up"; then
+if $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"; then
     echo -e "${GREEN}✓ Production environment started successfully!${NC}"
     echo ""
     echo -e "${BLUE}Services available at:${NC}"
@@ -194,34 +192,18 @@ if eval "$COMPOSE_PS_CMD" | grep -q "Up"; then
     echo "  npm run install-docker -- --rebuild - Rebuild containers"
     echo ""
     echo -e "${YELLOW}To view logs:${NC}"
-    if [ -f "$ENV_FILE" ]; then
-        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES logs -f"
-    else
-        echo "  $COMPOSE_CMD $COMPOSE_FILES logs -f"
-    fi
+    echo "  $COMPOSE_CMD $COMPOSE_FILES logs -f"
     echo ""
     echo -e "${YELLOW}To check status:${NC}"
-    if [ -f "$ENV_FILE" ]; then
-        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES ps"
-    else
-        echo "  $COMPOSE_CMD $COMPOSE_FILES ps"
-    fi
+    echo "  $COMPOSE_CMD $COMPOSE_FILES ps"
     echo ""
     echo -e "${YELLOW}To restart:${NC}"
-    if [ -f "$ENV_FILE" ]; then
-        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES restart"
-    else
-        echo "  $COMPOSE_CMD $COMPOSE_FILES restart"
-    fi
+    echo "  $COMPOSE_CMD $COMPOSE_FILES restart"
     echo ""
     echo -e "${GREEN}Memoriae is now running in production mode!${NC}"
 else
     echo -e "${YELLOW}Some services may not have started. Check logs:${NC}"
-    if [ -f "$ENV_FILE" ]; then
-        echo "  $COMPOSE_CMD --env-file $ENV_FILE $COMPOSE_FILES logs"
-    else
-        echo "  $COMPOSE_CMD $COMPOSE_FILES logs"
-    fi
+    echo "  $COMPOSE_CMD $COMPOSE_FILES logs"
     exit 1
 fi
 
