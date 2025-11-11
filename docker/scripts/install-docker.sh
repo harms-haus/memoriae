@@ -142,13 +142,24 @@ if [ "$REBUILD" = true ]; then
     echo -e "${YELLOW}Rebuilding containers...${NC}"
     # Build the memoriae image locally
     echo -e "${YELLOW}Building memoriae image locally...${NC}"
-    $DOCKER_CMD build -t ghcr.io/harms-haus/memoriae:latest -f docker/Dockerfile .
+    if [ "$USE_PODMAN" = true ]; then
+        # Use host network for Podman builds to avoid pasta networking issues
+        # This works when running as root and avoids /dev/net/tun requirements
+        $DOCKER_CMD build --network=host -t ghcr.io/harms-haus/memoriae:latest -f docker/Dockerfile .
+    else
+        $DOCKER_CMD build -t ghcr.io/harms-haus/memoriae:latest -f docker/Dockerfile .
+    fi
 else
     # Try to pull the image first, if it fails, build locally
     echo -e "${YELLOW}Checking for memoriae image...${NC}"
     if ! $DOCKER_CMD pull ghcr.io/harms-haus/memoriae:latest 2>/dev/null; then
         echo -e "${YELLOW}Image not available in registry. Building locally...${NC}"
-        $DOCKER_CMD build -t ghcr.io/harms-haus/memoriae:latest -f docker/Dockerfile .
+        if [ "$USE_PODMAN" = true ]; then
+            # Use host network for Podman builds to avoid pasta networking issues
+            $DOCKER_CMD build --network=host -t ghcr.io/harms-haus/memoriae:latest -f docker/Dockerfile .
+        else
+            $DOCKER_CMD build -t ghcr.io/harms-haus/memoriae:latest -f docker/Dockerfile .
+        fi
     else
         echo -e "${GREEN}✓ Pulled memoriae image from registry${NC}"
     fi
