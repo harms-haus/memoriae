@@ -49,7 +49,8 @@ else
     exit 1
 fi
 
-COMPOSE_FILES="-f docker/docker-compose.yml -f docker/docker-compose.prod.yml"
+# Use absolute paths for compose files to ensure podman-compose can find them
+COMPOSE_FILES="-f ${PROJECT_DIR}/docker/docker-compose.yml -f ${PROJECT_DIR}/docker/docker-compose.prod.yml"
 
 # Handle command line arguments
 REBUILD=false
@@ -81,10 +82,10 @@ ENV_FILE="${PROJECT_DIR}/.env"
 # Stop containers if requested
 if [ "$STOP" = true ] || [ "$CLEAN" = true ]; then
     echo -e "${YELLOW}Stopping containers...${NC}"
-    $COMPOSE_CMD $COMPOSE_FILES down
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down)
     if [ "$CLEAN" = true ]; then
         echo -e "${YELLOW}Removing volumes...${NC}"
-        $COMPOSE_CMD $COMPOSE_FILES down -v
+        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down -v)
         echo -e "${GREEN}Cleanup complete${NC}"
     fi
     exit 0
@@ -167,7 +168,8 @@ fi
 
 # Pull latest images for postgres and redis
 echo -e "${YELLOW}Pulling latest base images...${NC}"
-$COMPOSE_CMD $COMPOSE_FILES pull postgres redis || true
+# Ensure we're in the project directory for podman-compose
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES pull postgres redis) || true
 
 # Start containers
 echo -e "${GREEN}Starting production environment...${NC}"
@@ -182,14 +184,15 @@ if [ "$USE_PODMAN" = true ]; then
         fi
     fi
 fi
-$COMPOSE_CMD $COMPOSE_FILES up -d
+# Ensure we're in the project directory for podman-compose
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES up -d)
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
 sleep 5
 
 # Check service health
-if $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"; then
+if (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"); then
     echo -e "${GREEN}✓ Production environment started successfully!${NC}"
     echo ""
     echo -e "${BLUE}Services available at:${NC}"
@@ -214,7 +217,7 @@ if $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"; then
     echo -e "${GREEN}Memoriae is now running in production mode!${NC}"
 else
     echo -e "${YELLOW}Some services may not have started. Check logs:${NC}"
-    echo "  $COMPOSE_CMD $COMPOSE_FILES logs"
+    echo "  cd $PROJECT_DIR && $COMPOSE_CMD $COMPOSE_FILES logs"
     exit 1
 fi
 
