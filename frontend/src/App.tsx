@@ -148,7 +148,8 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
       const slugPart = seed.slug.includes('/') 
         ? seed.slug.split('/').slice(1).join('/')
         : seed.slug
-      if (slugPart) {
+      // Only include slug if it's different from hashId (avoids redundant /hashId/hashId)
+      if (slugPart && slugPart !== hashId) {
         navigate(`/seeds/${hashId}/${slugPart}`)
         return
       }

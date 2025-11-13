@@ -2,20 +2,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, useNavigate } from 'react-router-dom'
+import { MemoryRouter } from 'react-router-dom'
 import App from './App'
-import { SeedContext } from './contexts/SeedContext'
-import type { Seed } from './types'
 
-// Mock react-router-dom
+// Use vi.hoisted to ensure routeStore is accessible to the mock
+const routeStore = vi.hoisted(() => ({ current: '/' }))
+
+// Mock BrowserRouter to use MemoryRouter with test route
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
     ...actual,
+    BrowserRouter: ({ children }: any) => {
+      // Read route from hoisted store at render time
+      return <MemoryRouter initialEntries={[routeStore.current]}>{children}</MemoryRouter>
+    },
     useNavigate: () => mockNavigate,
   }
 })
+
+// Test helper to render App with a specific route
+function renderAppWithRoute(route: string) {
+  routeStore.current = route
+  return render(<App />)
+}
 
 // Mock all the view components
 vi.mock('./components/views/SeedsView', () => ({
@@ -29,19 +40,19 @@ vi.mock('./components/views/SeedsView', () => ({
       </button>
       <button
         data-testid="select-seed-with-slug"
-        onClick={() => onSeedSelect({ id: 'seed-123456789', slug: 'seed-1/test-seed' })}
+        onClick={() => onSeedSelect({ id: 'seed-123456789', slug: 'seed-12/test-seed' })}
       >
         Select seed (with slug)
       </button>
       <button
         data-testid="select-seed-multi-segment-slug"
-        onClick={() => onSeedSelect({ id: 'seed-123456789', slug: 'seed-1/path/to/slug' })}
+        onClick={() => onSeedSelect({ id: 'seed-123456789', slug: 'seed-12/path/to/slug' })}
       >
         Select seed (multi-segment slug)
       </button>
       <button
         data-testid="select-seed-slug-only-prefix"
-        onClick={() => onSeedSelect({ id: 'seed-123456789', slug: 'seed-1' })}
+        onClick={() => onSeedSelect({ id: 'seed-123456789', slug: 'seed-12' })}
       >
         Select seed (slug only prefix)
       </button>
@@ -96,11 +107,7 @@ describe('App Navigation Logic', () => {
   describe('handleSeedSelect navigation', () => {
     it('should navigate with hashId only when seed has no slug', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       await waitFor(() => {
         expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
@@ -109,17 +116,13 @@ describe('App Navigation Logic', () => {
       const button = screen.getByTestId('select-seed-no-slug')
       await user.click(button)
 
-      // hashId = first 7 chars of 'seed-123456789' = 'seed-1'
-      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-1')
+      // hashId = first 7 chars of 'seed-123456789' = 'seed-12'
+      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-12')
     })
 
     it('should navigate with hashId and slug when seed has slug', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       await waitFor(() => {
         expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
@@ -128,17 +131,13 @@ describe('App Navigation Logic', () => {
       const button = screen.getByTestId('select-seed-with-slug')
       await user.click(button)
 
-      // hashId = 'seed-1', slug part = 'test-seed'
-      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-1/test-seed')
+      // hashId = 'seed-12', slug part = 'test-seed'
+      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-12/test-seed')
     })
 
     it('should handle slug with multiple path segments', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       await waitFor(() => {
         expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
@@ -147,17 +146,13 @@ describe('App Navigation Logic', () => {
       const button = screen.getByTestId('select-seed-multi-segment-slug')
       await user.click(button)
 
-      // hashId = 'seed-1', slug part = 'path/to/slug'
-      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-1/path/to/slug')
+      // hashId = 'seed-12', slug part = 'path/to/slug'
+      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-12/path/to/slug')
     })
 
     it('should navigate with hashId only when slug is just the prefix', async () => {
       const user = userEvent.setup()
-      render(
-        <MemoryRouter initialEntries={['/seeds']}>
-          <App />
-        </MemoryRouter>
-      )
+      renderAppWithRoute('/seeds')
 
       await waitFor(() => {
         expect(screen.getByTestId('seeds-view')).toBeInTheDocument()
@@ -166,8 +161,8 @@ describe('App Navigation Logic', () => {
       const button = screen.getByTestId('select-seed-slug-only-prefix')
       await user.click(button)
 
-      // When slug is just 'seed-1' (no part after '/'), navigate with hashId only
-      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-1')
+      // When slug is just 'seed-12' (same as hashId), navigate with hashId only
+      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-12')
     })
   })
 })
