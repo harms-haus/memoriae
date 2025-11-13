@@ -19,13 +19,13 @@ COPY mother-theme/package*.json ./mother-theme/
 COPY backend/package*.json ./backend/
 COPY frontend/package*.json ./frontend/
 
-# Install all dependencies from root (workspace setup)
-RUN npm ci --omit=dev
+# Install all dependencies (including dev dependencies needed for building)
+RUN npm ci
 
 # Copy backend source
 COPY backend/ ./backend/
 
-# Build backend
+# Build backend (needs TypeScript from dev dependencies)
 WORKDIR /app/backend
 RUN npm run build
 
@@ -36,9 +36,14 @@ COPY mother-theme/ ./mother-theme/
 # Copy frontend source
 COPY frontend/ ./frontend/
 
-# Build frontend
+# Build frontend (needs TypeScript and Vite from dev dependencies)
 WORKDIR /app/frontend
 RUN npm run build
+
+# Remove dev dependencies to reduce image size (optional optimization)
+# The built files don't need dev dependencies at runtime
+WORKDIR /app
+RUN npm prune --omit=dev
 
 # Set working directory to backend for runtime
 WORKDIR /app/backend
