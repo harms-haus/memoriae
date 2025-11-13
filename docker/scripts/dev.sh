@@ -140,7 +140,9 @@ fi
 
 # Start containers
 echo -e "${GREEN}Starting development environment...${NC}"
-$COMPOSE_CMD -f "$COMPOSE_FILE" up -d
+# Suppress stderr to avoid Python traceback on interrupt (we handle cleanup ourselves)
+# Real errors will be visible in subsequent health checks
+$COMPOSE_CMD -f "$COMPOSE_FILE" up -d 2>/dev/null || true
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"

@@ -6,6 +6,7 @@
 #   --rebuild    Force rebuild of containers
 #   --stop       Stop all containers
 #   --clean      Stop and remove containers and volumes
+#   --replace    Stop containers before starting (useful for restarting)
 
 set -e
 
@@ -71,6 +72,7 @@ trap cleanup SIGINT SIGTERM
 REBUILD=false
 STOP=false
 CLEAN=false
+REPLACE=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -83,9 +85,12 @@ for arg in "$@"; do
         --clean)
             CLEAN=true
             ;;
+        --replace)
+            REPLACE=true
+            ;;
         *)
             echo -e "${YELLOW}Unknown option: $arg${NC}"
-            echo "Usage: $0 [--rebuild] [--stop] [--clean]"
+            echo "Usage: $0 [--rebuild] [--stop] [--clean] [--replace]"
             exit 1
             ;;
     esac
@@ -188,6 +193,12 @@ echo -e "${YELLOW}Pulling latest base images...${NC}"
 # Ensure we're in the project directory for podman-compose
 (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES pull postgres redis) || true
 
+# Stop containers if --replace is specified
+if [ "$REPLACE" = true ]; then
+    echo -e "${YELLOW}Stopping existing containers (--replace)...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down 2>/dev/null) || true
+fi
+
 # Start containers
 echo -e "${GREEN}Starting production environment...${NC}"
 # Workaround for Podman sysctl permission issue
@@ -202,7 +213,9 @@ if [ "$USE_PODMAN" = true ]; then
     fi
 fi
 # Ensure we're in the project directory for podman-compose
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES up -d)
+# Suppress stderr to avoid Python traceback on interrupt (we handle cleanup ourselves)
+# Real errors will be visible in subsequent health checks
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES up -d 2>/dev/null) || true
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
@@ -221,6 +234,7 @@ if (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"); then
     echo "  npm run install-docker -- --stop    - Stop containers"
     echo "  npm run install-docker -- --clean  - Stop and remove everything"
     echo "  npm run install-docker -- --rebuild - Rebuild containers"
+    echo "  npm run install-docker -- --replace - Stop and restart containers"
     echo ""
     echo -e "${YELLOW}To view logs:${NC}"
     echo "  $COMPOSE_CMD $COMPOSE_FILES logs -f"
