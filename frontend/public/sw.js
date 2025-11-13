@@ -55,6 +55,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip unsupported request schemes (chrome-extension, moz-extension, etc.)
+  // Only cache http and https requests
+  const url = new URL(event.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
@@ -74,10 +81,17 @@ self.addEventListener('fetch', (event) => {
             // Clone the response (streams can only be consumed once)
             const responseToCache = response.clone();
 
-            // Cache the response
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+            // Cache the response (only for http/https requests)
+            // Double-check the scheme before caching
+            const requestUrl = new URL(event.request.url);
+            if (requestUrl.protocol === 'http:' || requestUrl.protocol === 'https:') {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseToCache).catch((err) => {
+                  // Silently fail if caching fails (e.g., quota exceeded, unsupported scheme)
+                  console.warn('[SW] Failed to cache response:', err);
+                });
+              });
+            }
 
             return response;
           })
