@@ -100,9 +100,21 @@ done
 
 # Check for .env file (needed for stop/clean too, but we'll handle it gracefully)
 ENV_FILE="${PROJECT_DIR}/.env"
-# Update ENV_FILE_FLAG now that we know the path (only if file exists)
+
+# Load environment variables early (needed for all operations including stop/clean)
+# This ensures variables are available for docker-compose file variable substitution
 if [ -f "$ENV_FILE" ]; then
-    ENV_FILE_FLAG="--env-file $ENV_FILE"
+    # Export all variables from .env file for docker-compose variable substitution
+    set -a  # automatically export all variables
+    # Use a safer source that handles errors
+    if ! source "$ENV_FILE"; then
+        echo -e "${RED}Error: Failed to load .env file${NC}"
+        echo "Please check the .env file syntax"
+        exit 1
+    fi
+    set +a  # stop automatically exporting
+    # Use relative path for --env-file (relative to project root where compose files are)
+    ENV_FILE_FLAG="--env-file .env"
 else
     ENV_FILE_FLAG=""
 fi
@@ -131,6 +143,10 @@ if [ ! -f "$ENV_FILE" ]; then
         echo "  Required: JWT_SECRET, DATABASE_URL (or DB_* variables), REDIS_URL"
         echo ""
         read -p "Press Enter after editing .env to continue, or Ctrl+C to exit..."
+        # Reload .env after user edits it
+        set -a
+        source "$ENV_FILE"
+        set +a
     else
         echo -e "${RED}Error: .env.example not found${NC}"
         echo "Please create .env file manually with required environment variables"
@@ -140,9 +156,7 @@ else
     echo -e "${GREEN}✓ Found existing .env file${NC}"
 fi
 
-# Validate required environment variables
-source "$ENV_FILE" 2>/dev/null || true
-
+# Validate required environment variables (they should already be loaded)
 if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "your-super-secret-jwt-key-change-this-in-production" ]; then
     echo -e "${RED}Error: JWT_SECRET is not set or is using the default value${NC}"
     echo "Please set JWT_SECRET in .env file"
@@ -161,12 +175,6 @@ if [ -z "$REDIS_URL" ]; then
 fi
 
 echo -e "${GREEN}✓ Environment variables validated${NC}"
-
-# Export environment variables for docker-compose
-# docker-compose needs these in the environment for variable substitution
-set -a  # automatically export all variables
-source "$ENV_FILE"
-set +a  # stop automatically exporting
 
 # Extract postgres variables from DATABASE_URL if not set individually
 if [ -z "$POSTGRES_USER" ] && [ -n "$DATABASE_URL" ]; then
