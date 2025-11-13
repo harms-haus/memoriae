@@ -187,11 +187,26 @@ if [ -z "$POSTGRES_USER" ] && [ -n "$DATABASE_URL" ]; then
     fi
 fi
 
-# Explicitly export postgres variables for compose file substitution
-# These are needed even with --env-file flag for variable substitution in compose files
+# Explicitly export all variables needed for compose file variable substitution
+# docker-compose needs these in the shell environment, not just in --env-file
+# The --env-file flag is for container environment, not compose file substitution
 export POSTGRES_USER="${POSTGRES_USER:-memoriae}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-memoriae}"
 export POSTGRES_DB="${POSTGRES_DB:-memoriae}"
+export JWT_SECRET="${JWT_SECRET}"  # No default - must be set (validated above)
+export PORT="${PORT:-3123}"
+export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+export REDIS_PORT="${REDIS_PORT:-6379}"
+export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
+export OPENROUTER_API_URL="${OPENROUTER_API_URL:-https://openrouter.ai/api/v1}"
+export FRONTEND_URL="${FRONTEND_URL:-http://localhost:3123}"
+
+# Verify critical variables are actually exported (double-check)
+if [ -z "$JWT_SECRET" ]; then
+    echo -e "${RED}Error: JWT_SECRET is not set after export${NC}"
+    echo "This should not happen - JWT_SECRET was validated earlier"
+    exit 1
+fi
 
 # Build if needed or if --rebuild is specified
 if [ "$REBUILD" = true ]; then
@@ -224,8 +239,8 @@ fi
 # Pull latest images for postgres and redis
 echo -e "${YELLOW}Pulling latest base images...${NC}"
 # Ensure we're in the project directory for podman-compose
-# Export variables explicitly for this command to ensure they're available
-(cd "$PROJECT_DIR" && env POSTGRES_USER="$POSTGRES_USER" POSTGRES_PASSWORD="$POSTGRES_PASSWORD" POSTGRES_DB="$POSTGRES_DB" $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG pull postgres redis) || true
+# Variables are already exported via set -a earlier
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG pull postgres redis) || true
 
 # Stop containers if --replace is specified
 if [ "$REPLACE" = true ]; then
@@ -249,8 +264,17 @@ fi
 # Ensure we're in the project directory for podman-compose
 # Suppress stderr to avoid Python traceback on interrupt (we handle cleanup ourselves)
 # Real errors will be visible in subsequent health checks
-# Export variables explicitly to ensure they're available for compose file variable substitution
-(cd "$PROJECT_DIR" && env POSTGRES_USER="$POSTGRES_USER" POSTGRES_PASSWORD="$POSTGRES_PASSWORD" POSTGRES_DB="$POSTGRES_DB" $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>/dev/null) || true
+# Variables are already exported via set -a earlier, so they're available for compose file substitution
+# Don't use env with limited vars - let docker-compose inherit all exported variables
+echo -e "${YELLOW}Starting containers...${NC}"
+if ! (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d); then
+    echo -e "${RED}Failed to start containers${NC}"
+    echo -e "${YELLOW}Checking container status...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG ps)
+    echo -e "${YELLOW}Container logs:${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG logs --tail=50)
+    exit 1
+fi
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
@@ -282,7 +306,13 @@ if (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG ps | grep -q
     echo ""
     echo -e "${GREEN}Memoriae is now running in production mode!${NC}"
 else
-    echo -e "${YELLOW}Some services may not have started. Check logs:${NC}"
+    echo -e "${RED}Some services failed to start${NC}"
+    echo -e "${YELLOW}Container status:${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG ps)
+    echo -e "${YELLOW}Container logs:${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG logs --tail=50)
+    echo ""
+    echo -e "${YELLOW}To view full logs:${NC}"
     echo "  cd $PROJECT_DIR && $COMPOSE_CMD $COMPOSE_FILES logs"
     exit 1
 fi
