@@ -27,7 +27,7 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}Received interrupt signal. Cleaning up...${NC}"
     if [ -n "$COMPOSE_CMD" ] && [ -n "$COMPOSE_FILES" ]; then
-        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down 2>/dev/null) || true
+        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down 2>/dev/null) || true
     fi
     echo -e "${GREEN}Cleanup complete${NC}"
     exit 130  # Exit code 130 = terminated by Ctrl-C
@@ -63,6 +63,8 @@ fi
 
 # Use absolute paths for compose files to ensure podman-compose can find them
 COMPOSE_FILES="-f ${PROJECT_DIR}/docker/docker-compose.yml -f ${PROJECT_DIR}/docker/docker-compose.prod.yml"
+# ENV_FILE_FLAG will be set after ENV_FILE is determined
+ENV_FILE_FLAG=""
 
 # Trap SIGINT (Ctrl-C) and SIGTERM for graceful shutdown
 # Set trap after COMPOSE_FILES is defined so cleanup function can use it
@@ -98,16 +100,22 @@ done
 
 # Check for .env file (needed for stop/clean too, but we'll handle it gracefully)
 ENV_FILE="${PROJECT_DIR}/.env"
+# Update ENV_FILE_FLAG now that we know the path (only if file exists)
+if [ -f "$ENV_FILE" ]; then
+    ENV_FILE_FLAG="--env-file $ENV_FILE"
+else
+    ENV_FILE_FLAG=""
+fi
 
 # Stop containers if requested
 if [ "$STOP" = true ] || [ "$CLEAN" = true ]; then
     # Disable trap for stop/clean operations (they're quick and don't need cleanup)
     trap - SIGINT SIGTERM
     echo -e "${YELLOW}Stopping containers...${NC}"
-    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down)
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down)
     if [ "$CLEAN" = true ]; then
         echo -e "${YELLOW}Removing volumes...${NC}"
-        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down -v)
+        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down -v)
         echo -e "${GREEN}Cleanup complete${NC}"
     fi
     exit 0
@@ -191,12 +199,12 @@ fi
 # Pull latest images for postgres and redis
 echo -e "${YELLOW}Pulling latest base images...${NC}"
 # Ensure we're in the project directory for podman-compose
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES pull postgres redis) || true
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG pull postgres redis) || true
 
 # Stop containers if --replace is specified
 if [ "$REPLACE" = true ]; then
     echo -e "${YELLOW}Stopping existing containers (--replace)...${NC}"
-    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down 2>/dev/null) || true
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down 2>/dev/null) || true
 fi
 
 # Start containers
@@ -215,14 +223,14 @@ fi
 # Ensure we're in the project directory for podman-compose
 # Suppress stderr to avoid Python traceback on interrupt (we handle cleanup ourselves)
 # Real errors will be visible in subsequent health checks
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES up -d 2>/dev/null) || true
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>/dev/null) || true
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
 sleep 5
 
 # Check service health
-if (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES ps | grep -q "Up"); then
+if (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG ps | grep -q "Up"); then
     echo -e "${GREEN}✓ Production environment started successfully!${NC}"
     echo ""
     echo -e "${BLUE}Services available at:${NC}"
