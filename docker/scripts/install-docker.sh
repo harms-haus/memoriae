@@ -168,6 +168,23 @@ set -a  # automatically export all variables
 source "$ENV_FILE"
 set +a  # stop automatically exporting
 
+# Extract postgres variables from DATABASE_URL if not set individually
+if [ -z "$POSTGRES_USER" ] && [ -n "$DATABASE_URL" ]; then
+    # Parse DATABASE_URL: postgresql://user:password@host:port/database
+    if [[ "$DATABASE_URL" =~ postgresql://([^:]+):([^@]+)@([^:]+):([^/]+)/(.+) ]]; then
+        export POSTGRES_USER="${BASH_REMATCH[1]}"
+        export POSTGRES_PASSWORD="${BASH_REMATCH[2]}"
+        export POSTGRES_DB="${BASH_REMATCH[5]}"
+        echo -e "${BLUE}Extracted POSTGRES_* variables from DATABASE_URL${NC}"
+    fi
+fi
+
+# Explicitly export postgres variables for compose file substitution
+# These are needed even with --env-file flag for variable substitution in compose files
+export POSTGRES_USER="${POSTGRES_USER:-memoriae}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-memoriae}"
+export POSTGRES_DB="${POSTGRES_DB:-memoriae}"
+
 # Build if needed or if --rebuild is specified
 if [ "$REBUILD" = true ]; then
     echo -e "${YELLOW}Rebuilding containers...${NC}"
@@ -199,7 +216,8 @@ fi
 # Pull latest images for postgres and redis
 echo -e "${YELLOW}Pulling latest base images...${NC}"
 # Ensure we're in the project directory for podman-compose
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG pull postgres redis) || true
+# Export variables explicitly for this command to ensure they're available
+(cd "$PROJECT_DIR" && env POSTGRES_USER="$POSTGRES_USER" POSTGRES_PASSWORD="$POSTGRES_PASSWORD" POSTGRES_DB="$POSTGRES_DB" $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG pull postgres redis) || true
 
 # Stop containers if --replace is specified
 if [ "$REPLACE" = true ]; then
@@ -223,7 +241,8 @@ fi
 # Ensure we're in the project directory for podman-compose
 # Suppress stderr to avoid Python traceback on interrupt (we handle cleanup ourselves)
 # Real errors will be visible in subsequent health checks
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>/dev/null) || true
+# Export variables explicitly to ensure they're available for compose file variable substitution
+(cd "$PROJECT_DIR" && env POSTGRES_USER="$POSTGRES_USER" POSTGRES_PASSWORD="$POSTGRES_PASSWORD" POSTGRES_DB="$POSTGRES_DB" $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>/dev/null) || true
 
 # Wait for services to be ready
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
