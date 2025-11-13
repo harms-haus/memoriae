@@ -21,6 +21,17 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Cleanup function for graceful shutdown
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}Received interrupt signal. Cleaning up...${NC}"
+    if [ -n "$COMPOSE_CMD" ] && [ -n "$COMPOSE_FILES" ]; then
+        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down 2>/dev/null) || true
+    fi
+    echo -e "${GREEN}Cleanup complete${NC}"
+    exit 130  # Exit code 130 = terminated by Ctrl-C
+}
+
 # Detect docker or podman
 USE_PODMAN=false
 if command -v podman &> /dev/null && command -v podman-compose &> /dev/null; then
@@ -52,6 +63,10 @@ fi
 # Use absolute paths for compose files to ensure podman-compose can find them
 COMPOSE_FILES="-f ${PROJECT_DIR}/docker/docker-compose.yml -f ${PROJECT_DIR}/docker/docker-compose.prod.yml"
 
+# Trap SIGINT (Ctrl-C) and SIGTERM for graceful shutdown
+# Set trap after COMPOSE_FILES is defined so cleanup function can use it
+trap cleanup SIGINT SIGTERM
+
 # Handle command line arguments
 REBUILD=false
 STOP=false
@@ -81,6 +96,8 @@ ENV_FILE="${PROJECT_DIR}/.env"
 
 # Stop containers if requested
 if [ "$STOP" = true ] || [ "$CLEAN" = true ]; then
+    # Disable trap for stop/clean operations (they're quick and don't need cleanup)
+    trap - SIGINT SIGTERM
     echo -e "${YELLOW}Stopping containers...${NC}"
     (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES down)
     if [ "$CLEAN" = true ]; then

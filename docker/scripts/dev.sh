@@ -21,6 +21,17 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Cleanup function for graceful shutdown
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}Received interrupt signal. Cleaning up...${NC}"
+    if [ -n "$COMPOSE_CMD" ] && [ -n "$COMPOSE_FILE" ]; then
+        $COMPOSE_CMD -f "$COMPOSE_FILE" down 2>/dev/null || true
+    fi
+    echo -e "${GREEN}Cleanup complete${NC}"
+    exit 130  # Exit code 130 = terminated by Ctrl-C
+}
+
 # Detect docker or podman
 if command -v podman &> /dev/null && command -v podman-compose &> /dev/null; then
     DOCKER_CMD="podman"
@@ -48,6 +59,10 @@ else
 fi
 
 COMPOSE_FILE="docker/docker-compose.dev.yml"
+
+# Trap SIGINT (Ctrl-C) and SIGTERM for graceful shutdown
+# Set trap after COMPOSE_FILE is defined so cleanup function can use it
+trap cleanup SIGINT SIGTERM
 
 # Handle command line arguments
 REBUILD=false
@@ -79,6 +94,8 @@ done
 
 # Stop containers if requested
 if [ "$STOP" = true ] || [ "$CLEAN" = true ]; then
+    # Disable trap for stop/clean operations (they're quick and don't need cleanup)
+    trap - SIGINT SIGTERM
     echo -e "${YELLOW}Stopping containers...${NC}"
     $COMPOSE_CMD -f "$COMPOSE_FILE" down
     if [ "$CLEAN" = true ]; then
@@ -91,6 +108,8 @@ fi
 
 # Show logs if requested
 if [ "$LOGS" = true ]; then
+    # Disable trap for logs (we don't want to stop containers when viewing logs)
+    trap - SIGINT SIGTERM
     echo -e "${BLUE}Showing logs (Ctrl+C to exit)...${NC}"
     $COMPOSE_CMD -f "$COMPOSE_FILE" logs -f
     exit 0
