@@ -11,26 +11,6 @@ const router = Router()
 router.use(authenticate)
 
 /**
- * Helper function to resolve seed ID from either UUID or slug format
- * Returns the actual UUID for the seed, or null if not found
- */
-async function resolveSeedId(identifier: string, userId: string): Promise<string | null> {
-  if (!identifier) {
-    return null
-  }
-
-  if (identifier.includes('/')) {
-    // Slug format: get seed by slug and return its ID
-    const seed = await SeedsService.getBySlug(identifier, userId)
-    return seed ? seed.id : null
-  } else {
-    // UUID format: verify it exists and belongs to user
-    const seed = await SeedsService.getById(identifier, userId)
-    return seed ? seed.id : null
-  }
-}
-
-/**
  * GET /api/seeds
  * Get all seeds for the authenticated user
  */
@@ -64,7 +44,6 @@ router.get('/:hashId/:slug/automations', async (req: Request, res: Response, nex
       res.status(404).json({ error: 'Seed not found' })
       return
     }
-    const seedId = seed.id
 
     // Get all automations from registry
     const registry = AutomationRegistry.getInstance()
@@ -110,7 +89,6 @@ router.get('/:hashId/automations', async (req: Request, res: Response, next: Nex
       res.status(404).json({ error: 'Seed not found' })
       return
     }
-    const seedId = seed.id
 
     // Get all automations from registry
     const registry = AutomationRegistry.getInstance()
@@ -417,7 +395,6 @@ router.get('/:hashId/:slug/automations', async (req: Request, res: Response, nex
       res.status(404).json({ error: 'Seed not found' })
       return
     }
-    const seedId = seed.id
 
     // Get all automations from registry
     const registry = AutomationRegistry.getInstance()
@@ -463,7 +440,6 @@ router.get('/:hashId/automations', async (req: Request, res: Response, next: Nex
       res.status(404).json({ error: 'Seed not found' })
       return
     }
-    const seedId = seed.id
 
     // Get all automations from registry
     const registry = AutomationRegistry.getInstance()

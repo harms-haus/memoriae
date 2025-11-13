@@ -124,12 +124,12 @@ export class SeedsService {
 
     // If only one match, return it
     if (seeds.length === 1) {
-      const seed = seeds[0]
+      const seed = seeds[0]!
       const currentState = await computeCurrentState(seed.id)
       return {
         ...seed,
         currentState,
-      }
+      } as Seed
     }
 
     // Multiple matches - use slug hint to find best match
@@ -175,17 +175,17 @@ export class SeedsService {
         return {
           ...bestMatch,
           currentState,
-        }
+        } as Seed
       }
     }
 
     // No good match found, or no slug hint provided - return the most recent one
-    const seed = seeds[0]
+    const seed = seeds[0]!
     const currentState = await computeCurrentState(seed.id)
     return {
       ...seed,
       currentState,
-    }
+    } as Seed
   }
 
   /**
