@@ -152,6 +152,28 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const [editedContent, setEditedContent] = useState<string | null>(null)
   const [editedTags, setEditedTags] = useState<Array<{ id: string; name: string }> | null>(null)
 
+  // Helper function to format seedId for API calls
+  // seedId can be:
+  // - hashId only (7 chars): `/seeds/:hashId`
+  // - hashId/slug: `/seeds/:hashId/:slug`
+  // - full UUID (36 chars): `/seeds/:uuid` (backward compatibility)
+  const getApiPath = (seedId: string): string => {
+    // If it's a full UUID (36 chars), use it directly
+    if (seedId.length === 36 && !seedId.includes('/')) {
+      return `/seeds/${seedId}`
+    }
+    
+    // If it contains '/', it's hashId/slug format
+    if (seedId.includes('/')) {
+      const [hashId, ...slugParts] = seedId.split('/')
+      const slugPart = slugParts.join('/')
+      return `/seeds/${hashId}/${slugPart}`
+    }
+    
+    // Otherwise, it's just hashId
+    return `/seeds/${seedId}`
+  }
+
   useEffect(() => {
     if (!seedId) {
       setError('Seed ID is required')
@@ -183,11 +205,14 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       setLoading(true)
       setError(null)
 
+      // Format seedId for API calls
+      const apiPath = getApiPath(seedId)
+
       // Load seed, timeline transactions, current state, and tags in parallel
       const [seedData, transactionsData, stateData, tagsData] = await Promise.all([
-        api.get<Seed>(`/seeds/${seedId}`),
+        api.get<Seed>(apiPath),
         api.getSeedTransactions(seedId),
-        api.get<SeedStateResponse>(`/seeds/${seedId}/state`),
+        api.get<SeedStateResponse>(`${apiPath}/state`),
         api.get<TagType[]>('/tags').catch(() => []), // Tags may not exist yet
       ])
 
@@ -210,7 +235,9 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
 
     try {
       setLoadingAutomations(true)
-      const automationsData = await api.get<Automation[]>(`/seeds/${seedId}/automations`)
+      // Format seedId for API calls
+      const apiPath = getApiPath(seedId)
+      const automationsData = await api.get<Automation[]>(`${apiPath}/automations`)
       setAutomations(automationsData)
     } catch (err) {
       console.error('Error loading automations:', err)
@@ -231,8 +258,10 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       setRunningAutomations((prev) => new Set(prev).add(automationId))
       setError(null) // Clear any previous errors
 
+      // Format seedId for API calls
+      const apiPath = getApiPath(seedId)
       const response = await api.post<{ message: string; jobId: string; automation: { id: string; name: string } }>(
-        `/seeds/${seedId}/automations/${automationId}/run`
+        `${apiPath}/automations/${automationId}/run`
       )
 
       console.log('Automation queued:', response)
@@ -247,10 +276,11 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         
         try {
           // Reload seed data to check if new transactions were created
+          const apiPath = getApiPath(seedId)
           const [seedData, transactionsData, stateData] = await Promise.all([
-            api.get<Seed>(`/seeds/${seedId}`),
+            api.get<Seed>(apiPath),
             api.getSeedTransactions(seedId),
-            api.get<SeedStateResponse>(`/seeds/${seedId}/state`),
+            api.get<SeedStateResponse>(`${apiPath}/state`),
           ])
 
           const sortedTransactions = transactionsData.sort((a, b) => 

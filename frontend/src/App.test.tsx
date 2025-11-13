@@ -212,13 +212,22 @@ describe('App', () => {
       })
     })
 
-    it('should render seed detail view at /seeds/:id', async () => {
-      renderAppWithRoute('/seeds/seed-123')
+    it('should render seed detail view at /seeds/:hashId', async () => {
+      renderAppWithRoute('/seeds/seed-12')
 
       await waitFor(() => {
         expect(screen.getByTestId('seed-detail-view')).toBeInTheDocument()
       })
-      expect(screen.getByText('Seed Detail: seed-123')).toBeInTheDocument()
+      expect(screen.getByText('Seed Detail: seed-12')).toBeInTheDocument()
+    })
+
+    it('should render seed detail view at /seeds/:hashId/:slug', async () => {
+      renderAppWithRoute('/seeds/seed-12/test-slug')
+
+      await waitFor(() => {
+        expect(screen.getByTestId('seed-detail-view')).toBeInTheDocument()
+      })
+      expect(screen.getByText('Seed Detail: seed-12/test-slug')).toBeInTheDocument()
     })
 
     it('should render tag detail view at /tags/:name', async () => {

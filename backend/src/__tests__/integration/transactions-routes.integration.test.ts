@@ -36,6 +36,7 @@ vi.mock('../../services/seed-transactions', () => ({
 vi.mock('../../services/seeds', () => ({
   SeedsService: {
     getById: vi.fn(),
+    getByHashId: vi.fn(),
     getBySlug: vi.fn(),
   },
 }))
@@ -67,7 +68,7 @@ describe('Transaction Routes', () => {
       created_at: new Date(),
     })
 
-    // Mock SeedsService.getById for resolveSeedId
+    // Mock SeedsService.getById for full UUID (backward compatibility)
     vi.mocked(SeedsService.getById).mockImplementation(async (id: string, userId: string) => {
       if (id === 'seed-123' && userId === 'user-123') {
         return {
@@ -76,6 +77,24 @@ describe('Transaction Routes', () => {
           created_at: new Date(),
           slug: null,
         } as any
+      }
+      return null
+    })
+
+    // Mock SeedsService.getByHashId for hashId-based routes
+    vi.mocked(SeedsService.getByHashId).mockImplementation(async (hashId: string, userId: string, slugHint?: string) => {
+      // seed-123 has hashId 'seed-1' (first 7 chars)
+      if (hashId === 'seed-1' && userId === 'user-123') {
+        return {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date(),
+          slug: null,
+        } as any
+      }
+      // For full UUID (36 chars), return null (should use getById instead)
+      if (hashId.length === 36) {
+        return null
       }
       return null
     })
@@ -92,8 +111,8 @@ describe('Transaction Routes', () => {
     } as any)
   })
 
-  describe('GET /api/seeds/:seedId/transactions', () => {
-    it('should return all transactions for a seed', async () => {
+  describe('GET /api/seeds/:hashId/transactions', () => {
+    it('should return all transactions for a seed by hashId', async () => {
       const mockTransactions = [
         {
           id: 'txn-1',
@@ -114,21 +133,15 @@ describe('Transaction Routes', () => {
       ]
 
       vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
 
       const token = generateTestToken({
         id: 'user-123',
         email: 'test@example.com',
       })
 
+      // Use hashId (first 7 chars of seed-123 = 'seed-1')
       const response = await request(app)
-        .get('/api/seeds/seed-123/transactions')
+        .get('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
@@ -138,6 +151,7 @@ describe('Transaction Routes', () => {
         seed_id: 'seed-123',
         transaction_type: 'create_seed',
       })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
       expect(SeedTransactionsService.getBySeedId).toHaveBeenCalledWith('seed-123')
     })
 
@@ -155,10 +169,7 @@ describe('Transaction Routes', () => {
     })
 
     it('should return 404 when seed not found', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null),
-      } as any)
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -166,7 +177,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/seeds/non-existent/transactions')
+        .get('/api/seeds/non-exist/transactions')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
@@ -176,9 +187,8 @@ describe('Transaction Routes', () => {
     })
 
     it('should verify seed ownership', async () => {
-      // The route uses resolveSeedId which calls SeedsService.getById
-      // We need to mock it to return null when user_id doesn't match
-      vi.mocked(SeedsService.getById).mockResolvedValue(null) // Seed not found or not owned
+      // The route uses getByHashId which verifies ownership
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null) // Seed not found or not owned
 
       const token = generateTestToken({
         id: 'user-123', // Authenticated user
@@ -186,7 +196,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/seeds/seed-123/transactions')
+        .get('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
@@ -196,13 +206,6 @@ describe('Transaction Routes', () => {
     })
 
     it('should handle service errors gracefully', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
       vi.mocked(SeedTransactionsService.getBySeedId).mockRejectedValue(new Error('Database error'))
 
       const token = generateTestToken({
@@ -211,14 +214,14 @@ describe('Transaction Routes', () => {
       })
 
       await request(app)
-        .get('/api/seeds/seed-123/transactions')
+        .get('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .expect(500)
     })
   })
 
-  describe('GET /api/seeds/:seedId/state', () => {
-    it('should return computed seed state', async () => {
+  describe('GET /api/seeds/:hashId/state', () => {
+    it('should return computed seed state by hashId', async () => {
       const mockTransactions = [
         {
           id: 'txn-1',
@@ -238,13 +241,6 @@ describe('Transaction Routes', () => {
         categories: [],
       }
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
       vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
       vi.mocked(computeSeedState).mockReturnValue(mockState)
 
@@ -254,7 +250,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/seeds/seed-123/state')
+        .get('/api/seeds/seed-1/state')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
@@ -267,6 +263,7 @@ describe('Transaction Routes', () => {
         transactions_applied: 1,
       })
       expect(response.body.current_state.timestamp).toBeDefined()
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
       expect(computeSeedState).toHaveBeenCalledWith(mockTransactions)
     })
 
@@ -283,10 +280,7 @@ describe('Transaction Routes', () => {
     })
 
     it('should return 404 when seed not found', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null),
-      } as any)
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -294,7 +288,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/seeds/non-existent/state')
+        .get('/api/seeds/non-exist/state')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
@@ -304,13 +298,6 @@ describe('Transaction Routes', () => {
     })
 
     it('should handle computation errors gracefully', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
       vi.mocked(SeedTransactionsService.getBySeedId).mockRejectedValue(new Error('Database error'))
 
       const token = generateTestToken({
@@ -319,14 +306,14 @@ describe('Transaction Routes', () => {
       })
 
       await request(app)
-        .get('/api/seeds/seed-123/state')
+        .get('/api/seeds/seed-1/state')
         .set('Authorization', `Bearer ${token}`)
         .expect(500)
     })
   })
 
-  describe('POST /api/seeds/:seedId/transactions', () => {
-    it('should create a new transaction', async () => {
+  describe('POST /api/seeds/:hashId/transactions', () => {
+    it('should create a new transaction by hashId', async () => {
       const mockTransaction = {
         id: 'txn-1',
         seed_id: 'seed-123',
@@ -336,13 +323,6 @@ describe('Transaction Routes', () => {
         automation_id: null,
       }
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
       vi.mocked(SeedTransactionsService.create).mockResolvedValue(mockTransaction as any)
 
       const token = generateTestToken({
@@ -351,7 +331,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 'edit_content',
@@ -389,21 +369,13 @@ describe('Transaction Routes', () => {
     })
 
     it('should return 400 when transaction_type is missing', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
-
       const token = generateTestToken({
         id: 'user-123',
         email: 'test@example.com',
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_data: { content: 'Updated content' },
@@ -416,21 +388,13 @@ describe('Transaction Routes', () => {
     })
 
     it('should return 400 when transaction_type is not a string', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
-
       const token = generateTestToken({
         id: 'user-123',
         email: 'test@example.com',
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 123,
@@ -444,21 +408,13 @@ describe('Transaction Routes', () => {
     })
 
     it('should return 400 when transaction_data is missing', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
-
       const token = generateTestToken({
         id: 'user-123',
         email: 'test@example.com',
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 'edit_content',
@@ -471,21 +427,13 @@ describe('Transaction Routes', () => {
     })
 
     it('should return 400 when transaction_data is not an object', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
-
       const token = generateTestToken({
         id: 'user-123',
         email: 'test@example.com',
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 'edit_content',
@@ -499,10 +447,7 @@ describe('Transaction Routes', () => {
     })
 
     it('should return 404 when seed not found', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null),
-      } as any)
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -510,7 +455,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .post('/api/seeds/non-existent/transactions')
+        .post('/api/seeds/non-exist/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 'edit_content',
@@ -524,13 +469,6 @@ describe('Transaction Routes', () => {
     })
 
     it('should handle validation errors from service', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
       vi.mocked(SeedTransactionsService.create).mockRejectedValue(
         new Error('Transaction type not allowed')
       )
@@ -541,7 +479,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 'invalid_type',
@@ -555,13 +493,6 @@ describe('Transaction Routes', () => {
     })
 
     it('should handle service errors gracefully', async () => {
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
       vi.mocked(SeedTransactionsService.create).mockRejectedValue(new Error('Database error'))
 
       const token = generateTestToken({
@@ -570,7 +501,7 @@ describe('Transaction Routes', () => {
       })
 
       await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 'edit_content',
@@ -589,13 +520,6 @@ describe('Transaction Routes', () => {
         automation_id: 'auto-1',
       }
 
-      vi.mocked(db).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({
-          id: 'seed-123',
-          user_id: 'user-123',
-        }),
-      } as any)
       vi.mocked(SeedTransactionsService.create).mockResolvedValue(mockTransaction as any)
 
       const token = generateTestToken({
@@ -604,7 +528,7 @@ describe('Transaction Routes', () => {
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/transactions')
+        .post('/api/seeds/seed-1/transactions')
         .set('Authorization', `Bearer ${token}`)
         .send({
           transaction_type: 'add_tag',
@@ -613,6 +537,7 @@ describe('Transaction Routes', () => {
         })
         .expect(201)
 
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
       expect(SeedTransactionsService.create).toHaveBeenCalledWith({
         seed_id: 'seed-123',
         transaction_type: 'add_tag',

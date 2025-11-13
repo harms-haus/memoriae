@@ -57,8 +57,23 @@ self.addEventListener('fetch', (event) => {
 
   // Skip unsupported request schemes (chrome-extension, moz-extension, etc.)
   // Only cache http and https requests
-  const url = new URL(event.request.url);
+  let url;
+  try {
+    url = new URL(event.request.url);
+  } catch (e) {
+    // Invalid URL, skip
+    return;
+  }
+
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
+  // Skip external domains (third-party scripts, analytics, etc.)
+  // Only cache requests from the same origin
+  const isSameOrigin = url.origin === self.location.origin;
+  if (!isSameOrigin) {
+    // Let external requests pass through without caching
     return;
   }
 
@@ -78,29 +93,48 @@ self.addEventListener('fetch', (event) => {
               return response;
             }
 
+            // Only cache same-origin responses
+            const responseUrl = new URL(response.url);
+            if (responseUrl.origin !== self.location.origin) {
+              return response;
+            }
+
             // Clone the response (streams can only be consumed once)
             const responseToCache = response.clone();
 
-            // Cache the response (only for http/https requests)
-            // Double-check the scheme before caching
-            const requestUrl = new URL(event.request.url);
-            if (requestUrl.protocol === 'http:' || requestUrl.protocol === 'https:') {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseToCache).catch((err) => {
-                  // Silently fail if caching fails (e.g., quota exceeded, unsupported scheme)
-                  console.warn('[SW] Failed to cache response:', err);
-                });
+            // Cache the response (only for same-origin http/https requests)
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache).catch((err) => {
+                // Silently fail if caching fails (e.g., quota exceeded, unsupported scheme)
+                console.warn('[SW] Failed to cache response:', err);
               });
-            }
+            });
 
             return response;
           })
-          .catch(() => {
-            // If fetch fails and we're offline, return a fallback
+          .catch((error) => {
+            // If fetch fails, provide fallback for document requests
             if (event.request.destination === 'document') {
-              return caches.match('/index.html');
+              return caches.match('/index.html').then((fallback) => {
+                // Return fallback if available, otherwise return a basic error response
+                return fallback || new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
+              }).catch(() => {
+                // If we can't get the fallback, return a basic error response
+                return new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
+              });
             }
+            // For non-document requests, re-throw to let browser handle the error
+            // This will cause the fetch to fail, which is the expected behavior
+            throw error;
           });
+      })
+      .catch((error) => {
+        // If cache match fails or fetch fails for non-document requests,
+        // try fetching directly (this will fail but browser will handle it)
+        return fetch(event.request).catch(() => {
+          // If all else fails, return a basic error response
+          return new Response('Service Worker error', { status: 503, statusText: 'Service Unavailable' });
+        });
       })
   );
 });

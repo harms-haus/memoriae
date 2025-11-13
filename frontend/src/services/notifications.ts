@@ -68,12 +68,26 @@ export function showNotification(followup: DueFollowup): void {
   // Mark as shown
   shownNotificationIds.add(followup.followup_id)
 
-  // Handle click - navigate to seed detail page using slug if available
+  // Handle click - navigate to seed detail page
   notification.onclick = () => {
     window.focus()
-    // Use slug if available, otherwise fall back to seed_id (backward compatibility)
-    const identifier = followup.seed_slug || followup.seed_id
-    window.location.href = `/seeds/${identifier}`
+    // Extract hashId from seed_id (first 7 chars)
+    const hashId = followup.seed_id.substring(0, 7)
+    
+    // If slug is available, include it for better collision resolution
+    if (followup.seed_slug) {
+      const slugPart = followup.seed_slug.includes('/') 
+        ? followup.seed_slug.split('/').slice(1).join('/')
+        : followup.seed_slug
+      if (slugPart) {
+        window.location.href = `/seeds/${hashId}/${slugPart}`
+        notification.close()
+        return
+      }
+    }
+    
+    // Navigate with just hashId
+    window.location.href = `/seeds/${hashId}`
     notification.close()
   }
 

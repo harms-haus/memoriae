@@ -653,7 +653,8 @@ describe('TagDetailView Component', () => {
         await user.click(seedItem)
       }
       
-      expect(mockNavigate).toHaveBeenCalledWith('/seeds/abc1234/test-seed')
+      // hashId is first 7 chars of seed.id ('seed-1'), slug part is extracted from slug ('test-seed')
+      expect(mockNavigate).toHaveBeenCalledWith('/seeds/seed-1/test-seed')
     })
   })
 

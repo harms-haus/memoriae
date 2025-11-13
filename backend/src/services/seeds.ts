@@ -107,6 +107,104 @@ export class SeedsService {
   }
 
   /**
+   * Get a single seed by hashId (first 7 chars of UUID)
+   * If multiple seeds match, uses slug similarity to find the best match
+   * Computes current state by replaying all transactions
+   */
+  static async getByHashId(hashId: string, userId: string, slugHint?: string): Promise<Seed | null> {
+    // Find all seeds with IDs starting with hashId
+    const seeds = await db<SeedRow>('seeds')
+      .where({ user_id: userId })
+      .whereRaw('LEFT(id::text, ?) = ?', [hashId.length, hashId])
+      .orderBy('created_at', 'desc')
+
+    if (seeds.length === 0) {
+      return null
+    }
+
+    // If only one match, return it
+    if (seeds.length === 1) {
+      const seed = seeds[0]
+      const currentState = await computeCurrentState(seed.id)
+      return {
+        ...seed,
+        currentState,
+      }
+    }
+
+    // Multiple matches - use slug hint to find best match
+    if (slugHint) {
+      // Find seed with slug that most closely matches the hint
+      // Compare by checking if hint is contained in slug or vice versa
+      let bestMatch: SeedRow | null = null
+      let bestScore = 0
+
+      for (const seed of seeds) {
+        if (!seed.slug) continue
+
+        // Extract slug part (after hashId/)
+        const slugPart = seed.slug.includes('/') 
+          ? seed.slug.split('/').slice(1).join('/')
+          : seed.slug
+
+        // Calculate similarity score
+        // Higher score if hint is contained in slug or slug is contained in hint
+        let score = 0
+        const hintLower = slugHint.toLowerCase()
+        const slugLower = slugPart.toLowerCase()
+
+        if (slugLower.includes(hintLower)) {
+          score = hintLower.length / slugLower.length // Percentage match
+        } else if (hintLower.includes(slugLower)) {
+          score = slugLower.length / hintLower.length // Percentage match
+        } else {
+          // Check for common substring
+          const commonLength = this.getCommonSubstringLength(hintLower, slugLower)
+          score = commonLength / Math.max(hintLower.length, slugLower.length)
+        }
+
+        if (score > bestScore) {
+          bestScore = score
+          bestMatch = seed
+        }
+      }
+
+      // If we found a good match (score > 0.3), use it
+      if (bestMatch && bestScore > 0.3) {
+        const currentState = await computeCurrentState(bestMatch.id)
+        return {
+          ...bestMatch,
+          currentState,
+        }
+      }
+    }
+
+    // No good match found, or no slug hint provided - return the most recent one
+    const seed = seeds[0]
+    const currentState = await computeCurrentState(seed.id)
+    return {
+      ...seed,
+      currentState,
+    }
+  }
+
+  /**
+   * Helper to calculate common substring length between two strings
+   */
+  private static getCommonSubstringLength(str1: string, str2: string): number {
+    let maxLength = 0
+    for (let i = 0; i < str1.length; i++) {
+      for (let j = i + 1; j <= str1.length; j++) {
+        const substr = str1.substring(i, j)
+        if (str2.includes(substr) && substr.length > maxLength) {
+          maxLength = substr.length
+        }
+      }
+    }
+    return maxLength
+  }
+
+  /**
    * Get a single seed by slug (must belong to user)
    * Computes current state by replaying all transactions
    */

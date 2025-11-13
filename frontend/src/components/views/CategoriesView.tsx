@@ -188,8 +188,22 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
                     key={seed.id} 
                     className="categories-view-seed-item"
                     onClick={() => {
-                      const slug = seed.slug || seed.id
-                      navigate(`/seeds/${slug}`)
+                      // Extract hashId (first 7 chars of UUID)
+                      const hashId = seed.id.substring(0, 7)
+                      
+                      // If slug is available, include it for better collision resolution
+                      if (seed.slug) {
+                        const slugPart = seed.slug.includes('/') 
+                          ? seed.slug.split('/').slice(1).join('/')
+                          : seed.slug
+                        if (slugPart) {
+                          navigate(`/seeds/${hashId}/${slugPart}`)
+                          return
+                        }
+                      }
+                      
+                      // Navigate with just hashId
+                      navigate(`/seeds/${hashId}`)
                     }}
                     style={{ cursor: 'pointer' }}
                   >

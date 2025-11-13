@@ -139,9 +139,23 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
   }
 
   const handleSeedSelect = (seed: { id: string; slug?: string | null }) => {
-    // Use slug if available, otherwise fall back to ID (backward compatibility)
-    const identifier = seed.slug || seed.id
-    navigate(`/seeds/${identifier}`)
+    // Extract hashId (first 7 chars of UUID)
+    const hashId = seed.id.substring(0, 7)
+    
+    // If slug is available, include it for better collision resolution
+    if (seed.slug) {
+      // Extract slug part (after hashId/)
+      const slugPart = seed.slug.includes('/') 
+        ? seed.slug.split('/').slice(1).join('/')
+        : seed.slug
+      if (slugPart) {
+        navigate(`/seeds/${hashId}/${slugPart}`)
+        return
+      }
+    }
+    
+    // Navigate with just hashId (slug optional for collision resolution)
+    navigate(`/seeds/${hashId}`)
   }
 
   const handleSeedCreated = () => {
@@ -305,13 +319,17 @@ function TabNavigation({ children }: { children?: React.ReactNode }) {
 }
 
 function SeedDetailWrapper() {
-  const { slug } = useParams<{ slug: string }>()
+  const { hashId, slug } = useParams<{ hashId: string; slug?: string }>()
   const navigate = useNavigate()
 
-  if (!slug) {
+  if (!hashId) {
     navigate('/seeds')
     return null
   }
+
+  // Use hashId as primary identifier, slug is optional hint for collision resolution
+  // Pass both to SeedDetailView so it can use them for API calls
+  const seedIdentifier = slug ? `${hashId}/${slug}` : hashId
 
   // Use browser history for back navigation, with fallback to /seeds
   const handleBack = () => {
@@ -341,7 +359,7 @@ function SeedDetailWrapper() {
       }}>
         <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
           <SeedDetailView
-            seedId={slug}
+            seedId={seedIdentifier}
             onBack={handleBack}
           />
         </Suspense>
@@ -423,7 +441,8 @@ function AppContent() {
       <Route path="/" element={<TabNavigation />} />
       <Route path="/seeds" element={<TabNavigation />} />
       <Route path="/seeds/tag/:tagName" element={<TabNavigation />} />
-      <Route path="/seeds/:slug" element={<SeedDetailWrapper />} />
+      <Route path="/seeds/:hashId/:slug" element={<SeedDetailWrapper />} />
+      <Route path="/seeds/:hashId" element={<SeedDetailWrapper />} />
       <Route path="/categories" element={<TabNavigation />} />
       <Route path="/category/*" element={<TabNavigation />} />
       <Route path="/tags" element={<TabNavigation />} />

@@ -46,6 +46,7 @@ vi.mock('../../services/seeds', () => ({
   SeedsService: {
     create: vi.fn(),
     getById: vi.fn(),
+    getByHashId: vi.fn(),
     getBySlug: vi.fn(),
     getByUser: vi.fn(),
     update: vi.fn(),
@@ -95,7 +96,7 @@ describe('Seeds Routes', () => {
       created_at: new Date(),
     })
 
-    // Mock SeedsService.getById for resolveSeedId (used in PUT/DELETE routes)
+    // Mock SeedsService.getById for full UUID (backward compatibility)
     vi.mocked(SeedsService.getById).mockImplementation(async (id: string, userId: string) => {
       if (id === 'seed-123' && userId === 'user-123') {
         return {
@@ -104,6 +105,24 @@ describe('Seeds Routes', () => {
           created_at: new Date(),
           slug: null,
         } as any
+      }
+      return null
+    })
+
+    // Mock SeedsService.getByHashId for hashId-based routes
+    vi.mocked(SeedsService.getByHashId).mockImplementation(async (hashId: string, userId: string, slugHint?: string) => {
+      // seed-123 has hashId 'seed-1' (first 7 chars)
+      if (hashId === 'seed-1' && userId === 'user-123') {
+        return {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date(),
+          slug: null,
+        } as any
+      }
+      // For full UUID (36 chars), return null (should use getById instead)
+      if (hashId.length === 36) {
+        return null
       }
       return null
     })
@@ -403,8 +422,40 @@ describe('Seeds Routes', () => {
     })
   })
 
-  describe('GET /api/seeds/:id', () => {
-    it('should return seed by ID', async () => {
+  describe('GET /api/seeds/:hashId', () => {
+    it('should return seed by hashId', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      // Use hashId (first 7 chars of seed-123 = 'seed-1')
+      const response = await request(app)
+        .get('/api/seeds/seed-1')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+        user_id: 'user-123',
+      })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
+    })
+
+    it('should return seed by full UUID (backward compatibility)', async () => {
       const mockSeed = {
         id: 'seed-123',
         user_id: 'user-123',
@@ -423,8 +474,10 @@ describe('Seeds Routes', () => {
         email: 'test@example.com',
       })
 
+      // Full UUID (36 chars) should use getById
+      const fullUuid = '12345678-1234-1234-1234-123456789012'
       const response = await request(app)
-        .get('/api/seeds/seed-123')
+        .get(`/api/seeds/${fullUuid}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
@@ -432,11 +485,11 @@ describe('Seeds Routes', () => {
         id: 'seed-123',
         user_id: 'user-123',
       })
-      expect(SeedsService.getById).toHaveBeenCalledWith('seed-123', 'user-123')
+      expect(SeedsService.getById).toHaveBeenCalledWith(fullUuid, 'user-123')
     })
 
     it('should return 404 when seed not found', async () => {
-      ;(SeedsService.getById as any).mockResolvedValue(null)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -444,7 +497,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/seeds/non-existent')
+        .get('/api/seeds/non-exist')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
@@ -453,11 +506,8 @@ describe('Seeds Routes', () => {
       })
     })
 
-    // Note: Express routing handles trailing slashes, so this test is not applicable
-    // The route handler itself checks for id in req.params, which is tested in other cases
-
     it('should handle service errors gracefully', async () => {
-      ;(SeedsService.getById as any).mockRejectedValue(new Error('Database error'))
+      ;(SeedsService.getByHashId as any).mockRejectedValue(new Error('Database error'))
 
       const token = generateTestToken({
         id: 'user-123',
@@ -465,14 +515,76 @@ describe('Seeds Routes', () => {
       })
 
       await request(app)
-        .get('/api/seeds/seed-123')
+        .get('/api/seeds/seed-1')
         .set('Authorization', `Bearer ${token}`)
         .expect(500)
     })
+
+    it('should use slug hint when provided in two-parameter route', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/seed-1/test-slug')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+        user_id: 'user-123',
+      })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123', 'test-slug')
+    })
+
+    it('should handle hashId with special characters in slug', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      // Slug with special characters (URL encoded)
+      const response = await request(app)
+        .get('/api/seeds/seed-1/test-slug-with-special-chars')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+      })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123', 'test-slug-with-special-chars')
+    })
   })
 
-  describe('PUT /api/seeds/:id', () => {
-    it('should update seed content', async () => {
+  describe('PUT /api/seeds/:hashId', () => {
+    it('should update seed content by hashId', async () => {
       const mockSeed = {
         id: 'seed-123',
         user_id: 'user-123',
@@ -484,6 +596,7 @@ describe('Seeds Routes', () => {
         },
       }
 
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
       ;(SeedsService.update as any).mockResolvedValue(mockSeed)
 
       const token = generateTestToken({
@@ -492,7 +605,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/seeds/seed-123')
+        .put('/api/seeds/seed-1')
         .set('Authorization', `Bearer ${token}`)
         .send({ content: 'Updated content' })
         .expect(200)
@@ -500,17 +613,25 @@ describe('Seeds Routes', () => {
       expect(response.body).toMatchObject({
         id: 'seed-123',
       })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
       expect(SeedsService.update).toHaveBeenCalledWith('seed-123', 'user-123', { content: 'Updated content' })
     })
 
     it('should return 400 when content is not a string', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+      }
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
+
       const token = generateTestToken({
         id: 'user-123',
         email: 'test@example.com',
       })
 
       const response = await request(app)
-        .put('/api/seeds/seed-123')
+        .put('/api/seeds/seed-1')
         .set('Authorization', `Bearer ${token}`)
         .send({ content: 123 })
         .expect(400)
@@ -521,7 +642,7 @@ describe('Seeds Routes', () => {
     })
 
     it('should return 404 when seed not found', async () => {
-      ;(SeedsService.update as any).mockResolvedValue(null)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -529,7 +650,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/seeds/non-existent')
+        .put('/api/seeds/non-exist')
         .set('Authorization', `Bearer ${token}`)
         .send({ content: 'Updated content' })
         .expect(404)
@@ -538,9 +659,6 @@ describe('Seeds Routes', () => {
         error: 'Seed not found',
       })
     })
-
-    // Note: Express routing handles trailing slashes, so this test is not applicable
-    // The route handler itself checks for id in req.params, which is tested in other cases
 
     it('should allow update without content (no-op)', async () => {
       const mockSeed = {
@@ -554,6 +672,7 @@ describe('Seeds Routes', () => {
         },
       }
 
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
       ;(SeedsService.update as any).mockResolvedValue(mockSeed)
 
       const token = generateTestToken({
@@ -562,7 +681,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .put('/api/seeds/seed-123')
+        .put('/api/seeds/seed-1')
         .set('Authorization', `Bearer ${token}`)
         .send({})
         .expect(200)
@@ -571,8 +690,14 @@ describe('Seeds Routes', () => {
     })
   })
 
-  describe('DELETE /api/seeds/:id', () => {
-    it('should delete seed', async () => {
+  describe('DELETE /api/seeds/:hashId', () => {
+    it('should delete seed by hashId', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+      }
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
       ;(SeedsService.delete as any).mockResolvedValue(true)
 
       const token = generateTestToken({
@@ -581,15 +706,16 @@ describe('Seeds Routes', () => {
       })
 
       await request(app)
-        .delete('/api/seeds/seed-123')
+        .delete('/api/seeds/seed-1')
         .set('Authorization', `Bearer ${token}`)
         .expect(204)
 
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
       expect(SeedsService.delete).toHaveBeenCalledWith('seed-123', 'user-123')
     })
 
     it('should return 404 when seed not found', async () => {
-      ;(SeedsService.delete as any).mockResolvedValue(false)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -597,7 +723,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .delete('/api/seeds/non-existent')
+        .delete('/api/seeds/non-exist')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
@@ -607,6 +733,12 @@ describe('Seeds Routes', () => {
     })
 
     it('should handle service errors gracefully', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+      }
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
       ;(SeedsService.delete as any).mockRejectedValue(new Error('Database error'))
 
       const token = generateTestToken({
@@ -615,14 +747,14 @@ describe('Seeds Routes', () => {
       })
 
       await request(app)
-        .delete('/api/seeds/seed-123')
+        .delete('/api/seeds/seed-1')
         .set('Authorization', `Bearer ${token}`)
         .expect(500)
     })
   })
 
-  describe('GET /api/seeds/:id/automations', () => {
-    it('should return list of automations for seed', async () => {
+  describe('GET /api/seeds/:hashId/automations', () => {
+    it('should return list of automations for seed by hashId', async () => {
       const mockSeed = {
         id: 'seed-123',
         user_id: 'user-123',
@@ -634,7 +766,7 @@ describe('Seeds Routes', () => {
         },
       }
 
-      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
 
       const mockAutomations = [
         { id: 'auto-1', name: 'Tag Automation', description: 'Tags seeds', enabled: true },
@@ -653,7 +785,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/seeds/seed-123/automations')
+        .get('/api/seeds/seed-1/automations')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
@@ -663,10 +795,11 @@ describe('Seeds Routes', () => {
         name: 'Tag Automation',
         enabled: true,
       })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
     })
 
     it('should return 404 when seed not found', async () => {
-      ;(SeedsService.getById as any).mockResolvedValue(null)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -674,7 +807,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .get('/api/seeds/non-existent/automations')
+        .get('/api/seeds/non-exist/automations')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
@@ -684,8 +817,8 @@ describe('Seeds Routes', () => {
     })
   })
 
-  describe('POST /api/seeds/:id/automations/:automationId/run', () => {
-    it('should queue automation job for seed', async () => {
+  describe('POST /api/seeds/:hashId/automations/:automationId/run', () => {
+    it('should queue automation job for seed by hashId', async () => {
       const mockSeed = {
         id: 'seed-123',
         user_id: 'user-123',
@@ -697,7 +830,7 @@ describe('Seeds Routes', () => {
         },
       }
 
-      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
 
       const mockAutomation = {
         id: 'auto-1',
@@ -728,7 +861,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/automations/auto-1/run')
+        .post('/api/seeds/seed-1/automations/auto-1/run')
         .set('Authorization', `Bearer ${token}`)
         .expect(202)
 
@@ -740,10 +873,11 @@ describe('Seeds Routes', () => {
           name: 'Tag Automation',
         },
       })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
     })
 
     it('should return 404 when seed not found', async () => {
-      ;(SeedsService.getById as any).mockResolvedValue(null)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(null)
 
       const token = generateTestToken({
         id: 'user-123',
@@ -751,7 +885,7 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .post('/api/seeds/non-existent/automations/auto-1/run')
+        .post('/api/seeds/non-exist/automations/auto-1/run')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
@@ -772,7 +906,7 @@ describe('Seeds Routes', () => {
         },
       }
 
-      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
 
       const { AutomationRegistry } = await import('../../services/automation/registry')
       const mockRegistry = {
@@ -786,13 +920,110 @@ describe('Seeds Routes', () => {
       })
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/automations/non-existent/run')
+        .post('/api/seeds/seed-1/automations/non-existent/run')
         .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
       expect(response.body).toMatchObject({
         error: 'Automation not found',
       })
+    })
+  })
+
+  describe('Route Parameter Handling', () => {
+    it('should handle hashId with exactly 7 characters', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      // hashId with exactly 7 chars (not a UUID)
+      const response = await request(app)
+        .get('/api/seeds/1234567')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+      })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('1234567', 'user-123')
+    })
+
+    it('should distinguish between hashId and full UUID by length', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      // Test with 36-char UUID (should use getById)
+      ;(SeedsService.getById as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const fullUuid = '12345678-1234-1234-1234-123456789012'
+      const response = await request(app)
+        .get(`/api/seeds/${fullUuid}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+      })
+      expect(SeedsService.getById).toHaveBeenCalledWith(fullUuid, 'user-123')
+      expect(SeedsService.getByHashId).not.toHaveBeenCalled()
+    })
+
+    it('should handle hashId with very short length (edge case)', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date(),
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      ;(SeedsService.getByHashId as any).mockResolvedValue(mockSeed)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      // Very short hashId (1 char) - should still work
+      const response = await request(app)
+        .get('/api/seeds/s')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: 'seed-123',
+      })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('s', 'user-123')
     })
   })
 })

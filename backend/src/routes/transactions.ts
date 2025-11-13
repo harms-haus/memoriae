@@ -32,28 +32,28 @@ async function resolveSeedId(identifier: string, userId: string): Promise<string
 }
 
 /**
- * GET /api/seeds/:seedId/transactions
- * Get full timeline of transactions for a seed (supports both UUID and slug formats)
+ * GET /api/seeds/:hashId/:slug/transactions
+ * Get full timeline of transactions for a seed by hashId with slug hint
  */
-router.get('/seeds/:seedId/transactions', async (req: Request, res: Response): Promise<void> => {
+router.get('/seeds/:hashId/:slug/transactions', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { seedId } = req.params
+    const { hashId, slug } = req.params
     const userId = req.user!.id
 
-    if (!seedId) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
-    // Resolve to actual UUID and verify seed ownership
-    const resolvedSeedId = await resolveSeedId(seedId, userId)
-    if (!resolvedSeedId) {
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
     // Get all transactions for the seed
-    const transactions = await SeedTransactionsService.getBySeedId(resolvedSeedId)
+    const transactions = await SeedTransactionsService.getBySeedId(seed.id)
 
     res.json(transactions)
   } catch (error) {
@@ -63,35 +63,71 @@ router.get('/seeds/:seedId/transactions', async (req: Request, res: Response): P
 })
 
 /**
- * GET /api/seeds/:seedId/state
- * Get computed current state of a seed (replayed from transactions)
- * Supports both UUID and slug formats
+ * GET /api/seeds/:hashId/transactions
+ * Get full timeline of transactions for a seed by hashId
  */
-router.get('/seeds/:seedId/state', async (req: Request, res: Response): Promise<void> => {
+router.get('/seeds/:hashId/transactions', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { seedId } = req.params
+    const { hashId } = req.params
     const userId = req.user!.id
 
-    if (!seedId) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
-    // Resolve to actual UUID and verify seed ownership
-    const resolvedSeedId = await resolveSeedId(seedId, userId)
-    if (!resolvedSeedId) {
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    // Get all transactions for the seed
+    const transactions = await SeedTransactionsService.getBySeedId(seed.id)
+
+    res.json(transactions)
+  } catch (error) {
+    console.error('Error fetching transactions:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * GET /api/seeds/:hashId/:slug/state
+ * Get computed current state of a seed by hashId with slug hint
+ */
+router.get('/seeds/:hashId/:slug/state', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { hashId, slug } = req.params
+    const userId = req.user!.id
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
     // Get all transactions
-    const transactions = await SeedTransactionsService.getBySeedId(resolvedSeedId)
+    const transactions = await SeedTransactionsService.getBySeedId(seed.id)
 
     // Compute current state by replaying transactions
     const currentState = computeSeedState(transactions)
 
     res.json({
-      seed_id: resolvedSeedId,
+      seed_id: seed.id,
       current_state: {
         ...currentState,
         timestamp: currentState.timestamp.toISOString(),
@@ -105,17 +141,64 @@ router.get('/seeds/:seedId/state', async (req: Request, res: Response): Promise<
 })
 
 /**
- * POST /api/seeds/:seedId/transactions
- * Create a new transaction for a seed (supports both UUID and slug formats)
+ * GET /api/seeds/:hashId/state
+ * Get computed current state of a seed by hashId
  */
-router.post('/seeds/:seedId/transactions', async (req: Request, res: Response): Promise<void> => {
+router.get('/seeds/:hashId/state', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { seedId } = req.params
+    const { hashId } = req.params
+    const userId = req.user!.id
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    // Get all transactions
+    const transactions = await SeedTransactionsService.getBySeedId(seed.id)
+
+    // Compute current state by replaying transactions
+    const currentState = computeSeedState(transactions)
+
+    res.json({
+      seed_id: seed.id,
+      current_state: {
+        ...currentState,
+        timestamp: currentState.timestamp.toISOString(),
+      },
+      transactions_applied: transactions.length,
+    })
+  } catch (error) {
+    console.error('Error computing seed state:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * POST /api/seeds/:hashId/:slug/transactions
+ * Create a new transaction for a seed by hashId with slug hint
+ */
+router.post('/seeds/:hashId/:slug/transactions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { hashId, slug } = req.params
     const userId = req.user!.id
     const { transaction_type, transaction_data, automation_id } = req.body
 
-    if (!seedId) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
@@ -130,12 +213,72 @@ router.post('/seeds/:seedId/transactions', async (req: Request, res: Response): 
       return
     }
 
-    // Resolve to actual UUID and verify seed ownership
-    const resolvedSeedId = await resolveSeedId(seedId, userId)
-    if (!resolvedSeedId) {
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
+    const resolvedSeedId = seed.id
+
+    // Create transaction
+    const transaction = await SeedTransactionsService.create({
+      seed_id: resolvedSeedId,
+      transaction_type: transaction_type as any,
+      transaction_data: transaction_data as any,
+      automation_id: automation_id || null,
+    })
+
+    res.status(201).json(transaction)
+  } catch (error) {
+    console.error('Error creating transaction:', error)
+    if (error instanceof Error && error.message.includes('not allowed')) {
+      res.status(400).json({ error: error.message })
+      return
+    }
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * POST /api/seeds/:hashId/transactions
+ * Create a new transaction for a seed by hashId
+ */
+router.post('/seeds/:hashId/transactions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { hashId } = req.params
+    const userId = req.user!.id
+    const { transaction_type, transaction_data, automation_id } = req.body
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Validate input
+    if (!transaction_type || typeof transaction_type !== 'string') {
+      res.status(400).json({ error: 'transaction_type is required and must be a string' })
+      return
+    }
+
+    if (!transaction_data || typeof transaction_data !== 'object') {
+      res.status(400).json({ error: 'transaction_data is required and must be an object' })
+      return
+    }
+
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+    const resolvedSeedId = seed.id
 
     // Create transaction
     const transaction = await SeedTransactionsService.create({

@@ -45,30 +45,147 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 })
 
 /**
- * GET /api/seeds/:id
- * Get a single seed by ID or slug
- * Supports both UUID format and slug format (uuidPrefix/slug)
+ * GET /api/seeds/:hashId/:slug/automations
+ * Get all available automations for a seed by hashId with slug hint
  */
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:hashId/:slug/automations', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id
-    const { id } = req.params
+    const { hashId, slug } = req.params
 
-    if (!id) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
-    // Check if it's a slug format (contains '/') or UUID format
-    let seed: Awaited<ReturnType<typeof SeedsService.getById>> | null = null
-    
-    if (id.includes('/')) {
-      // Slug format: {uuidPrefix}/{slug}
-      seed = await SeedsService.getBySlug(id, userId)
-    } else {
-      // UUID format (backward compatibility)
-      seed = await SeedsService.getById(id, userId)
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
     }
+    const seedId = seed.id
+
+    // Get all automations from registry
+    const registry = AutomationRegistry.getInstance()
+    const automations = registry.getAll()
+
+    // Return automation info (id, name, description, enabled)
+    const automationList = automations.map((automation) => ({
+      id: automation.id,
+      name: automation.name,
+      description: automation.description,
+      enabled: automation.enabled,
+    }))
+
+    res.json(automationList)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * GET /api/seeds/:hashId/automations
+ * Get all available automations for a seed by hashId
+ */
+router.get('/:hashId/automations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { hashId } = req.params
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+    const seedId = seed.id
+
+    // Get all automations from registry
+    const registry = AutomationRegistry.getInstance()
+    const automations = registry.getAll()
+
+    // Return automation info (id, name, description, enabled)
+    const automationList = automations.map((automation) => ({
+      id: automation.id,
+      name: automation.name,
+      description: automation.description,
+      enabled: automation.enabled,
+    }))
+
+    res.json(automationList)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * GET /api/seeds/:hashId/:slug
+ * Get a single seed by hashId with slug hint for collision resolution
+ */
+router.get('/:hashId/:slug', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { hashId, slug } = req.params
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    res.json(seed)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * GET /api/seeds/:hashId
+ * Get a single seed by hashId (first 7 chars of UUID)
+ * If multiple matches, returns the most recent one
+ */
+router.get('/:hashId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { hashId } = req.params
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    if (hashId.length === 36) {
+      const seed = await SeedsService.getById(hashId, userId)
+      if (!seed) {
+        res.status(404).json({ error: 'Seed not found' })
+        return
+      }
+      res.json(seed)
+      return
+    }
+
+    // Use hashId to find seed (slug hint not provided)
+    const seed = await SeedsService.getByHashId(hashId, userId)
 
     if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
@@ -111,23 +228,74 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 })
 
 /**
- * PUT /api/seeds/:id
- * Update a seed (supports both UUID and slug formats)
+ * PUT /api/seeds/:hashId/:slug
+ * Update a seed by hashId with slug hint for collision resolution
  */
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:hashId/:slug', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id
-    const { id } = req.params
+    const { hashId, slug } = req.params
     const { content } = req.body
 
-    if (!id) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
-    // Resolve to actual UUID
-    const seedId = await resolveSeedId(id, userId)
-    if (!seedId) {
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+    const seedId = seed.id
+
+    const updateData: { content?: string } = {}
+    if (content !== undefined) {
+      if (typeof content !== 'string') {
+        res.status(400).json({ error: 'Content must be a string' })
+        return
+      }
+      updateData.content = content
+    }
+
+    const updatedSeed = await SeedsService.update(seedId, userId, updateData)
+
+    if (!updatedSeed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    res.json(updatedSeed)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * PUT /api/seeds/:hashId
+ * Update a seed by hashId
+ */
+router.put('/:hashId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { hashId } = req.params
+    const { content } = req.body
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -141,39 +309,40 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       updateData.content = content
     }
 
-    const seed = await SeedsService.update(seedId, userId, updateData)
+    const updatedSeed = await SeedsService.update(seed.id, userId, updateData)
 
-    if (!seed) {
+    if (!updatedSeed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
-    res.json(seed)
+    res.json(updatedSeed)
   } catch (error) {
     next(error)
   }
 })
 
 /**
- * DELETE /api/seeds/:id
- * Delete a seed (supports both UUID and slug formats)
+ * DELETE /api/seeds/:hashId/:slug
+ * Delete a seed by hashId with slug hint for collision resolution
  */
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:hashId/:slug', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id
-    const { id } = req.params
+    const { hashId, slug } = req.params
 
-    if (!id) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
-    // Resolve to actual UUID
-    const seedId = await resolveSeedId(id, userId)
-    if (!seedId) {
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
+    const seedId = seed.id
 
     const deleted = await SeedsService.delete(seedId, userId)
 
@@ -189,25 +358,66 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 })
 
 /**
- * GET /api/seeds/:id/automations
- * Get all available automations for a seed (supports both UUID and slug formats)
+ * DELETE /api/seeds/:hashId
+ * Delete a seed by hashId
  */
-router.get('/:id/automations', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:hashId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id
-    const { id } = req.params
+    const { hashId } = req.params
 
-    if (!id) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
-    // Resolve to actual UUID and verify seed ownership
-    const seedId = await resolveSeedId(id, userId)
-    if (!seedId) {
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
+
+    const deleted = await SeedsService.delete(seed.id, userId)
+
+    if (!deleted) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    res.status(204).send()
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * GET /api/seeds/:hashId/:slug/automations
+ * Get all available automations for a seed by hashId with slug hint
+ */
+router.get('/:hashId/:slug/automations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { hashId, slug } = req.params
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+    const seedId = seed.id
 
     // Get all automations from registry
     const registry = AutomationRegistry.getInstance()
@@ -228,16 +438,62 @@ router.get('/:id/automations', async (req: Request, res: Response, next: NextFun
 })
 
 /**
- * POST /api/seeds/:id/automations/:automationId/run
- * Manually trigger an automation for a seed (supports both UUID and slug formats)
+ * GET /api/seeds/:hashId/automations
+ * Get all available automations for a seed by hashId
  */
-router.post('/:id/automations/:automationId/run', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:hashId/automations', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id
-    const { id, automationId } = req.params
+    const { hashId } = req.params
 
-    if (!id) {
-      res.status(400).json({ error: 'Seed ID or slug is required' })
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+    const seedId = seed.id
+
+    // Get all automations from registry
+    const registry = AutomationRegistry.getInstance()
+    const automations = registry.getAll()
+
+    // Return automation info (id, name, description, enabled)
+    const automationList = automations.map((automation) => ({
+      id: automation.id,
+      name: automation.name,
+      description: automation.description,
+      enabled: automation.enabled,
+    }))
+
+    res.json(automationList)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * POST /api/seeds/:hashId/:slug/automations/:automationId/run
+ * Manually trigger an automation for a seed by hashId with slug hint
+ */
+router.post('/:hashId/:slug/automations/:automationId/run', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { hashId, slug, automationId } = req.params
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
@@ -246,12 +502,13 @@ router.post('/:id/automations/:automationId/run', async (req: Request, res: Resp
       return
     }
 
-    // Resolve to actual UUID and verify seed ownership
-    const seedId = await resolveSeedId(id, userId)
-    if (!seedId) {
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
+    const seedId = seed.id
 
     // Verify automation exists
     const registry = AutomationRegistry.getInstance()
@@ -299,6 +556,90 @@ router.post('/:id/automations/:automationId/run', async (req: Request, res: Resp
               name: automation.name,
             },
           })
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * POST /api/seeds/:hashId/automations/:automationId/run
+ * Manually trigger an automation for a seed by hashId
+ */
+router.post('/:hashId/automations/:automationId/run', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { hashId, automationId } = req.params
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    if (!automationId) {
+      res.status(400).json({ error: 'Automation ID is required' })
+      return
+    }
+
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (hashId.length === 36) {
+      seed = await SeedsService.getById(hashId, userId)
+    } else {
+      seed = await SeedsService.getByHashId(hashId, userId)
+    }
+    
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+    const seedId = seed.id
+
+    // Verify automation exists
+    const registry = AutomationRegistry.getInstance()
+    const automation = registry.getById(automationId)
+    if (!automation) {
+      res.status(404).json({ error: 'Automation not found' })
+      return
+    }
+
+    // Queue the automation job with higher priority for manual triggers
+    // Use makeUnique: true to allow re-running the same automation
+    console.log(`[Manual Trigger] Queuing automation ${automationId} for seed ${seedId} (user ${userId})`)
+    const jobId = await addAutomationJob({
+      seedId,
+      automationId,
+      userId,
+      priority: 10, // Higher priority for manual triggers
+      metadata: { manual: true },
+    }, { makeUnique: true }) // Make job ID unique to allow re-running
+    console.log(`[Manual Trigger] Job queued with ID: ${jobId}`)
+
+    // Diagnostic: Check queue status immediately after adding job
+    const waiting = await automationQueue.getWaitingCount()
+    const active = await automationQueue.getActiveCount()
+    console.log(`[Manual Trigger] Queue status after adding job - Waiting: ${waiting}, Active: ${active}`)
+    
+    // Try to get the job to verify it exists
+    try {
+      const job = await automationQueue.getJob(jobId)
+      if (job) {
+        const state = await job.getState()
+        console.log(`[Manual Trigger] Job ${jobId} state: ${state}`)
+      } else {
+        console.warn(`[Manual Trigger] ⚠️ Job ${jobId} not found in queue!`)
+      }
+    } catch (err) {
+      console.error(`[Manual Trigger] Error checking job ${jobId}:`, err)
+    }
+
+    res.status(202).json({
+      message: 'Automation queued',
+      jobId,
+      automation: {
+        id: automation.id,
+        name: automation.name,
+      },
+    })
   } catch (error) {
     next(error)
   }

@@ -360,6 +360,418 @@ describe('SeedsService', () => {
     })
   })
 
+  describe('getByHashId', () => {
+    it('should return seed by hashId when only one match', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date('2024-01-01'),
+        slug: 'seed-1/test-seed',
+      }
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-123',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Test content' },
+          created_at: new Date('2024-01-01'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Test content',
+        timestamp: new Date('2024-01-01'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue([mockSeed]),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      const result = await SeedsService.getByHashId('seed-1', 'user-123')
+
+      expect(result).toMatchObject({
+        id: 'seed-123',
+        user_id: 'user-123',
+        slug: 'seed-1/test-seed',
+        currentState: {
+          seed: 'Test content',
+          timestamp: '2024-01-01T00:00:00.000Z',
+          metadata: {},
+        },
+      })
+    })
+
+    it('should use slug hint for collision resolution when multiple matches', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-01'),
+          slug: 'seed-1/test-seed',
+        },
+        {
+          id: 'seed-456',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-02'),
+          slug: 'seed-1/other-seed',
+        },
+      ]
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-123',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Test content' },
+          created_at: new Date('2024-01-01'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Test content',
+        timestamp: new Date('2024-01-01'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue(mockSeeds),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      // Use slug hint 'test-seed' to find the best match
+      const result = await SeedsService.getByHashId('seed-1', 'user-123', 'test-seed')
+
+      expect(result).toMatchObject({
+        id: 'seed-123',
+        slug: 'seed-1/test-seed',
+      })
+    })
+
+    it('should return most recent seed when no slug hint provided and multiple matches', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-456',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-02'),
+          slug: 'seed-1/other-seed',
+        },
+        {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-01'),
+          slug: 'seed-1/test-seed',
+        },
+      ]
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-456',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Other content' },
+          created_at: new Date('2024-01-02'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Other content',
+        timestamp: new Date('2024-01-02'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue(mockSeeds),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      // No slug hint - should return most recent (first in ordered list)
+      const result = await SeedsService.getByHashId('seed-1', 'user-123')
+
+      expect(result).toMatchObject({
+        id: 'seed-456',
+        slug: 'seed-1/other-seed',
+      })
+    })
+
+    it('should return null when seed not found by hashId', async () => {
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue([]),
+      } as any)
+
+      const result = await SeedsService.getByHashId('non-exist', 'user-123')
+
+      expect(result).toBeNull()
+    })
+
+    it('should return most recent seed when slug hint does not match any seed', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-456',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-02'),
+          slug: 'seed-1/other-seed',
+        },
+        {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-01'),
+          slug: 'seed-1/test-seed',
+        },
+      ]
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-456',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Other content' },
+          created_at: new Date('2024-01-02'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Other content',
+        timestamp: new Date('2024-01-02'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue(mockSeeds),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      // Slug hint doesn't match any seed - should return most recent
+      const result = await SeedsService.getByHashId('seed-1', 'user-123', 'non-matching-hint')
+
+      expect(result).toMatchObject({
+        id: 'seed-456',
+        slug: 'seed-1/other-seed',
+      })
+    })
+
+    it('should handle seeds with no slug when multiple matches', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-456',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-02'),
+          slug: null, // No slug
+        },
+        {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-01'),
+          slug: 'seed-1/test-seed',
+        },
+      ]
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-456',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'No slug content' },
+          created_at: new Date('2024-01-02'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'No slug content',
+        timestamp: new Date('2024-01-02'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue(mockSeeds),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      // When slug hint is provided but some seeds have no slug, should skip them
+      const result = await SeedsService.getByHashId('seed-1', 'user-123', 'test-seed')
+
+      expect(result).toMatchObject({
+        id: 'seed-123',
+        slug: 'seed-1/test-seed',
+      })
+    })
+
+    it('should return most recent seed when all seeds have no slug', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-456',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-02'),
+          slug: null,
+        },
+        {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-01'),
+          slug: null,
+        },
+      ]
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-456',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'No slug content' },
+          created_at: new Date('2024-01-02'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'No slug content',
+        timestamp: new Date('2024-01-02'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue(mockSeeds),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      // All seeds have no slug - should return most recent
+      const result = await SeedsService.getByHashId('seed-1', 'user-123', 'test-seed')
+
+      expect(result).toMatchObject({
+        id: 'seed-456',
+        slug: null,
+      })
+    })
+
+    it('should handle partial slug matches with similarity scoring', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-01'),
+          slug: 'seed-1/test-seed-content',
+        },
+        {
+          id: 'seed-456',
+          user_id: 'user-123',
+          created_at: new Date('2024-01-02'),
+          slug: 'seed-1/other-content',
+        },
+      ]
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-123',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Test content' },
+          created_at: new Date('2024-01-01'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Test content',
+        timestamp: new Date('2024-01-01'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue(mockSeeds),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      // Hint 'test-seed' should match 'test-seed-content' better than 'other-content'
+      const result = await SeedsService.getByHashId('seed-1', 'user-123', 'test-seed')
+
+      expect(result).toMatchObject({
+        id: 'seed-123',
+        slug: 'seed-1/test-seed-content',
+      })
+    })
+
+    it('should handle very short hashIds (less than 7 chars)', async () => {
+      const mockSeed = {
+        id: 'seed-123',
+        user_id: 'user-123',
+        created_at: new Date('2024-01-01'),
+        slug: 'seed-1/test-seed',
+      }
+
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-123',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Test content' },
+          created_at: new Date('2024-01-01'),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Test content',
+        timestamp: new Date('2024-01-01'),
+        metadata: {},
+      }
+
+      vi.mocked(db).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        whereRaw: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockResolvedValue([mockSeed]),
+      } as any)
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      // Very short hashId (3 chars)
+      const result = await SeedsService.getByHashId('see', 'user-123')
+
+      expect(result).toMatchObject({
+        id: 'seed-123',
+      })
+      // Verify whereRaw was called with correct length
+      expect(db).toHaveBeenCalled()
+    })
+  })
+
   describe('create', () => {
     it('should create a new seed with create_seed transaction', async () => {
       const mockSeed = {

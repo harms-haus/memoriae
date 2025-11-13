@@ -171,6 +171,145 @@ describe('SeedDetailView Component', () => {
     vi.mocked(api.getSeedTransactions).mockResolvedValue(mockTransactions)
   })
 
+  describe('API Path Formatting', () => {
+    it('should format hashId-only seedId correctly', async () => {
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === '/seeds/seed-1') {
+          return Promise.resolve(mockSeed)
+        }
+        if (url === '/seeds/seed-1/state') {
+          return Promise.resolve({
+            seed_id: 'seed-1',
+            current_state: mockState,
+            transactions_applied: 1,
+          })
+        }
+        if (url === '/tags') {
+          return Promise.resolve(mockTags)
+        }
+        if (url === '/seeds/seed-1/automations') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="seed-1" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1')
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/state')
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/automations')
+      })
+    })
+
+    it('should format hashId/slug seedId correctly', async () => {
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === '/seeds/seed-1/test-slug') {
+          return Promise.resolve(mockSeed)
+        }
+        if (url === '/seeds/seed-1/test-slug/state') {
+          return Promise.resolve({
+            seed_id: 'seed-1',
+            current_state: mockState,
+            transactions_applied: 1,
+          })
+        }
+        if (url === '/tags') {
+          return Promise.resolve(mockTags)
+        }
+        if (url === '/seeds/seed-1/test-slug/automations') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="seed-1/test-slug" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/test-slug')
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/test-slug/state')
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/test-slug/automations')
+      })
+    })
+
+    it('should format full UUID seedId correctly (backward compatibility)', async () => {
+      const fullUuid = '12345678-1234-1234-1234-123456789012'
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === `/seeds/${fullUuid}`) {
+          return Promise.resolve(mockSeed)
+        }
+        if (url === `/seeds/${fullUuid}/state`) {
+          return Promise.resolve({
+            seed_id: fullUuid,
+            current_state: mockState,
+            transactions_applied: 1,
+          })
+        }
+        if (url === '/tags') {
+          return Promise.resolve(mockTags)
+        }
+        if (url === `/seeds/${fullUuid}/automations`) {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId={fullUuid} onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(api.get).toHaveBeenCalledWith(`/seeds/${fullUuid}`)
+        expect(api.get).toHaveBeenCalledWith(`/seeds/${fullUuid}/state`)
+        expect(api.get).toHaveBeenCalledWith(`/seeds/${fullUuid}/automations`)
+      })
+    })
+
+    it('should handle slug with multiple path segments', async () => {
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === '/seeds/seed-1/path/to/slug') {
+          return Promise.resolve(mockSeed)
+        }
+        if (url === '/seeds/seed-1/path/to/slug/state') {
+          return Promise.resolve({
+            seed_id: 'seed-1',
+            current_state: mockState,
+            transactions_applied: 1,
+          })
+        }
+        if (url === '/tags') {
+          return Promise.resolve(mockTags)
+        }
+        if (url === '/seeds/seed-1/path/to/slug/automations') {
+          return Promise.resolve([])
+        }
+        return Promise.resolve([])
+      })
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="seed-1/path/to/slug" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/path/to/slug')
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/path/to/slug/state')
+        expect(api.get).toHaveBeenCalledWith('/seeds/seed-1/path/to/slug/automations')
+      })
+    })
+  })
+
   describe('Initial Rendering', () => {
     it('should render loading state initially', () => {
       // Make API calls hang to show loading state
