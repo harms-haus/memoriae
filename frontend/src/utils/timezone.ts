@@ -110,9 +110,10 @@ export function utcToDateTimeLocal(isoString: string, timezone?: string): string
  * 
  * @param isoString - UTC ISO string
  * @param timezone - Optional IANA timezone identifier. If not provided, uses browser timezone.
+ * @param now - Optional DateTime to use as "now" for testing. Defaults to DateTime.now().
  * @returns Formatted date string
  */
-export function formatDateInTimezone(isoString: string, timezone?: string): string {
+export function formatDateInTimezone(isoString: string, timezone?: string, now?: DateTime): string {
   const dt = DateTime.fromISO(isoString, { zone: 'utc' })
   
   if (!dt.isValid) {
@@ -121,29 +122,33 @@ export function formatDateInTimezone(isoString: string, timezone?: string): stri
 
   const targetZone = timezone || getBrowserTimezone()
   const localDt = dt.setZone(targetZone)
-  const now = DateTime.now().setZone(targetZone)
+  const nowDt = (now || DateTime.now()).setZone(targetZone)
   
-  const diff = localDt.diff(now, ['minutes', 'hours', 'days'])
+  const diff = localDt.diff(nowDt, ['minutes', 'hours', 'days'])
   
   const diffMins = Math.floor(diff.minutes)
   const diffHours = Math.floor(diff.hours)
   const diffDays = Math.floor(diff.days)
+  
+  // Calculate total minutes for accurate comparison
+  const totalMinutes = diffDays * 24 * 60 + diffHours * 60 + diffMins
 
-  if (diffMins < 0) {
-    return `Overdue by ${Math.abs(diffMins)}m`
+  if (totalMinutes < 0) {
+    return `Overdue by ${Math.abs(totalMinutes)}m`
   }
-  if (diffMins < 60) {
-    return `In ${diffMins}m`
+  if (totalMinutes < 60) {
+    return `In ${totalMinutes}m`
   }
-  if (diffHours < 24) {
-    return `In ${diffHours}h`
+  if (totalMinutes < 24 * 60) {
+    const hours = Math.floor(totalMinutes / 60)
+    return `In ${hours}h`
   }
   if (diffDays < 7) {
     return `In ${diffDays}d`
   }
 
   // Format date using Luxon
-  if (localDt.year !== now.year) {
+  if (localDt.year !== nowDt.year) {
     return localDt.toFormat('MMM d, yyyy')
   }
   return localDt.toFormat('MMM d')

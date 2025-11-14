@@ -55,8 +55,9 @@ describe('getBrowserTimezone', () => {
 
   it('should return valid IANA timezone', () => {
     const tz = getBrowserTimezone()
-    // Basic validation - IANA timezones typically contain /
-    expect(tz).toMatch(/^[A-Za-z_]+\/[A-Za-z_]+/)
+    // Basic validation - IANA timezones typically contain /, but UTC is also valid
+    // Accept either format: "Region/City" or "UTC"
+    expect(tz === 'UTC' || tz.match(/^[A-Za-z_]+\/[A-Za-z_]+/)).toBeTruthy()
   })
 })
 
@@ -144,18 +145,34 @@ describe('formatDateInTimezone', () => {
     expect(result).toMatch(/^In \d+[hm]$/)
   })
 
-  // Note: These tests are skipped due to timing/timezone dependency issues
-  // The core functionality is tested by other tests above
-  it.skip('should return days for dates within a week', () => {
-    // This test is timing-dependent and hard to test reliably
+  it('should return days for dates within a week', () => {
+    // Use a fixed "now" date for deterministic testing
+    const now = DateTime.fromISO('2024-03-15T12:00:00Z', { zone: 'UTC' })
+    // 3 days in the future
+    const futureDate = '2024-03-18T12:00:00Z'
+    const result = formatDateInTimezone(futureDate, 'UTC', now)
+    
+    expect(result).toBe('In 3d')
   })
 
-  it.skip('should return formatted date for distant dates', () => {
-    // This test is timing-dependent and hard to test reliably
+  it('should return formatted date for distant dates', () => {
+    // Use a fixed "now" date for deterministic testing
+    const now = DateTime.fromISO('2024-03-15T12:00:00Z', { zone: 'UTC' })
+    // 10 days in the future (beyond 7 day threshold)
+    const futureDate = '2024-03-25T12:00:00Z'
+    const result = formatDateInTimezone(futureDate, 'UTC', now)
+    
+    expect(result).toBe('Mar 25')
   })
 
-  it.skip('should return formatted date with year for different year', () => {
-    // This test is timing-dependent and hard to test reliably
+  it('should return formatted date with year for different year', () => {
+    // Use a fixed "now" date for deterministic testing
+    const now = DateTime.fromISO('2024-03-15T12:00:00Z', { zone: 'UTC' })
+    // Date in a different year
+    const futureDate = '2025-03-15T12:00:00Z'
+    const result = formatDateInTimezone(futureDate, 'UTC', now)
+    
+    expect(result).toBe('Mar 15, 2025')
   })
 
   it('should use specified timezone', () => {

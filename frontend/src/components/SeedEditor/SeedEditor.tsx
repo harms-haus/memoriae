@@ -335,9 +335,11 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
 
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
-    const selectedText = content.substring(start, end)
-    const beforeText = content.substring(0, start)
-    const afterText = content.substring(end)
+    // Use textarea.value instead of content state to ensure we're working with the actual DOM value
+    const textareaValue = textarea.value
+    const selectedText = textareaValue.substring(start, end)
+    const beforeText = textareaValue.substring(0, start)
+    const afterText = textareaValue.substring(end)
 
     let newContent: string
     if (selectedText) {
@@ -358,7 +360,7 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
         textarea.focus()
       }
     }, 0)
-  }, [content, handleContentChange])
+  }, [handleContentChange])
 
   const handleBold = () => insertMarkdown('**', '**')
   const handleItalic = () => insertMarkdown('*', '*')

@@ -438,27 +438,47 @@ echo -e "${YELLOW}Restarting postgres and redis...${NC}"
 # Suppress stderr for restart (podman-compose prints tracebacks on interrupt)
 (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG restart postgres redis 2>/dev/null || \
  (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>/dev/null))
+RESTART_EXIT=$?
 
 # Rebuild/recreate memoriae app (force recreate to use new image if built)
 echo -e "${YELLOW}Rebuilding/restarting memoriae app...${NC}"
 # Suppress stderr to hide KeyboardInterrupt tracebacks from podman-compose
 (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d --force-recreate --no-deps memoriae 2>/dev/null)
+MEMORIAE_EXIT=$?
 
 # Make sure all services are up
 (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>/dev/null)
+UP_EXIT=$?
 
-COMPOSE_EXIT_CODE=$?
 set -e
 
 # If we were interrupted, exit immediately without any cleanup
-if [ "$INTERRUPTED" = true ] || [ $COMPOSE_EXIT_CODE -eq 130 ]; then
+if [ "$INTERRUPTED" = true ]; then
     exit 130
 fi
 
-# If compose failed for other reasons, check if it's a real error
-if [ $COMPOSE_EXIT_CODE -ne 0 ] && [ $COMPOSE_EXIT_CODE -ne 130 ]; then
-    echo -e "${RED}Error: Failed to start services${NC}"
-    exit $COMPOSE_EXIT_CODE
+# Check if containers are actually running (more reliable than exit codes)
+echo -e "${YELLOW}Verifying containers are running...${NC}"
+ALL_RUNNING=true
+for container in memoriae-postgres memoriae-redis memoriae-app; do
+    if $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^${container}$"; then
+        echo -e "${GREEN}✓ ${container} is running${NC}"
+    else
+        echo -e "${RED}✗ ${container} is not running${NC}"
+        ALL_RUNNING=false
+    fi
+done
+
+# If containers are running, we're good (ignore compose exit codes)
+if [ "$ALL_RUNNING" = true ]; then
+    echo -e "${GREEN}✓ All containers are running${NC}"
+else
+    # Only fail if containers aren't running AND we got error exit codes
+    if [ $RESTART_EXIT -ne 0 ] || [ $MEMORIAE_EXIT -ne 0 ] || [ $UP_EXIT -ne 0 ]; then
+        echo -e "${RED}Error: Some containers failed to start${NC}"
+        echo -e "${YELLOW}Check logs with: $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG logs${NC}"
+        exit 1
+    fi
 fi
 
 # Step 5: Wait for services to be healthy
