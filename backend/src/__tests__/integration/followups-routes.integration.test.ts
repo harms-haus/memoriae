@@ -6,7 +6,7 @@ import followupsRoutes from '../../routes/followups'
 import { generateTestToken } from '../../test-helpers'
 import * as authService from '../../services/auth'
 import { FollowupService } from '../../services/followups'
-import db from '../../db/connection'
+import { SeedsService } from '../../services/seeds'
 
 // Mock the followups service
 vi.mock('../../services/followups', () => ({
@@ -21,19 +21,13 @@ vi.mock('../../services/followups', () => ({
   },
 }))
 
-// Mock database
-vi.mock('../../db/connection', () => {
-  const mockDb = vi.fn((table: string) => {
-    const queryBuilder = {
-      where: vi.fn().mockReturnThis(),
-      first: vi.fn(),
-    }
-    return queryBuilder
-  })
-  return {
-    default: mockDb,
-  }
-})
+// Mock SeedsService
+vi.mock('../../services/seeds', () => ({
+  SeedsService: {
+    getById: vi.fn(),
+    getByHashId: vi.fn(),
+  },
+}))
 
 // Mock auth service
 vi.mock('../../services/auth', () => ({
@@ -64,28 +58,58 @@ describe('Followups Routes', () => {
       created_at: new Date(),
     })
 
-    // Mock database seed lookup
-    const mockWhere = vi.fn().mockReturnThis()
-    const mockFirst = vi.fn().mockResolvedValue({
-      id: 'seed-123',
-      user_id: 'user-123',
+    // Mock SeedsService.getById for full UUID (backward compatibility)
+    vi.mocked(SeedsService.getById).mockImplementation(async (id: string, userId: string) => {
+      if (id === 'seed-123' && userId === 'user-123') {
+        return {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date(),
+          slug: null,
+          currentState: {
+            seed: 'Test content',
+            timestamp: new Date().toISOString(),
+            metadata: {},
+          },
+        } as any
+      }
+      return null
     })
-    vi.mocked(db).mockReturnValue({
-      where: mockWhere,
-      first: mockFirst,
-    } as any)
+
+    // Mock SeedsService.getByHashId for hashId-based routes
+    vi.mocked(SeedsService.getByHashId).mockImplementation(async (hashId: string, userId: string, slugHint?: string) => {
+      // seed-123 has hashId 'seed-1' (first 7 chars)
+      if (hashId === 'seed-1' && userId === 'user-123') {
+        return {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date(),
+          slug: slugHint || null,
+          currentState: {
+            seed: 'Test content',
+            timestamp: new Date().toISOString(),
+            metadata: {},
+          },
+        } as any
+      }
+      // For full UUID (36 chars), return null (should use getById instead)
+      if (hashId.length === 36) {
+        return null
+      }
+      return null
+    })
   })
 
-  describe('GET /api/seeds/:seedId/followups', () => {
+  describe('GET /api/seeds/:hashId/:slug/followups', () => {
     it('should require authentication', async () => {
       const response = await request(app)
-        .get('/api/seeds/seed-123/followups')
+        .get('/api/seeds/seed-1/test-slug/followups')
         .expect(401)
 
       expect(response.body.error).toContain('Unauthorized')
     })
 
-    it('should return followups for seed', async () => {
+    it('should return followups for seed by hashId with slug', async () => {
       const token = generateTestToken({
         id: 'user-123',
         email: 'test@example.com',
@@ -108,25 +132,126 @@ describe('Followups Routes', () => {
       vi.mocked(FollowupService.getBySeedId).mockResolvedValue(mockFollowups)
 
       const response = await request(app)
-        .get('/api/seeds/seed-123/followups')
+        .get('/api/seeds/seed-1/test-slug/followups')
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
 
       expect(Array.isArray(response.body)).toBe(true)
       expect(response.body).toHaveLength(1)
       expect(response.body[0].id).toBe('followup-1')
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123', 'test-slug')
+      expect(FollowupService.getBySeedId).toHaveBeenCalledWith('seed-123')
+    })
+
+    it('should return 404 if seed not found by hashId/slug', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
+
+      const response = await request(app)
+        .get('/api/seeds/non-existent/slug/followups')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body.error).toBe('Seed not found')
+    })
+  })
+
+  describe('GET /api/seeds/:seedId/followups', () => {
+    it('should require authentication', async () => {
+      const response = await request(app)
+        .get('/api/seeds/seed-123/followups')
+        .expect(401)
+
+      expect(response.body.error).toContain('Unauthorized')
+    })
+
+    it('should return followups for seed by full UUID', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+        provider: 'google',
+      })
+
+      const mockFollowups = [
+        {
+          id: 'followup-1',
+          seed_id: 'seed-123',
+          created_at: new Date('2024-01-01T10:00:00Z'),
+          due_time: new Date('2024-01-02T10:00:00Z'),
+          message: 'Test followup',
+          dismissed: false,
+          transactions: [],
+        },
+      ]
+
+      vi.mocked(FollowupService.getBySeedId).mockResolvedValue(mockFollowups)
+
+      // Use full UUID (36 chars) - should use getById
+      const fullUuid = 'seed-123'.padEnd(36, '0')
+      vi.mocked(SeedsService.getById).mockResolvedValue({
+        id: fullUuid,
+        user_id: 'user-123',
+        created_at: new Date(),
+        slug: null,
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      } as any)
+
+      const response = await request(app)
+        .get(`/api/seeds/${fullUuid}/followups`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(Array.isArray(response.body)).toBe(true)
+      expect(response.body).toHaveLength(1)
+      expect(response.body[0].id).toBe('followup-1')
+      expect(SeedsService.getById).toHaveBeenCalledWith(fullUuid, 'user-123')
+    })
+
+    it('should return followups for seed by hashId only', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+        provider: 'google',
+      })
+
+      const mockFollowups = [
+        {
+          id: 'followup-1',
+          seed_id: 'seed-123',
+          created_at: new Date('2024-01-01T10:00:00Z'),
+          due_time: new Date('2024-01-02T10:00:00Z'),
+          message: 'Test followup',
+          dismissed: false,
+          transactions: [],
+        },
+      ]
+
+      vi.mocked(FollowupService.getBySeedId).mockResolvedValue(mockFollowups)
+
+      const response = await request(app)
+        .get('/api/seeds/seed-1/followups')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(Array.isArray(response.body)).toBe(true)
+      expect(response.body).toHaveLength(1)
+      expect(response.body[0].id).toBe('followup-1')
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
+      expect(FollowupService.getBySeedId).toHaveBeenCalledWith('seed-123')
     })
 
     it('should return 404 if seed not found', async () => {
       const token = generateTestToken()
 
-      // Mock seed lookup to return null
-      const mockWhere = vi.fn().mockReturnThis()
-      const mockFirst = vi.fn().mockResolvedValue(null)
-      vi.mocked(db).mockReturnValue({
-        where: mockWhere,
-        first: mockFirst,
-      } as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(null)
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
 
       const response = await request(app)
         .get('/api/seeds/non-existent/followups')
@@ -141,17 +266,75 @@ describe('Followups Routes', () => {
         id: 'user-456', // Different user
       })
 
-      // Mock seed lookup to return null (different user)
-      const mockWhere = vi.fn().mockReturnThis()
-      const mockFirst = vi.fn().mockResolvedValue(null)
-      vi.mocked(db).mockReturnValue({
-        where: mockWhere,
-        first: mockFirst,
-      } as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(null)
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
 
       const response = await request(app)
         .get('/api/seeds/seed-123/followups')
         .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body.error).toBe('Seed not found')
+    })
+  })
+
+  describe('POST /api/seeds/:hashId/:slug/followups', () => {
+    it('should require authentication', async () => {
+      const response = await request(app)
+        .post('/api/seeds/seed-1/test-slug/followups')
+        .send({ due_time: '2024-01-02T10:00:00Z', message: 'Test' })
+        .expect(401)
+
+      expect(response.body.error).toContain('Unauthorized')
+    })
+
+    it('should create followup by hashId with slug', async () => {
+      const token = generateTestToken()
+      const mockFollowup = {
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date('2024-01-01T10:00:00Z'),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Test followup',
+        dismissed: false,
+        transactions: [],
+      }
+
+      vi.mocked(FollowupService.create).mockResolvedValue(mockFollowup)
+
+      const response = await request(app)
+        .post('/api/seeds/seed-1/test-slug/followups')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          due_time: '2024-01-02T10:00:00Z',
+          message: 'Test followup',
+        })
+        .expect(201)
+
+      expect(response.body.id).toBe('followup-123')
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123', 'test-slug')
+      expect(FollowupService.create).toHaveBeenCalledWith(
+        'seed-123',
+        {
+          due_time: '2024-01-02T10:00:00Z',
+          message: 'Test followup',
+        },
+        'manual'
+      )
+    })
+
+    it('should return 404 if seed not found by hashId/slug', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
+
+      const response = await request(app)
+        .post('/api/seeds/non-existent/slug/followups')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          due_time: '2024-01-02T10:00:00Z',
+          message: 'Test',
+        })
         .expect(404)
 
       expect(response.body.error).toBe('Seed not found')
@@ -168,7 +351,56 @@ describe('Followups Routes', () => {
       expect(response.body.error).toContain('Unauthorized')
     })
 
-    it('should create followup', async () => {
+    it('should create followup by full UUID', async () => {
+      const token = generateTestToken()
+      const mockFollowup = {
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date('2024-01-01T10:00:00Z'),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Test followup',
+        dismissed: false,
+        transactions: [],
+      }
+
+      vi.mocked(FollowupService.create).mockResolvedValue(mockFollowup)
+
+      // Use full UUID (36 chars) - should use getById
+      const fullUuid = 'seed-123'.padEnd(36, '0')
+      vi.mocked(SeedsService.getById).mockResolvedValue({
+        id: fullUuid,
+        user_id: 'user-123',
+        created_at: new Date(),
+        slug: null,
+        currentState: {
+          seed: 'Test content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      } as any)
+
+      const response = await request(app)
+        .post(`/api/seeds/${fullUuid}/followups`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          due_time: '2024-01-02T10:00:00Z',
+          message: 'Test followup',
+        })
+        .expect(201)
+
+      expect(response.body.id).toBe('followup-123')
+      expect(SeedsService.getById).toHaveBeenCalledWith(fullUuid, 'user-123')
+      expect(FollowupService.create).toHaveBeenCalledWith(
+        fullUuid,
+        {
+          due_time: '2024-01-02T10:00:00Z',
+          message: 'Test followup',
+        },
+        'manual'
+      )
+    })
+
+    it('should create followup by hashId only', async () => {
       const token = generateTestToken()
       const mockFollowup = {
         id: 'followup-123',
@@ -183,7 +415,7 @@ describe('Followups Routes', () => {
       vi.mocked(FollowupService.create).mockResolvedValue(mockFollowup)
 
       const response = await request(app)
-        .post('/api/seeds/seed-123/followups')
+        .post('/api/seeds/seed-1/followups')
         .set('Authorization', `Bearer ${token}`)
         .send({
           due_time: '2024-01-02T10:00:00Z',
@@ -192,6 +424,7 @@ describe('Followups Routes', () => {
         .expect(201)
 
       expect(response.body.id).toBe('followup-123')
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123')
       expect(FollowupService.create).toHaveBeenCalledWith(
         'seed-123',
         {

@@ -71,6 +71,17 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_API_URL=${OPENROUTER_API_URL:-https://openrouter.ai/api/v1}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+    # DNS configuration: By default, Podman/Docker inherits DNS from the host.
+    # If DNS resolution fails (e.g., "getaddrinfo EAI_AGAIN" errors), uncomment
+    # the dns section below to use public DNS servers as a fallback.
+    # This is typically needed when:
+    # - Custom networks don't inherit host DNS properly
+    # - systemd-resolved isn't accessible from containers
+    # - Network isolation prevents host DNS access
+    # dns:
+    #   - 8.8.8.8     # Google DNS
+    #   - 8.8.4.4     # Google DNS
+    #   - 1.1.1.1     # Cloudflare DNS
     stdin_open: true
     tty: true
     restart: unless-stopped
@@ -84,3 +95,6 @@ volumes:
 networks:
   memoriae-network-dev:
     driver: bridge
+    # DNS is automatically inherited from the host by default
+    # Podman/Docker will use the host's DNS resolver (systemd-resolved, etc.)
+    # No explicit DNS configuration needed - containers inherit host DNS settings

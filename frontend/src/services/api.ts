@@ -169,13 +169,35 @@ class ApiClient {
     return response.data
   }
 
+  // Helper to format seedId for API paths
+  // seedId can be:
+  // - hashId only (7 chars): `/seeds/:hashId`
+  // - hashId/slug: `/seeds/:hashId/:slug`
+  // - full UUID (36 chars): `/seeds/:uuid` (backward compatibility)
+  private formatSeedPath(seedId: string): string {
+    // If it's a full UUID (36 chars), use it directly
+    if (seedId.length === 36 && !seedId.includes('/')) {
+      return `/seeds/${seedId}`
+    }
+    
+    // If it contains '/', it's hashId/slug format
+    if (seedId.includes('/')) {
+      const [hashId, ...slugParts] = seedId.split('/')
+      const slugPart = slugParts.join('/')
+      return `/seeds/${hashId}/${slugPart}`
+    }
+    
+    // Otherwise, it's just hashId
+    return `/seeds/${seedId}`
+  }
+
   // Followup endpoints
   async getFollowups(seedId: string): Promise<Followup[]> {
-    return this.get<Followup[]>(`/seeds/${seedId}/followups`)
+    return this.get<Followup[]>(`${this.formatSeedPath(seedId)}/followups`)
   }
 
   async createFollowup(seedId: string, data: CreateFollowupDto): Promise<Followup> {
-    return this.post<Followup>(`/seeds/${seedId}/followups`, data)
+    return this.post<Followup>(`${this.formatSeedPath(seedId)}/followups`, data)
   }
 
   async editFollowup(followupId: string, data: EditFollowupDto): Promise<Followup> {
@@ -196,11 +218,11 @@ class ApiClient {
 
   // Transaction endpoints
   async getSeedTransactions(seedId: string): Promise<SeedTransaction[]> {
-    return this.get<SeedTransaction[]>(`/seeds/${seedId}/transactions`)
+    return this.get<SeedTransaction[]>(`${this.formatSeedPath(seedId)}/transactions`)
   }
 
   async createSeedTransaction(seedId: string, data: CreateSeedTransactionDto): Promise<SeedTransaction> {
-    return this.post<SeedTransaction>(`/seeds/${seedId}/transactions`, data)
+    return this.post<SeedTransaction>(`${this.formatSeedPath(seedId)}/transactions`, data)
   }
 
   async getSeedTransaction(transactionId: string): Promise<SeedTransaction> {

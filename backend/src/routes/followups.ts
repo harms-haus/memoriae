@@ -1,8 +1,8 @@
 // Followup routes
 import { Router, Request, Response, NextFunction } from 'express'
 import { FollowupService } from '../services/followups'
+import { SeedsService } from '../services/seeds'
 import { authenticate } from '../middleware/auth'
-import db from '../db/connection'
 import type { CreateFollowupDto, EditFollowupDto } from '../types/followups'
 
 const router = Router()
@@ -11,8 +11,37 @@ const router = Router()
 router.use(authenticate)
 
 /**
+ * GET /api/seeds/:hashId/:slug/followups
+ * Get all followups for a seed by hashId with slug hint
+ */
+router.get('/seeds/:hashId/:slug/followups', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { hashId, slug } = req.params
+    const userId = req.user!.id
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    const followups = await FollowupService.getBySeedId(seed.id)
+    res.json(followups)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
  * GET /api/seeds/:seedId/followups
  * Get all followups for a seed
+ * Supports both hashId and full UUID (backward compatibility)
  */
 router.get('/seeds/:seedId/followups', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -24,18 +53,74 @@ router.get('/seeds/:seedId/followups', async (req: Request, res: Response, next:
       return
     }
 
-    // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: seedId, user_id: userId })
-      .first()
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (seedId.length === 36) {
+      seed = await SeedsService.getById(seedId, userId)
+    } else {
+      // Otherwise treat as hashId
+      seed = await SeedsService.getByHashId(seedId, userId)
+    }
 
     if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
-    const followups = await FollowupService.getBySeedId(seedId)
+    const followups = await FollowupService.getBySeedId(seed.id)
     res.json(followups)
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * POST /api/seeds/:hashId/:slug/followups
+ * Create a new followup manually by hashId with slug hint
+ */
+router.post('/seeds/:hashId/:slug/followups', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { hashId, slug } = req.params
+    const userId = req.user!.id
+    const { due_time, message } = req.body
+
+    if (!hashId) {
+      res.status(400).json({ error: 'Hash ID is required' })
+      return
+    }
+
+    // Validate input
+    if (!due_time || typeof due_time !== 'string') {
+      res.status(400).json({ error: 'due_time is required and must be a string (ISO format)' })
+      return
+    }
+
+    if (!message || typeof message !== 'string') {
+      res.status(400).json({ error: 'message is required and must be a string' })
+      return
+    }
+
+    // Use hashId as primary identifier, slug as hint for collision resolution
+    const seed = await SeedsService.getByHashId(hashId, userId, slug)
+    if (!seed) {
+      res.status(404).json({ error: 'Seed not found' })
+      return
+    }
+
+    // Validate due_time is a valid date
+    const dueDate = new Date(due_time)
+    if (isNaN(dueDate.getTime())) {
+      res.status(400).json({ error: 'due_time must be a valid ISO date string' })
+      return
+    }
+
+    const createData: CreateFollowupDto = {
+      due_time,
+      message: message.trim(),
+    }
+
+    const followup = await FollowupService.create(seed.id, createData, 'manual')
+    res.status(201).json(followup)
   } catch (error) {
     next(error)
   }
@@ -44,6 +129,7 @@ router.get('/seeds/:seedId/followups', async (req: Request, res: Response, next:
 /**
  * POST /api/seeds/:seedId/followups
  * Create a new followup manually
+ * Supports both hashId and full UUID (backward compatibility)
  */
 router.post('/seeds/:seedId/followups', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -67,10 +153,14 @@ router.post('/seeds/:seedId/followups', async (req: Request, res: Response, next
       return
     }
 
-    // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: seedId, user_id: userId })
-      .first()
+    // Check if it's a full UUID (36 chars) - backward compatibility
+    let seed
+    if (seedId.length === 36) {
+      seed = await SeedsService.getById(seedId, userId)
+    } else {
+      // Otherwise treat as hashId
+      seed = await SeedsService.getByHashId(seedId, userId)
+    }
 
     if (!seed) {
       res.status(404).json({ error: 'Seed not found' })
@@ -89,7 +179,7 @@ router.post('/seeds/:seedId/followups', async (req: Request, res: Response, next
       message: message.trim(),
     }
 
-    const followup = await FollowupService.create(seedId, createData, 'manual')
+    const followup = await FollowupService.create(seed.id, createData, 'manual')
     res.status(201).json(followup)
   } catch (error) {
     next(error)
@@ -119,10 +209,7 @@ router.put('/followups/:followupId', async (req: Request, res: Response, next: N
     }
 
     // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: followup.seed_id, user_id: userId })
-      .first()
-
+    const seed = await SeedsService.getById(followup.seed_id, userId)
     if (!seed) {
       res.status(403).json({ error: 'Access denied' })
       return
@@ -190,10 +277,7 @@ router.post('/followups/:followupId/snooze', async (req: Request, res: Response,
     }
 
     // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: followup.seed_id, user_id: userId })
-      .first()
-
+    const seed = await SeedsService.getById(followup.seed_id, userId)
     if (!seed) {
       res.status(403).json({ error: 'Access denied' })
       return
@@ -244,10 +328,7 @@ router.post('/followups/:followupId/dismiss', async (req: Request, res: Response
     }
 
     // Verify seed ownership
-    const seed = await db('seeds')
-      .where({ id: followup.seed_id, user_id: userId })
-      .first()
-
+    const seed = await SeedsService.getById(followup.seed_id, userId)
     if (!seed) {
       res.status(403).json({ error: 'Access denied' })
       return
