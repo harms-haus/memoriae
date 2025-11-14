@@ -84,7 +84,10 @@ export function ModelSelector({
     if (!isOpen || !containerRef.current || !inputRef.current) return
 
     const calculatePosition = () => {
-      const inputRect = inputRef.current!.getBoundingClientRect()
+      // Check if refs still exist (component may have unmounted)
+      if (!inputRef.current) return
+      
+      const inputRect = inputRef.current.getBoundingClientRect()
       const viewportHeight = window.innerHeight
       const spaceBelow = viewportHeight - inputRect.bottom
       const spaceAbove = inputRect.top
@@ -106,7 +109,7 @@ export function ModelSelector({
     }
 
     // Use requestAnimationFrame to ensure DOM is updated
-    requestAnimationFrame(() => {
+    const rafId = requestAnimationFrame(() => {
       calculatePosition()
     })
 
@@ -126,6 +129,7 @@ export function ModelSelector({
     window.addEventListener('scroll', handleScroll, true)
 
     return () => {
+      cancelAnimationFrame(rafId)
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('scroll', handleScroll, true)
     }
