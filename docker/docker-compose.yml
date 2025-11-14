@@ -6,10 +6,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-memoriae}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memoriae}
       POSTGRES_DB: ${POSTGRES_DB:-memoriae}
+      # Allow connections from Docker/Podman networks
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - memoriae-postgres-data:/var/lib/postgresql/data
+      - ./postgres-entrypoint.sh:/usr/local/bin/custom-entrypoint.sh:ro
+    # Use custom entrypoint that configures pg_hba.conf
+    entrypoint: ["/usr/local/bin/custom-entrypoint.sh"]
+    # Configure PostgreSQL to listen on all addresses (not just localhost)
+    command: ["postgres", "-c", "listen_addresses=*"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memoriae}"]
       interval: 10s

@@ -20,13 +20,19 @@ async function initializeServices() {
   try {
     // Test database connection first
     console.log('Testing database connection...')
+    // Extract connection details from DATABASE_URL if available
+    const databaseUrl = process.env.DATABASE_URL || ''
     const dbConfig = {
-      host: process.env.DB_HOST || process.env.DATABASE_URL?.match(/@([^:]+):/)?.[1] || 'localhost',
-      port: process.env.DB_PORT || process.env.DATABASE_URL?.match(/:(\d+)\//)?.[1] || '5432',
-      database: process.env.DB_NAME || 'memoriae',
-      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || databaseUrl.match(/@([^:]+):/)?.[1] || 'localhost',
+      port: process.env.DB_PORT || databaseUrl.match(/:(\d+)\//)?.[1] || '5432',
+      database: process.env.DB_NAME || databaseUrl.match(/\/([^?]+)/)?.[1] || 'memoriae',
+      user: process.env.DB_USER || databaseUrl.match(/:\/\/([^:]+):/)?.[1] || 'postgres',
     }
     console.log(`  Connecting to: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`)
+    if (databaseUrl) {
+      const safeUrl = databaseUrl.replace(/:[^:@]+@/, ':****@')
+      console.log(`  DATABASE_URL: ${safeUrl}`)
+    }
     
     try {
       await db.raw('SELECT 1')
