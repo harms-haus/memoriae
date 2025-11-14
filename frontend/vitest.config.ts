@@ -48,6 +48,21 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/*.integration.test.{ts,tsx}'],
     exclude: ['node_modules/**', 'dist/**'],
     logLevel: 'warn',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'dist/',
+        '**/*.test.{ts,tsx}',
+        '**/*.spec.{ts,tsx}',
+        '**/*.integration.test.{ts,tsx}',
+        '**/__tests__/**',
+        'src/test/**',
+        '**/index.ts',
+        '**/*.config.{ts,js}',
+      ],
+    },
   },
 })
 

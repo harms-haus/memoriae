@@ -441,6 +441,250 @@ describe('Search Routes', () => {
         .get('/api/search')
         .expect(401)
     })
+
+    it('should handle very long query strings', async () => {
+      const longQuery = 'a'.repeat(10000)
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Test content',
+            tags: [],
+            categories: [],
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get(`/api/search?q=${encodeURIComponent(longQuery)}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toBeDefined()
+    })
+
+    it('should handle special characters in query', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Test content with <script>alert("xss")</script>',
+            tags: [],
+            categories: [],
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/search?q=script')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(1)
+    })
+
+    it('should handle unicode characters in query', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Test content with émoji 🚀',
+            tags: [],
+            categories: [],
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/search?q=émoji')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(1)
+    })
+
+    it('should handle seeds with missing currentState', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: null,
+        },
+        {
+          id: 'seed-2',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Valid content',
+            tags: [],
+            categories: [],
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/search?q=Valid')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(1)
+      expect(response.body[0].id).toBe('seed-2')
+    })
+
+    it('should handle seeds with missing tags array', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Test content',
+            tags: undefined,
+            categories: [],
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/search?q=Test')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(1)
+    })
+
+    it('should handle seeds with missing categories array', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Test content',
+            tags: [],
+            categories: undefined,
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/search?q=Test')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(1)
+    })
+
+    it('should handle multiple category filters (should only use first)', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Test content',
+            tags: [],
+            categories: [{ id: 'cat-1', name: 'Work' }],
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      // Express query parser returns first value when multiple are present
+      const response = await request(app)
+        .get('/api/search?category=cat-1&category=cat-2')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(1)
+    })
+
+    it('should handle non-string query parameters gracefully', async () => {
+      const mockSeeds = [
+        {
+          id: 'seed-1',
+          user_id: 'user-123',
+          created_at: new Date(),
+          currentState: {
+            seed: 'Test content',
+            tags: [],
+            categories: [],
+          },
+        },
+      ]
+
+      ;(SeedsService.getByUser as any).mockResolvedValue(mockSeeds)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      // Query parameters come as strings from Express, but test edge case
+      const response = await request(app)
+        .get('/api/search')
+        .query({ q: ['array', 'value'] as any })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      // Should handle gracefully (array gets stringified or ignored)
+      expect(response.body).toBeDefined()
+    })
   })
 })
 
