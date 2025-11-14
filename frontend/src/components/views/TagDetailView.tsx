@@ -220,7 +220,7 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
     }
 
     if (transaction.automation_id) {
-      parts.push('(Automated)')
+      parts.push('(automated)')
     }
 
     return parts.join(' • ') || 'Transaction'

@@ -27,6 +27,7 @@ export interface AddTagTransactionData {
 
 export interface RemoveTagTransactionData {
   tag_id: string
+  tag_name?: string // Optional for backward compatibility, but should be included for display purposes
 }
 
 export interface SetCategoryTransactionData {

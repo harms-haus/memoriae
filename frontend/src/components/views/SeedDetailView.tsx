@@ -80,7 +80,11 @@ const formatTransactionContent = (transaction: SeedTransaction): string => {
     case 'remove_tag': {
       const data = transaction.transaction_data
       if ('tag_id' in data) {
-        parts.push(`Tag removed`)
+        if ('tag_name' in data && data.tag_name) {
+          parts.push(`Tag: ${data.tag_name}`)
+        } else {
+          parts.push(`Tag removed`)
+        }
       }
       break
     }
@@ -105,7 +109,7 @@ const formatTransactionContent = (transaction: SeedTransaction): string => {
   }
 
   if (transaction.automation_id) {
-    parts.push('(Automated)')
+    parts.push('(automated)')
   }
 
   return parts.join(' • ') || 'Transaction'
@@ -424,6 +428,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
               transaction_type: 'remove_tag',
               transaction_data: {
                 tag_id: tagId,
+                tag_name: tag.name, // Include tag name for display in timeline
               },
             })
           }

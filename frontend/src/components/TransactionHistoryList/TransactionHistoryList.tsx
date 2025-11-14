@@ -128,11 +128,11 @@ export function TransactionHistoryList({
     const firstMessage = group.messages[0]
     if (!firstMessage) return ''
 
-    // Check if this is a group of tag additions
-    const isTagGroup = firstMessage.title === 'Tag Added' || firstMessage.title.includes('Tag')
+    // Check if this is a group of tag additions or removals
+    const isTagGroup = firstMessage.title === 'Tag Added' || firstMessage.title === 'Tag Removed' || firstMessage.title.includes('Tag')
     
     if (isTagGroup) {
-      // Extract tag names from content (format: "Tag: tag_name" or "Tag: tag_name • (Automated)")
+      // Extract tag names from content (format: "Tag: tag_name" or "Tag: tag_name • (automated)")
       const tagNames: string[] = []
       let hasAutomated = false
       
@@ -147,7 +147,7 @@ export function TransactionHistoryList({
             }
           }
           // Check if automated
-          if (msg.content.includes('(Automated)') || msg.content.includes('Automated')) {
+          if (msg.content.includes('automated')) {
             hasAutomated = true
           }
         }
@@ -155,7 +155,8 @@ export function TransactionHistoryList({
 
       if (tagNames.length > 0) {
         const tagsList = tagNames.join(', ')
-        return hasAutomated ? `Tags: ${tagsList} (automated)` : `Tags: ${tagsList}`
+        const prefix = firstMessage.title === 'Tag Removed' ? 'Tags removed' : 'Tags'
+        return hasAutomated ? `${prefix}: ${tagsList} (automated)` : `${prefix}: ${tagsList}`
       }
     }
 
@@ -207,6 +208,8 @@ export function TransactionHistoryList({
                 {isGrouped 
                   ? (firstMessage.title === 'Tag Added' 
                       ? 'Tags Added'
+                      : firstMessage.title === 'Tag Removed'
+                      ? 'Tags Removed'
                       : `${group.messages.length}x ${firstMessage.title}`)
                   : firstMessage.title}
               </span>
