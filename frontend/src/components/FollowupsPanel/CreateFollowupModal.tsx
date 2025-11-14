@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../../services/api'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
 import { Button } from '@mother/components/Button'
@@ -21,24 +21,56 @@ export function CreateFollowupModal({
   seedId,
   onCreated,
 }: CreateFollowupModalProps) {
-  const [dueTime, setDueTime] = useState('')
-  const [message, setMessage] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const { settings } = useUserSettings()
   const log = logger.scope('CreateFollowupModal')
+  const timezone = settings?.timezone ?? undefined
+  const prevOpenRef = useRef(false)
+  const prevTimezoneRef = useRef<string | undefined>(undefined)
 
   // Set default due time to 1 hour from now in user's timezone
-  const getDefaultDueTime = (): string => {
-    const userTimezone = settings?.timezone || getBrowserTimezone()
+  const getDefaultDueTime = (tz?: string): string => {
+    const userTimezone = tz || getBrowserTimezone()
     const dt = DateTime.now().setZone(userTimezone).plus({ hours: 1 })
     return dt.toFormat('yyyy-MM-dd\'T\'HH:mm')
   }
 
+  const [dueTime, setDueTime] = useState('')
+  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const dueTimeRef = useRef<HTMLInputElement | null>(null)
+  const messageRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // Initialize dueTime with default when modal opens
+  useEffect(() => {
+    if (!open) {
+      prevOpenRef.current = false
+      return
+    }
+
+    const justOpened = !prevOpenRef.current
+    const timezoneChanged = prevTimezoneRef.current !== timezone
+
+    if (!justOpened && !timezoneChanged) {
+      return
+    }
+
+    const defaultTime = getDefaultDueTime(timezone)
+    setDueTime(defaultTime)
+    setMessage('')
+    setError(null)
+
+    prevOpenRef.current = true
+    prevTimezoneRef.current = timezone
+  }, [open, timezone])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!dueTime || !message.trim()) {
+    const dueTimeValue = dueTimeRef.current?.value ?? dueTime
+    const messageValue = messageRef.current?.value ?? message
+
+    if (!dueTimeValue || !messageValue.trim()) {
       setError('Both time and message are required')
       return
     }
@@ -48,11 +80,11 @@ export function CreateFollowupModal({
       setError(null)
 
       // Convert datetime-local format (in user's timezone) to UTC ISO string
-      const userTimezone = settings?.timezone || getBrowserTimezone()
+      const userTimezone = timezone || getBrowserTimezone()
       let utcISO: string
       
       try {
-        utcISO = dateTimeLocalToUTC(dueTime, userTimezone)
+        utcISO = dateTimeLocalToUTC(dueTimeValue, userTimezone)
       } catch (err) {
         setError('Invalid date format')
         return
@@ -60,14 +92,15 @@ export function CreateFollowupModal({
 
       const data: CreateFollowupDto = {
         due_time: utcISO,
-        message: message.trim(),
+        message: messageValue.trim(),
       }
 
       await api.createFollowup(seedId, data)
       onCreated()
       
-      // Reset form
-      setDueTime('')
+      // Reset form to default values
+      const defaultTime = getDefaultDueTime(timezone)
+      setDueTime(defaultTime)
       setMessage('')
     } catch (err) {
       log.error('Error creating followup', { seedId, error: err })
@@ -101,7 +134,8 @@ export function CreateFollowupModal({
               id="due-time"
               type="datetime-local"
               className="input"
-              value={dueTime || getDefaultDueTime()}
+              ref={dueTimeRef}
+              value={dueTime}
               onChange={(e) => setDueTime(e.target.value)}
               required
               disabled={submitting}
@@ -115,6 +149,7 @@ export function CreateFollowupModal({
             <textarea
               id="message"
               className="textarea"
+              ref={messageRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Why is this follow-up needed?"

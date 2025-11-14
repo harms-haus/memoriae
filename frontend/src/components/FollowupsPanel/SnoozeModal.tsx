@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { api } from '../../services/api'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
 import { Button } from '@mother/components/Button'
@@ -32,6 +32,7 @@ export function SnoozeModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const log = logger.scope('SnoozeModal')
+  const customDurationRef = useRef<HTMLInputElement | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,16 +41,20 @@ export function SnoozeModal({
 
     if (selectedDuration !== null) {
       durationMinutes = selectedDuration
-    } else if (customMinutes.trim()) {
-      const parsed = parseInt(customMinutes, 10)
-      if (isNaN(parsed) || parsed <= 0) {
-        setError('Custom duration must be a positive number')
+    } else {
+      const customMinutesValue = customDurationRef.current?.value ?? customMinutes
+
+      if (customMinutesValue.trim()) {
+        const parsed = parseInt(customMinutesValue, 10)
+        if (isNaN(parsed) || parsed <= 0) {
+          setError('Custom duration must be a positive number')
+          return
+        }
+        durationMinutes = parsed
+      } else {
+        setError('Please select a duration or enter a custom duration')
         return
       }
-      durationMinutes = parsed
-    } else {
-      setError('Please select a duration or enter a custom duration')
-      return
     }
 
     try {
@@ -62,6 +67,9 @@ export function SnoozeModal({
       // Reset form
       setSelectedDuration(null)
       setCustomMinutes('')
+      if (customDurationRef.current) {
+        customDurationRef.current.value = ''
+      }
     } catch (err) {
       log.error('Error snoozing followup', { followupId: followup.id, error: err })
       setError(err instanceof Error ? err.message : 'Failed to snooze followup')
@@ -74,6 +82,9 @@ export function SnoozeModal({
     if (!submitting) {
       setSelectedDuration(null)
       setCustomMinutes('')
+      if (customDurationRef.current) {
+        customDurationRef.current.value = ''
+      }
       setError(null)
       onOpenChange(false)
     }
@@ -97,6 +108,9 @@ export function SnoozeModal({
                   onClick={() => {
                     setSelectedDuration(option.minutes)
                     setCustomMinutes('')
+                    if (customDurationRef.current) {
+                      customDurationRef.current.value = ''
+                    }
                   }}
                   disabled={submitting}
                 >
@@ -114,6 +128,7 @@ export function SnoozeModal({
               id="custom-duration"
               type="number"
               className="input"
+              ref={customDurationRef}
               value={customMinutes}
               onChange={(e) => {
                 setCustomMinutes(e.target.value)

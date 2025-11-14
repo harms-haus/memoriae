@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../../services/api'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
 import { Button } from '@mother/components/Button'
@@ -25,28 +25,62 @@ export function EditFollowupModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { settings } = useUserSettings()
+  const timezone = settings?.timezone ?? undefined
   const log = logger.scope('EditFollowupModal')
+  const prevOpenRef = useRef(false)
+  const prevFollowupIdRef = useRef<string | undefined>(undefined)
+  const prevFollowupDueTimeRef = useRef<string | undefined>(undefined)
+  const prevFollowupMessageRef = useRef<string | undefined>(undefined)
+  const prevTimezoneRef = useRef<string | undefined>(undefined)
+  const dueTimeRef = useRef<HTMLInputElement | null>(null)
+  const messageRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
-    if (open && followup) {
-      // Convert UTC ISO string to datetime-local format in user's timezone
-      const userTimezone = settings?.timezone || getBrowserTimezone()
-        try {
-          const localDateTime = utcToDateTimeLocal(followup.due_time, userTimezone)
-          setDueTime(localDateTime)
-        } catch (err) {
-          log.warn('Error formatting followup date', { followupId: followup.id, error: err })
-          setDueTime('')
-        }
-      setMessage(followup.message)
-      setError(null)
+    if (!open || !followup) {
+      prevOpenRef.current = false
+      return
     }
-  }, [open, followup, settings])
+
+    const justOpened = !prevOpenRef.current
+    const followupChanged = prevFollowupIdRef.current !== followup.id
+    const followupDataChanged =
+      prevFollowupDueTimeRef.current !== followup.due_time ||
+      prevFollowupMessageRef.current !== followup.message
+    const timezoneChanged = prevTimezoneRef.current !== timezone
+    const shouldReset =
+      justOpened || followupChanged || followupDataChanged || timezoneChanged
+
+    if (!shouldReset) {
+      return
+    }
+
+    const userTimezone = timezone || getBrowserTimezone()
+
+    try {
+      const localDateTime = utcToDateTimeLocal(followup.due_time, userTimezone)
+      setDueTime(localDateTime)
+    } catch (err) {
+      log.warn('Error formatting followup date', { followupId: followup.id, error: err })
+      setDueTime('')
+    }
+
+    setMessage(followup.message)
+    setError(null)
+
+    prevOpenRef.current = true
+    prevFollowupIdRef.current = followup.id
+    prevFollowupDueTimeRef.current = followup.due_time
+    prevFollowupMessageRef.current = followup.message
+    prevTimezoneRef.current = timezone
+  }, [open, followup?.id, followup?.due_time, followup?.message, timezone])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!dueTime || !message.trim()) {
+    const dueTimeValue = dueTimeRef.current?.value ?? dueTime
+    const messageValue = messageRef.current?.value ?? message
+
+    if (!dueTimeValue || !messageValue.trim()) {
       setError('Both time and message are required')
       return
     }
@@ -56,11 +90,13 @@ export function EditFollowupModal({
       setError(null)
 
       // Convert datetime-local format (in user's timezone) to UTC ISO string
-      const userTimezone = settings?.timezone || getBrowserTimezone()
+      const userTimezone = timezone || getBrowserTimezone()
+      const dueTimeValue = dueTimeRef.current?.value ?? dueTime
+      const messageValue = messageRef.current?.value ?? message
       let utcISO: string
       
       try {
-        utcISO = dateTimeLocalToUTC(dueTime, userTimezone)
+        utcISO = dateTimeLocalToUTC(dueTimeValue, userTimezone)
       } catch (err) {
         setError('Invalid date format')
         return
@@ -68,7 +104,7 @@ export function EditFollowupModal({
 
       const data: EditFollowupDto = {
         due_time: utcISO,
-        message: message.trim(),
+        message: messageValue.trim(),
       }
 
       await api.editFollowup(followup.id, data)
@@ -104,6 +140,7 @@ export function EditFollowupModal({
               id="edit-due-time"
               type="datetime-local"
               className="input"
+              ref={dueTimeRef}
               value={dueTime}
               onChange={(e) => setDueTime(e.target.value)}
               required
@@ -118,6 +155,7 @@ export function EditFollowupModal({
             <textarea
               id="edit-message"
               className="textarea"
+              ref={messageRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Why is this follow-up needed?"
