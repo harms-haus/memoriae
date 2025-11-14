@@ -28,6 +28,16 @@ COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 COPY mother-theme/ ./mother-theme/
 
+# Copy startup scripts
+COPY docker/start-backend.sh /start-backend.sh
+COPY docker/run-migrations.sh /run-migrations.sh
+RUN chmod +x /start-backend.sh /run-migrations.sh
+
+# Install PostgreSQL client for migration checks
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory to backend for runtime
 WORKDIR /app/backend
 

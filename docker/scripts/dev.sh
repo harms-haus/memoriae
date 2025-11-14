@@ -154,9 +154,25 @@ fi
 
 # Build if needed or if --rebuild is specified
 if [ "$REBUILD" = true ]; then
+    # Rebuild all three projects before rebuilding containers
+    echo -e "${YELLOW}Rebuilding projects (mother-theme, backend, frontend)...${NC}"
+    npm run build
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}Error: Project build failed${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Projects rebuilt successfully${NC}"
     echo -e "${YELLOW}Rebuilding containers...${NC}"
     $COMPOSE_CMD -f "$COMPOSE_FILE" build --no-cache
 elif ! $COMPOSE_CMD -f "$COMPOSE_FILE" images | grep -q "memoriae-dev"; then
+    # Rebuild all three projects before building containers (first time)
+    echo -e "${YELLOW}Rebuilding projects (mother-theme, backend, frontend)...${NC}"
+    npm run build
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}Error: Project build failed${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Projects rebuilt successfully${NC}"
     echo -e "${YELLOW}Building containers (first time)...${NC}"
     $COMPOSE_CMD -f "$COMPOSE_FILE" build
 fi

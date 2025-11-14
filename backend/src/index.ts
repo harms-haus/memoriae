@@ -76,12 +76,35 @@ async function initializeServices() {
     const followupAutomation = new FollowupAutomation()
     const ideaMusingAutomation = new IdeaMusingAutomation()
     
-    // Register automations
+    // Register automations - retry if table doesn't exist yet (migrations may still be running)
     const registry = AutomationRegistry.getInstance()
-    await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation, ideaMusingAutomation])
+    let retries = 0
+    const maxRetries = 30
+    const retryDelay = 2000 // 2 seconds
     
-    console.log('Automations initialized')
-    console.log(`Registered ${registry.getAll().length} automations`)
+    while (retries < maxRetries) {
+      try {
+        await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation, ideaMusingAutomation])
+        console.log('Automations initialized')
+        console.log(`Registered ${registry.getAll().length} automations`)
+        break
+      } catch (error: any) {
+        // Check if error is due to missing table (migrations not complete)
+        if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
+          retries++
+          if (retries >= maxRetries) {
+            console.error('Failed to initialize automations: database tables not found after', maxRetries, 'retries')
+            console.error('This usually means migrations have not completed. Please check migration status.')
+            throw new Error('Automations table not found - migrations may not have completed')
+          }
+          console.log(`Automations table not found (attempt ${retries}/${maxRetries}), waiting for migrations...`)
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
+        } else {
+          // Different error - rethrow
+          throw error
+        }
+      }
+    }
     
     // Queue worker is already started when imported
     // It will process jobs as they come in

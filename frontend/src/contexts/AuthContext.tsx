@@ -84,15 +84,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = urlParams.get('token')
     
     if (token) {
-      api.setToken(token)
+      console.log('AuthContext: Token found in URL, length:', token.length)
+      console.log('AuthContext: Token value (first 50 chars):', token.substring(0, 50))
+      // Decode the token in case it's URL-encoded
+      const decodedToken = decodeURIComponent(token)
+      console.log('AuthContext: Decoded token length:', decodedToken.length)
+      api.setToken(decodedToken)
       // Remove token from URL
       const newUrl = window.location.pathname + window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?')
       window.history.replaceState({}, '', newUrl)
-      // Check auth status
-      checkAuth()
+      // Small delay to ensure token is set before checking auth
+      setTimeout(() => {
+        console.log('AuthContext: Calling checkAuth after setting token')
+        checkAuth()
+      }, 100)
     } else {
       // Check if we have a stored token
+      console.log('AuthContext: No token in URL, loading from localStorage')
       api.loadToken()
+      const storedToken = api.getToken()
+      if (storedToken) {
+        console.log('AuthContext: Found stored token, length:', storedToken.length)
+      } else {
+        console.log('AuthContext: No stored token found')
+      }
       checkAuth()
     }
   }, [checkAuth])

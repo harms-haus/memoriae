@@ -41,6 +41,9 @@ class ApiClient {
       (config) => {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`
+          console.log('API: Adding Authorization header to request:', config.url)
+        } else {
+          console.log('API: No token available for request:', config.url)
         }
         return config
       },
@@ -65,9 +68,11 @@ class ApiClient {
   }
 
   setToken(token: string): void {
+    console.log('API: Setting token, length:', token.length, 'first 20 chars:', token.substring(0, 20))
     this.token = token
     if (typeof localStorage !== 'undefined' && typeof localStorage.setItem === 'function') {
       localStorage.setItem('auth_token', token)
+      console.log('API: Token stored in localStorage')
     }
   }
 

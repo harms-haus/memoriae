@@ -134,77 +134,130 @@ router.get('/github/callback', async (req: Request, res: Response) => {
     const { code, state } = req.query
 
     if (!code || typeof code !== 'string') {
+      console.error('GitHub OAuth callback: Missing code parameter')
       return res.redirect(`${config.frontend.url}/login?error=no_code`)
     }
 
-    // Exchange code for token
-    const tokenResponse = await axios.post(
-      'https://github.com/login/oauth/access_token',
-      {
-        client_id: config.oauth.github.clientId,
-        client_secret: config.oauth.github.clientSecret,
-        code,
-      },
-      {
-        headers: {
-          Accept: 'application/json',
-        },
-      }
-    )
+    console.log('GitHub OAuth callback: Exchanging code for token...')
 
-    const { access_token } = tokenResponse.data
+    // Exchange code for token
+    let tokenResponse
+    try {
+      tokenResponse = await axios.post(
+        'https://github.com/login/oauth/access_token',
+        {
+          client_id: config.oauth.github.clientId,
+          client_secret: config.oauth.github.clientSecret,
+          code,
+          redirect_uri: config.oauth.github.redirectUri,
+        },
+        {
+          headers: {
+            Accept: 'application/json',
+          },
+        }
+      )
+    } catch (tokenError: any) {
+      console.error('GitHub token exchange error:', tokenError.response?.data || tokenError.message)
+      return res.redirect(`${config.frontend.url}/login?error=token_exchange_failed`)
+    }
+
+    const { access_token, error: tokenError } = tokenResponse.data
+
+    if (tokenError) {
+      console.error('GitHub token exchange returned error:', tokenError)
+      return res.redirect(`${config.frontend.url}/login?error=token_error`)
+    }
 
     if (!access_token) {
+      console.error('GitHub token exchange: No access token in response')
       return res.redirect(`${config.frontend.url}/login?error=no_token`)
     }
 
+    console.log('GitHub OAuth: Token received, fetching user profile...')
+
     // Get user profile
-    const profileResponse = await axios.get('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    })
-
-    const profile = profileResponse.data
-
-    // Get user email (may need to fetch from emails endpoint)
-    let email = profile.email
-    if (!email) {
-      const emailsResponse = await axios.get('https://api.github.com/user/emails', {
+    let profile
+    try {
+      const profileResponse = await axios.get('https://api.github.com/user', {
         headers: {
           Authorization: `Bearer ${access_token}`,
           Accept: 'application/vnd.github.v3+json',
         },
       })
-      const primaryEmail = emailsResponse.data.find((e: any) => e.primary)
-      email = primaryEmail ? primaryEmail.email : emailsResponse.data[0]?.email || `${profile.id}@users.noreply.github.com`
+      profile = profileResponse.data
+    } catch (profileError: any) {
+      console.error('GitHub profile fetch error:', profileError.response?.data || profileError.message)
+      return res.redirect(`${config.frontend.url}/login?error=profile_fetch_failed`)
     }
 
+    // Get user email (may need to fetch from emails endpoint)
+    let email = profile.email
+    if (!email) {
+      try {
+        const emailsResponse = await axios.get('https://api.github.com/user/emails', {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        })
+        const primaryEmail = emailsResponse.data.find((e: any) => e.primary)
+        email = primaryEmail ? primaryEmail.email : emailsResponse.data[0]?.email || `${profile.id}@users.noreply.github.com`
+      } catch (emailError: any) {
+        console.error('GitHub email fetch error:', emailError.response?.data || emailError.message)
+        // Continue with fallback email
+        email = `${profile.id}@users.noreply.github.com`
+      }
+    }
+
+    console.log('GitHub OAuth: Finding or creating user...')
+
     // Find or create user
-    const user = await findOrCreateUser('github', {
-      id: String(profile.id),
-      email,
-      name: profile.name || profile.login || email,
-    })
+    let user
+    try {
+      user = await findOrCreateUser('github', {
+        id: String(profile.id),
+        email,
+        name: profile.name || profile.login || email,
+      })
+    } catch (userError: any) {
+      console.error('User creation error:', userError)
+      return res.redirect(`${config.frontend.url}/login?error=user_creation_failed`)
+    }
+
+    console.log('GitHub OAuth: Generating JWT token...')
 
     // Generate JWT token
-    const token = generateToken(user)
+    let token
+    try {
+      token = generateToken(user)
+    } catch (tokenGenError: any) {
+      console.error('JWT generation error:', tokenGenError)
+      return res.redirect(`${config.frontend.url}/login?error=token_generation_failed`)
+    }
 
     // Parse redirect from state
     let redirect = '/'
     try {
-      const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString())
-      redirect = stateData.redirect || '/'
+      if (state && typeof state === 'string') {
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString())
+        redirect = stateData.redirect || '/'
+      }
     } catch {
       // Invalid state, use default
     }
 
+    console.log('GitHub OAuth: Success! Redirecting to frontend...')
+
     // Redirect to frontend with token
     res.redirect(`${config.frontend.url}${redirect}?token=${token}`)
-  } catch (error) {
+  } catch (error: any) {
     console.error('GitHub OAuth error:', error)
-    res.redirect(`${config.frontend.url}/login?error=oauth_failed`)
+    console.error('Error stack:', error.stack)
+    // Ensure we always send a response
+    if (!res.headersSent) {
+      res.redirect(`${config.frontend.url}/login?error=oauth_failed`)
+    }
   }
 })
 
