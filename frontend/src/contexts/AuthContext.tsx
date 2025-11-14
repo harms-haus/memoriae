@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { api } from '../services/api'
 import { getBrowserTimezone } from '../utils/timezone'
-import { logger } from '../utils/logger'
+import log from 'loglevel'
 import type { User } from '../types'
 
 interface UserSettings {
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const log = logger.scope('AuthContext')
+  const logAuth = log.getLogger('AuthContext')
 
   const checkAuth = useCallback(async () => {
     setLoading(true)
@@ -49,11 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await api.put('/settings', { timezone: browserTimezone })
           }
         } catch (err) {
-          log.warn('Failed to set timezone', { error: err })
+          logAuth.warn('Failed to set timezone', { error: err })
         }
       }
     } catch (err) {
-      log.error('Authentication check failed', { error: err })
+      logAuth.error('Authentication check failed', { error: err })
       setError(err instanceof Error ? err.message : 'Authentication check failed')
       setAuthenticated(false)
       setUser(null)
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setError(null)
     } catch (err) {
-      log.error('Logout failed', { error: err })
+      logAuth.error('Logout failed', { error: err })
       setError(err instanceof Error ? err.message : 'Logout failed')
     }
   }, [])
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.history.replaceState({}, '', newUrl)
       // Small delay to ensure token is set before checking auth
       setTimeout(() => {
-        log.debug('Calling checkAuth after setting token')
+        logAuth.debug('Calling checkAuth after setting token')
         checkAuth()
       }, 100)
     } else {
@@ -106,9 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.loadToken()
       const storedToken = api.getToken()
       if (storedToken) {
-        log.debug('Found stored token in localStorage', { length: storedToken.length })
+        logAuth.debug('Found stored token in localStorage', { length: storedToken.length })
       } else {
-        log.info('No stored token found in localStorage')
+        logAuth.info('No stored token found in localStorage')
       }
       checkAuth()
     }

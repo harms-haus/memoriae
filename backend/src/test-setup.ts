@@ -11,9 +11,15 @@ process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
 // Don't override it with a default - let the actual database connection handle it
 // The knexfile will use DATABASE_URL from process.env if available
 
+// Initialize loglevel - set to SILENT level in test environment
+// This ensures all Loglevel loggers are silent during tests
+import log from 'loglevel'
+log.setLevel(log.levels.SILENT)
+
 // Suppress all console methods in tests to reduce output clutter
 // These are expected errors/logs from error handling tests and validation failures
 // Tests can still verify error behavior without the logs cluttering output
+// Note: Once all console calls are migrated to Loglevel, this can be removed
 if (process.env.NODE_ENV === 'test') {
   const originalError = console.error
   const originalWarn = console.warn

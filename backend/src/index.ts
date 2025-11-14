@@ -1,4 +1,34 @@
 // Entry point for the backend server
+// Initialize loglevel first
+import log from 'loglevel'
+
+// Initialize log level based on environment
+if (process.env.NODE_ENV === 'test') {
+  log.setLevel(log.levels.SILENT)
+} else if (process.env.NODE_ENV === 'production') {
+  log.setLevel(log.levels.INFO)
+} else {
+  // development
+  log.setLevel(log.levels.DEBUG)
+}
+
+// Allow override via LOG_LEVEL environment variable
+const envLevel = process.env.LOG_LEVEL
+if (envLevel) {
+  const levelMap: Record<string, number> = {
+    'TRACE': log.levels.TRACE,
+    'DEBUG': log.levels.DEBUG,
+    'INFO': log.levels.INFO,
+    'WARN': log.levels.WARN,
+    'ERROR': log.levels.ERROR,
+    'SILENT': log.levels.SILENT,
+  }
+  const mappedLevel = levelMap[envLevel.toUpperCase()]
+  if (mappedLevel !== undefined) {
+    log.setLevel(mappedLevel as log.LogLevelDesc)
+  }
+}
+
 import app from './app'
 import { config } from './config'
 import { db } from './db/connection'
@@ -11,6 +41,7 @@ import { automationWorker, automationQueue, getPressureEvaluationScheduler } fro
 import { getFollowupNotificationScheduler } from './services/queue/followup-scheduler'
 import { getIdeaMusingScheduler } from './services/queue/idea-musing-scheduler'
 
+const logServer = log.getLogger('Server')
 const PORT = config.port
 
 /**
@@ -19,7 +50,7 @@ const PORT = config.port
 async function initializeServices() {
   try {
     // Test database connection first
-    console.log('Testing database connection...')
+    logServer.info('Testing database connection...')
     // Extract connection details from DATABASE_URL if available
     const databaseUrl = process.env.DATABASE_URL || ''
     const dbConfig = {
@@ -28,53 +59,53 @@ async function initializeServices() {
       database: process.env.DB_NAME || databaseUrl.match(/\/([^?]+)/)?.[1] || 'memoriae',
       user: process.env.DB_USER || databaseUrl.match(/:\/\/([^:]+):/)?.[1] || 'postgres',
     }
-    console.log(`  Connecting to: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`)
+    logServer.info(`  Connecting to: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`)
     if (databaseUrl) {
       const safeUrl = databaseUrl.replace(/:[^:@]+@/, ':****@')
-      console.log(`  DATABASE_URL: ${safeUrl}`)
+      logServer.info(`  DATABASE_URL: ${safeUrl}`)
     }
     
     try {
       await db.raw('SELECT 1')
-      console.log('✓ Database connection successful')
+      logServer.info('✓ Database connection successful')
     } catch (dbError: any) {
-      console.error('✗ Database connection failed:', dbError.message)
-      console.error('  Connection details:', dbConfig)
+      logServer.error('✗ Database connection failed:', dbError.message)
+      logServer.error('  Connection details:', dbConfig)
       
       if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ETIMEDOUT') {
-        console.error('  → Database server is not accessible. Check:')
-        console.error('    1. Database server is running and accessible')
-        console.error('    2. Network connectivity (firewall, VPN, AWS Security Group)')
-        console.error('    3. Correct host/port in .env')
-        console.error('    4. For AWS RDS: Security group allows your IP on port 5432')
+        logServer.error('  → Database server is not accessible. Check:')
+        logServer.error('    1. Database server is running and accessible')
+        logServer.error('    2. Network connectivity (firewall, VPN, AWS Security Group)')
+        logServer.error('    3. Correct host/port in .env')
+        logServer.error('    4. For AWS RDS: Security group allows your IP on port 5432')
       } else if (dbError.code === '3D000') {
-        console.error('  → Database does not exist. Options:')
-        console.error('    1. Create the database: CREATE DATABASE memoriae;')
-        console.error('    2. Or update DB_NAME in .env to an existing database')
-        console.error('    3. Then run migrations: npm run migrate')
+        logServer.error('  → Database does not exist. Options:')
+        logServer.error('    1. Create the database: CREATE DATABASE memoriae;')
+        logServer.error('    2. Or update DB_NAME in .env to an existing database')
+        logServer.error('    3. Then run migrations: npm run migrate')
       } else if (dbError.code === '28P01') {
-        console.error('  → Authentication failed. Check:')
-        console.error('    1. DB_USER and DB_PASSWORD in .env are correct')
-        console.error('    2. Database user has proper permissions')
+        logServer.error('  → Authentication failed. Check:')
+        logServer.error('    1. DB_USER and DB_PASSWORD in .env are correct')
+        logServer.error('    2. Database user has proper permissions')
       } else if (dbError.message?.includes('timeout') || dbError.message?.includes('Timeout')) {
-        console.error('  → Connection timeout. Check:')
-        console.error('    1. Database server is running')
-        console.error('    2. Network connectivity (ping/telnet the host)')
-        console.error('    3. Firewall/security groups allow connections')
-        console.error('    4. Database credentials are correct')
-        console.error('    5. For AWS RDS: Database is publicly accessible')
+        logServer.error('  → Connection timeout. Check:')
+        logServer.error('    1. Database server is running')
+        logServer.error('    2. Network connectivity (ping/telnet the host)')
+        logServer.error('    3. Firewall/security groups allow connections')
+        logServer.error('    4. Database credentials are correct')
+        logServer.error('    5. For AWS RDS: Database is publicly accessible')
       }
       
       // Show actual connection config (without password)
       if (process.env.DATABASE_URL) {
         const safeUrl = process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@')
-        console.error('  DATABASE_URL:', safeUrl)
+        logServer.error('  DATABASE_URL:', safeUrl)
       }
       
       throw dbError
     }
     
-    console.log('Initializing automations...')
+    logServer.info('Initializing automations...')
     
     // Create automation instances
     const tagAutomation = new TagExtractionAutomation()
@@ -91,19 +122,19 @@ async function initializeServices() {
     while (retries < maxRetries) {
       try {
         await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation, ideaMusingAutomation])
-        console.log('Automations initialized')
-        console.log(`Registered ${registry.getAll().length} automations`)
+        logServer.info('Automations initialized')
+        logServer.info(`Registered ${registry.getAll().length} automations`)
         break
       } catch (error: any) {
         // Check if error is due to missing table (migrations not complete)
         if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
           retries++
           if (retries >= maxRetries) {
-            console.error('Failed to initialize automations: database tables not found after', maxRetries, 'retries')
-            console.error('This usually means migrations have not completed. Please check migration status.')
+            logServer.error('Failed to initialize automations: database tables not found after', maxRetries, 'retries')
+            logServer.error('This usually means migrations have not completed. Please check migration status.')
             throw new Error('Automations table not found - migrations may not have completed')
           }
-          console.log(`Automations table not found (attempt ${retries}/${maxRetries}), waiting for migrations...`)
+          logServer.info(`Automations table not found (attempt ${retries}/${maxRetries}), waiting for migrations...`)
           await new Promise(resolve => setTimeout(resolve, retryDelay))
         } else {
           // Different error - rethrow
@@ -114,8 +145,8 @@ async function initializeServices() {
     
     // Queue worker is already started when imported
     // It will process jobs as they come in
-    console.log('Queue worker initialized')
-    console.log(`Worker isRunning: ${automationWorker.isRunning()}`)
+    logServer.info('Queue worker initialized')
+    logServer.info(`Worker isRunning: ${automationWorker.isRunning()}`)
     
     // Test queue connection by checking if we can get queue info
     try {
@@ -123,28 +154,28 @@ async function initializeServices() {
       const active = await automationQueue.getActiveCount()
       const completed = await automationQueue.getCompletedCount()
       const failed = await automationQueue.getFailedCount()
-      console.log(`Queue status - Waiting: ${waiting}, Active: ${active}, Completed: ${completed}, Failed: ${failed}`)
+      logServer.info(`Queue status - Waiting: ${waiting}, Active: ${active}, Completed: ${completed}, Failed: ${failed}`)
     } catch (error) {
-      console.error('Failed to get queue status:', error)
+      logServer.error('Failed to get queue status:', error)
     }
     
     // Start pressure evaluation scheduler
     const scheduler = getPressureEvaluationScheduler()
     scheduler.start()
-    console.log('Pressure evaluation scheduler started')
+    logServer.info('Pressure evaluation scheduler started')
     
     // Start followup notification scheduler
     const followupScheduler = getFollowupNotificationScheduler()
     followupScheduler.start()
-    console.log('Followup notification scheduler started')
+    logServer.info('Followup notification scheduler started')
     
     // Start idea musing scheduler
     const ideaMusingScheduler = getIdeaMusingScheduler()
     ideaMusingScheduler.start()
-    console.log('Idea musing scheduler started')
+    logServer.info('Idea musing scheduler started')
     
   } catch (error) {
-    console.error('Failed to initialize services:', error)
+    logServer.error('Failed to initialize services:', error)
     throw error
   }
 }
@@ -153,7 +184,7 @@ async function initializeServices() {
  * Graceful shutdown handler
  */
 async function shutdown() {
-  console.log('Shutting down...')
+  logServer.info('Shutting down...')
   
   try {
     // Stop pressure evaluation scheduler
@@ -170,9 +201,9 @@ async function shutdown() {
     
     // Close queue worker
     await automationWorker.close()
-    console.log('Queue worker closed')
+    logServer.info('Queue worker closed')
   } catch (error) {
-    console.error('Error during shutdown:', error)
+    logServer.error('Error during shutdown:', error)
   }
   
   process.exit(0)
@@ -186,12 +217,12 @@ process.on('SIGINT', shutdown)
 initializeServices()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`)
-      console.log(`API available at http://localhost:${PORT}/api`)
-      console.log(`CORS allowed origins:`, config.frontend.allowedOrigins)
+      logServer.info(`Server running on port ${PORT}`)
+      logServer.info(`API available at http://localhost:${PORT}/api`)
+      logServer.info(`CORS allowed origins:`, config.frontend.allowedOrigins)
     })
   })
   .catch((error) => {
-    console.error('Failed to start server:', error)
+    logServer.error('Failed to start server:', error)
     process.exit(1)
   })

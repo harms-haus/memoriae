@@ -12,7 +12,9 @@ import searchRoutes from './routes/search'
 import followupsRoutes from './routes/followups'
 import ideaMusingsRoutes from './routes/idea-musings'
 import { config } from './config'
+import log from 'loglevel'
 
+const logApp = log.getLogger('App')
 const app = express()
 
 // Middleware
@@ -29,7 +31,7 @@ app.use(cors({
     }
     
     // Log rejected origin for debugging
-    console.warn(`CORS: Rejected origin "${origin}". Allowed origins:`, config.frontend.allowedOrigins)
+    logApp.warn(`CORS: Rejected origin "${origin}". Allowed origins:`, config.frontend.allowedOrigins)
     
     // Reject the request (return false, not an error)
     callback(null, false)
@@ -80,8 +82,8 @@ app.use('/api/*', (req: Request, res: Response) => {
 
 // Error handling middleware (must be last)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err)
-  console.error('Error stack:', err.stack)
+  logApp.error('Error:', err)
+  logApp.error('Error stack:', err.stack)
   // In development, send more details
   if (process.env.NODE_ENV === 'development') {
     res.status(500).json({ 

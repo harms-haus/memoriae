@@ -1,7 +1,7 @@
 // REST API client with authentication
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
 import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup, SeedTransaction, CreateSeedTransactionDto, IdeaMusing } from '../types'
-import { logger } from '../utils/logger'
+import log from 'loglevel'
 
 // In production, use relative URLs since backend serves frontend
 // In development, use explicit URL or Vite proxy
@@ -25,7 +25,7 @@ const API_URL = getApiUrl()
 class ApiClient {
   private client: AxiosInstance
   private token: string | null = null
-  private readonly log = logger.scope('ApiClient')
+  private readonly logApi = log.getLogger('ApiClient')
 
   constructor() {
     this.client = axios.create({
@@ -43,9 +43,9 @@ class ApiClient {
       (config) => {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`
-          this.log.debug('Adding Authorization header', { url: config.url })
+          this.logApi.debug('Adding Authorization header', { url: config.url })
         } else {
-          this.log.debug('No token available for request', { url: config.url })
+          this.logApi.debug('No token available for request', { url: config.url })
         }
         return config
       },
@@ -70,14 +70,14 @@ class ApiClient {
   }
 
   setToken(token: string): void {
-    this.log.debug('Setting token', {
+    this.logApi.debug('Setting token', {
       length: token.length,
       preview: token.substring(0, 20),
     })
     this.token = token
     if (typeof localStorage !== 'undefined' && typeof localStorage.setItem === 'function') {
       localStorage.setItem('auth_token', token)
-      this.log.debug('Token stored in localStorage')
+      this.logApi.debug('Token stored in localStorage')
     }
   }
 
@@ -122,7 +122,7 @@ class ApiClient {
       await this.client.post('/auth/logout')
     } catch (error) {
       // Continue with logout even if request fails
-      this.log.error('Logout error', { error })
+      this.logApi.error('Logout error', { error })
     } finally {
       this.clearToken()
     }

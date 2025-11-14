@@ -8,7 +8,7 @@ import type { IdeaMusing } from '../../types'
 import { NumberedIdeasMusing } from './NumberedIdeasMusing'
 import { WikipediaLinksMusing } from './WikipediaLinksMusing'
 import { MarkdownMusing } from './MarkdownMusing'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './MusingItem.css'
 
 interface MusingItemProps {
@@ -20,7 +20,7 @@ interface MusingItemProps {
 export function MusingItem({ musing, onUpdate, tagColors }: MusingItemProps) {
   const [dismissing, setDismissing] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
-  const log = logger.scope('MusingItem')
+  const logMusingItem = log.getLogger('MusingItem')
 
   const handleDismiss = async () => {
     if (dismissing) return
@@ -30,7 +30,7 @@ export function MusingItem({ musing, onUpdate, tagColors }: MusingItemProps) {
       await api.dismissMusing(musing.id)
       onUpdate()
     } catch (err) {
-      log.error('Error dismissing musing', { musingId: musing.id, error: err })
+      logMusingItem.error('Error dismissing musing', { musingId: musing.id, error: err })
       alert(err instanceof Error ? err.message : 'Failed to dismiss musing')
     } finally {
       setDismissing(false)
@@ -45,7 +45,7 @@ export function MusingItem({ musing, onUpdate, tagColors }: MusingItemProps) {
       await api.regenerateMusing(musing.id)
       onUpdate()
     } catch (err) {
-      log.error('Error regenerating musing', { musingId: musing.id, error: err })
+      logMusingItem.error('Error regenerating musing', { musingId: musing.id, error: err })
       alert(err instanceof Error ? err.message : 'Failed to regenerate musing')
     } finally {
       setRegenerating(false)

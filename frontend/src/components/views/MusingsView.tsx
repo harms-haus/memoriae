@@ -4,10 +4,10 @@ import { Panel } from '@mother/components/Panel'
 import { Button } from '@mother/components/Button'
 import type { IdeaMusing, Tag } from '../../types'
 import { MusingItem } from '../MusingsView/MusingItem'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './MusingsView.css'
 
-const log = logger.scope('MusingsView')
+const logMusings = log.getLogger('MusingsView')
 
 export function MusingsView() {
   const [musings, setMusings] = useState<IdeaMusing[]>([])
@@ -28,7 +28,7 @@ export function MusingsView() {
       const data = await api.getDailyMusings()
       setMusings(data)
     } catch (err) {
-      log.warn('Error loading musings', { error: err })
+      logMusings.warn('Error loading musings', { error: err })
       // Handle gracefully - if it's a table doesn't exist error, just show empty
       setError(null)
       setMusings([])
@@ -49,7 +49,7 @@ export function MusingsView() {
         setError(result.message || 'No musings were generated. Try creating more creative/exploratory seeds.')
       }
     } catch (err) {
-      log.error('Error generating musings', { error: err })
+      logMusings.error('Error generating musings', { error: err })
       setError(err instanceof Error ? err.message : 'Failed to generate musings')
     } finally {
       setGenerating(false)
@@ -61,7 +61,7 @@ export function MusingsView() {
       const data = await api.get<Tag[]>('/tags')
       setTags(data)
     } catch (err) {
-      log.error('Error loading tags for musings view', { error: err })
+      logMusings.error('Error loading tags for musings view', { error: err })
       // Don't fail if tags can't be loaded
     }
   }

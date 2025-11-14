@@ -6,7 +6,7 @@ import { Input } from '@mother/components/Input'
 import { Loader2, Save, Check } from 'lucide-react'
 import { ModelSelector } from '../ModelSelector'
 import { getTimezones } from '../../utils/timezone'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './Views.css'
 
 interface UserSettings {
@@ -39,7 +39,7 @@ export function SettingsView() {
   const [modelsLoaded, setModelsLoaded] = useState(false)
   const [timezone, setTimezone] = useState('')
   const timezones = getTimezones()
-  const log = logger.scope('SettingsView')
+  const logSettings = log.getLogger('SettingsView')
 
   // Load settings on mount
   useEffect(() => {
@@ -101,7 +101,7 @@ export function SettingsView() {
       const data = await api.get<UserSettings>('/settings')
       setSettings(data)
     } catch (error) {
-      log.error('Error loading settings', { error })
+      logSettings.error('Error loading settings', { error })
     } finally {
       setLoading(false)
     }
@@ -147,11 +147,11 @@ export function SettingsView() {
         setModels(loadedModels)
         setModelsLoaded(true)
       } else {
-        log.warn('Failed to load models', { status: response.status })
+        logSettings.warn('Failed to load models', { status: response.status })
         // Keep existing models if load fails
       }
     } catch (error) {
-      log.error('Error loading models', { error })
+      logSettings.error('Error loading models', { error })
       // Keep existing models if load fails
     } finally {
       setLoadingModels(false)
@@ -188,7 +188,7 @@ export function SettingsView() {
       // Clear saved message after 2 seconds
       setTimeout(() => setSaved(false), 2000)
     } catch (error) {
-      log.error('Error saving settings', { error })
+      logSettings.error('Error saving settings', { error })
     } finally {
       setSaving(false)
     }

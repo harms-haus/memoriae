@@ -8,28 +8,9 @@ import { SeedsService } from '../seeds'
 import { SeedTransactionsService } from '../seed-transactions'
 import { createOpenRouterClient } from '../openrouter/client'
 import { type UserSettings } from '../settings'
+import log from 'loglevel'
 
-/**
- * Log helpers that only log when not in test environment
- * Prevents test output clutter while keeping useful logs in development/production
- */
-function workerLog(...args: unknown[]): void {
-  if (process.env.NODE_ENV !== 'test') {
-    console.log(...args)
-  }
-}
-
-function workerError(...args: unknown[]): void {
-  if (process.env.NODE_ENV !== 'test') {
-    console.error(...args)
-  }
-}
-
-function workerWarn(...args: unknown[]): void {
-  if (process.env.NODE_ENV !== 'test') {
-    console.warn(...args)
-  }
-}
+const logWorker = log.getLogger('Worker')
 
 /**
  * Queue connection options (same as in queue.ts)
@@ -55,7 +36,7 @@ function getQueueConnection(): ConnectionOptions {
         connection.password = decodeURIComponent(url.password)
       }
     } catch (error) {
-      console.warn('Failed to parse REDIS_URL, using defaults:', error)
+      logWorker.warn('Failed to parse REDIS_URL, using defaults:', error)
     }
   }
 
@@ -87,7 +68,7 @@ async function getUserSettings(userId: string): Promise<UserSettings> {
 export async function processAutomationJob(job: Job<AutomationJobData>): Promise<void> {
   const { seedId, automationId, userId } = job.data
 
-  workerLog(`[Worker] Processing automation job ${job.id}: ${automationId} for seed: ${seedId} (user: ${userId})`)
+  logWorker.info(`Processing automation job ${job.id}: ${automationId} for seed: ${seedId} (user: ${userId})`)
 
   try {
     // 1. Get the automation from registry
@@ -99,7 +80,7 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
     }
 
     if (!automation.enabled) {
-      console.log(`Automation ${automationId} is disabled, skipping`)
+      logWorker.debug(`Automation ${automationId} is disabled, skipping`)
       return
     }
 
@@ -115,13 +96,13 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
       settings = await getUserSettings(userId)
     } catch (error) {
       // Database error getting settings - skip automation gracefully
-      console.error(`Failed to get user settings for user ${userId}:`, error)
+      logWorker.error(`Failed to get user settings for user ${userId}:`, error)
       return
     }
 
     if (!settings.openrouter_api_key) {
       // No API key configured - skip automation
-      console.log(`No OpenRouter API key configured for user ${userId}, skipping automation`)
+      logWorker.debug(`No OpenRouter API key configured for user ${userId}, skipping automation`)
       return
     }
 
@@ -140,7 +121,7 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
     // 6. Validate seed (optional validation hook)
     const isValid = await automation.validateSeed(seed, context)
     if (!isValid) {
-      console.log(`Seed ${seedId} failed validation for automation ${automationId}`)
+      logWorker.debug(`Seed ${seedId} failed validation for automation ${automationId}`)
       return
     }
 
@@ -157,16 +138,16 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
           automation_id: transaction.automation_id,
         }))
       )
-      console.log(`Created ${result.transactions.length} transactions for seed ${seedId} via automation ${automationId}`)
+      logWorker.info(`Created ${result.transactions.length} transactions for seed ${seedId} via automation ${automationId}`)
     } else {
-      console.log(`No transactions created for seed ${seedId} via automation ${automationId}`)
+      logWorker.debug(`No transactions created for seed ${seedId} via automation ${automationId}`)
     }
 
     // Update job progress
     await job.updateProgress(100)
 
   } catch (error) {
-    console.error(`Error processing automation job ${job.id}:`, error)
+    logWorker.error(`Error processing automation job ${job.id}:`, error)
     
     // Re-throw to let BullMQ handle retries
     throw error
@@ -195,59 +176,59 @@ export const automationWorker = new Worker<AutomationJobData>(
 
 // Worker event handlers for logging and monitoring
 automationWorker.on('completed', (job) => {
-  workerLog(`[Worker] Job ${job.id} completed successfully`)
+  logWorker.info(`Job ${job.id} completed successfully`)
 })
 
 automationWorker.on('failed', (job, error) => {
-    workerError(`[Worker] Job ${job?.id} failed:`, error)
+  logWorker.error(`Job ${job?.id} failed:`, error)
   if (error instanceof Error) {
-      workerError(`[Worker] Error stack:`, error.stack)
+    logWorker.error(`Error stack:`, error.stack)
   }
 })
 
 automationWorker.on('error', (error) => {
-  workerError('[Worker] Worker error:', error)
+  logWorker.error('Worker error:', error)
   if (error instanceof Error) {
-    workerError('[Worker] Error message:', error.message)
-    workerError('[Worker] Error stack:', error.stack)
+    logWorker.error('Error message:', error.message)
+    logWorker.error('Error stack:', error.stack)
   }
 })
 
 automationWorker.on('active', (job) => {
-  workerLog(`[Worker] Job ${job.id} is now active (processing)`)
+  logWorker.debug(`Job ${job.id} is now active (processing)`)
 })
 
 automationWorker.on('stalled', (jobId) => {
-  workerWarn(`[Worker] Job ${jobId} stalled (taking too long)`)
+  log.warn(`Job ${jobId} stalled (taking too long)`)
 })
 
 automationWorker.on('ready', () => {
-  workerLog('[Worker] ✓ Worker is ready and listening for jobs')
+  logWorker.info('✓ Worker is ready and listening for jobs')
 })
 
 automationWorker.on('closing', () => {
-  workerLog('[Worker] Worker is closing...')
+  logWorker.info('Worker is closing...')
 })
 
 // Check if worker is actually running after a short delay
 setTimeout(() => {
-  workerLog(`[Worker] Worker status check - isRunning: ${automationWorker.isRunning()}, isPaused: ${automationWorker.isPaused()}`)
+  logWorker.debug(`Worker status check - isRunning: ${automationWorker.isRunning()}, isPaused: ${automationWorker.isPaused()}`)
   if (!automationWorker.isRunning()) {
-    workerError('[Worker] ⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
+    log.warn('⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
   }
 }, 2000)
 
 // Log worker initialization
-workerLog('[Worker] Automation worker created, connecting to Redis...')
-workerLog(`[Worker] Queue name: automation`)
+logWorker.info('Automation worker created, connecting to Redis...')
+logWorker.info('Queue name: automation')
 // Type guard to check if connection has host/port (not ClusterOptions)
 const hasHostPort = (conn: ConnectionOptions): conn is { host: string; port: number; password?: string } => {
   return 'host' in conn && 'port' in conn
 }
 if (hasHostPort(queueConnection)) {
-  workerLog(`[Worker] Connection: ${queueConnection.host}:${queueConnection.port}`)
+  logWorker.info(`Connection: ${queueConnection.host}:${queueConnection.port}`)
 } else {
-  workerLog(`[Worker] Connection: cluster mode`)
+  logWorker.info('Connection: cluster mode')
 }
 
 // Test Redis connection
@@ -277,16 +258,16 @@ if (hasHostPort(queueConnection)) {
   testConnection.connect()
     .then(() => testConnection.ping())
     .then(() => {
-      workerLog('[Worker] ✓ Redis connection test successful')
+      logWorker.info('✓ Redis connection test successful')
       testConnection.quit()
     })
     .catch((error) => {
-      workerError('[Worker] ✗ Redis connection test failed:', error.message)
-      workerError('[Worker] Make sure Redis is running and accessible')
+      logWorker.error('✗ Redis connection test failed:', error.message)
+      logWorker.error('Make sure Redis is running and accessible')
       testConnection.quit().catch(() => {}) // Ignore quit errors
     })
 } else {
-  workerLog('[Worker] Skipping Redis connection test (cluster mode)')
+  logWorker.info('Skipping Redis connection test (cluster mode)')
 }
 
 

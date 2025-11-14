@@ -1,22 +1,19 @@
 import '@testing-library/jest-dom'
 import { afterEach, beforeAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import { logger } from '../utils/logger'
+// Initialize loglevel - set to SILENT level in test environment
+import log from 'loglevel'
+log.setLevel(log.levels.SILENT)
 
 // WebSocket error suppression is handled in vitest.config.ts for earlier initialization
 
-// Suppress expected logging output (both console and structured logger helpers) in tests
+// Suppress expected logging output in tests
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let consoleDebugSpy: any
 let consoleInfoSpy: any
 let consoleErrorSpy: any
 let consoleWarnSpy: any
 let consoleLogSpy: any
-let loggerDebugSpy: any
-let loggerInfoSpy: any
-let loggerWarnSpy: any
-let loggerErrorSpy: any
-let loggerFatalSpy: any
 
 const spyConsole = () => {
   consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
@@ -26,17 +23,8 @@ const spyConsole = () => {
   consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 }
 
-const spyLogger = () => {
-  loggerDebugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => {})
-  loggerInfoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {})
-  loggerWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
-  loggerErrorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
-  loggerFatalSpy = vi.spyOn(logger, 'fatal').mockImplementation(() => {})
-}
-
 beforeAll(() => {
   spyConsole()
-  spyLogger()
 
   // jsdom should provide localStorage, but ensure it has all methods
   if (typeof localStorage !== 'undefined') {
@@ -90,21 +78,5 @@ afterEach(() => {
   })
   restoreSpy(consoleLogSpy, () => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-  })
-
-  restoreSpy(loggerDebugSpy, () => {
-    loggerDebugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => {})
-  })
-  restoreSpy(loggerInfoSpy, () => {
-    loggerInfoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {})
-  })
-  restoreSpy(loggerWarnSpy, () => {
-    loggerWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
-  })
-  restoreSpy(loggerErrorSpy, () => {
-    loggerErrorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
-  })
-  restoreSpy(loggerFatalSpy, () => {
-    loggerFatalSpy = vi.spyOn(logger, 'fatal').mockImplementation(() => {})
   })
 })

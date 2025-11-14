@@ -3,7 +3,7 @@ import { api } from '../../services/api'
 import { Button } from '@mother/components/Button'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
 import type { IdeaMusing } from '../../types'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './PromptLLMModal.css'
 
 interface PromptLLMModalProps {
@@ -24,7 +24,7 @@ export function PromptLLMModal({
   const [generating, setGenerating] = useState(false)
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const log = logger.scope('PromptLLMModal')
+  const logPromptLLM = log.getLogger('PromptLLMModal')
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -42,7 +42,7 @@ export function PromptLLMModal({
         setError('Failed to generate response')
       }
     } catch (err) {
-      log.error('Error generating response', { musingId: musing.id, error: err })
+      logPromptLLM.error('Error generating response', { musingId: musing.id, error: err })
       setError(err instanceof Error ? err.message : 'Failed to generate response')
     } finally {
       setGenerating(false)
@@ -66,7 +66,7 @@ export function PromptLLMModal({
       onApplied()
       onOpenChange(false)
     } catch (err) {
-      log.error('Error applying response', { musingId: musing.id, error: err })
+      logPromptLLM.error('Error applying response', { musingId: musing.id, error: err })
       setError(err instanceof Error ? err.message : 'Failed to apply response')
     } finally {
       setApplying(false)

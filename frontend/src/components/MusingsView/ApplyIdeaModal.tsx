@@ -3,7 +3,7 @@ import { api } from '../../services/api'
 import { Button } from '@mother/components/Button'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
 import type { IdeaMusing } from '../../types'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './ApplyIdeaModal.css'
 
 interface ApplyIdeaModalProps {
@@ -25,7 +25,7 @@ export function ApplyIdeaModal({
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const log = logger.scope('ApplyIdeaModal')
+  const logApplyIdea = log.getLogger('ApplyIdeaModal')
 
   const handleGeneratePreview = async () => {
     try {
@@ -38,7 +38,7 @@ export function ApplyIdeaModal({
         setError('Failed to generate preview')
       }
     } catch (err) {
-      log.error('Error generating preview', { musingId: musing.id, ideaIndex, error: err })
+      logApplyIdea.error('Error generating preview', { musingId: musing.id, ideaIndex, error: err })
       setError(err instanceof Error ? err.message : 'Failed to generate preview')
     } finally {
       setLoading(false)
@@ -59,7 +59,7 @@ export function ApplyIdeaModal({
       onApplied()
       onOpenChange(false)
     } catch (err) {
-      log.error('Error applying idea', { musingId: musing.id, ideaIndex, error: err })
+      logApplyIdea.error('Error applying idea', { musingId: musing.id, ideaIndex, error: err })
       setError(err instanceof Error ? err.message : 'Failed to apply idea')
     } finally {
       setApplying(false)

@@ -1,20 +1,20 @@
 // Browser notification service for follow-ups
 import { api } from './api'
 import type { DueFollowup } from '../types'
-import { logger } from '../utils/logger'
+import log from 'loglevel'
 
 let notificationPermission: NotificationPermission = 'default'
 let pollingInterval: number | null = null
 const POLLING_INTERVAL_MS = 30000 // 30 seconds
 const shownNotificationIds = new Set<string>() // Track which followups we've already shown
-const log = logger.scope('NotificationService')
+const logNotifications = log.getLogger('NotificationService')
 
 /**
  * Request browser notification permission
  */
 export async function requestPermission(): Promise<NotificationPermission> {
   if (!('Notification' in window)) {
-    log.warn('Browser does not support notifications')
+    logNotifications.warn('Browser does not support notifications')
     return 'denied'
   }
 
@@ -42,7 +42,7 @@ export async function checkDueFollowups(): Promise<DueFollowup[]> {
     const dueFollowups = await api.getDueFollowups()
     return dueFollowups
   } catch (error) {
-    log.error('Error checking due followups', { error })
+    logNotifications.error('Error checking due followups', { error })
     return []
   }
 }

@@ -3,7 +3,7 @@ import { Bold, Italic, Link, X, Maximize } from 'lucide-react'
 import { api } from '../../services/api'
 import { Button } from '../../../../mother-theme/src/components/Button'
 import type { Seed } from '../../types'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './SeedEditor.css'
 
 type EditorStage = 'small' | 'medium' | 'large'
@@ -34,7 +34,7 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
   const cursorPositionRef = useRef<number>(0)
   const uiTimeoutRef = useRef<number | null>(null)
   const selectionRef = useRef<{ start: number; end: number } | null>(null)
-  const log = logger.scope('SeedEditor')
+  const logSeedEditor = log.getLogger('SeedEditor')
 
   /**
    * Determine editor stage based on content length (zen mode is manual, not automatic)
@@ -275,7 +275,7 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
       setShowLargeModal(false)
       setZenModeTriggered(false) // Reset zen mode trigger on save
     } catch (error) {
-      log.error('Failed to create seed', { error })
+      logSeedEditor.error('Failed to create seed', { error })
     } finally {
       setIsSaving(false)
     }

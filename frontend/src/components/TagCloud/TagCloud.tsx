@@ -4,7 +4,7 @@ import { Panel } from '@mother/components/Panel'
 import { Badge } from '@mother/components/Badge'
 import { api } from '../../services/api'
 import type { Seed, Tag as TagType } from '../../types'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './TagCloud.css'
 
 export interface TagCloudProps {
@@ -24,7 +24,7 @@ interface TagData {
  * TagCloud component with frequency-based sizing and color coding
  * Tags are sized based on their usage frequency across all seeds
  */
-const log = logger.scope('TagCloud')
+const logTagCloud = log.getLogger('TagCloud')
 
 export function TagCloud({ onTagSelect, selectedTags = new Set(), className = '' }: TagCloudProps) {
   const navigate = useNavigate()
@@ -49,7 +49,7 @@ export function TagCloud({ onTagSelect, selectedTags = new Set(), className = ''
       setSeeds(seedsData)
       setTags(tagsData)
     } catch (err) {
-      log.error('Error loading tag cloud data', { error: err })
+      logTagCloud.error('Error loading tag cloud data', { error: err })
       setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
       setLoading(false)

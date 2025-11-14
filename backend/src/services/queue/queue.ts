@@ -1,16 +1,9 @@
 // Queue service - manages automation job queue using BullMQ
 import { Queue, ConnectionOptions } from 'bullmq'
 import { config } from '../../config'
+import log from 'loglevel'
 
-/**
- * Log helper that only logs when not in test environment
- * Prevents test output clutter while keeping useful logs in development/production
- */
-function queueLog(...args: unknown[]): void {
-  if (process.env.NODE_ENV !== 'test') {
-    console.log(...args)
-  }
-}
+const logQueue = log.getLogger('Queue')
 
 /**
  * Data payload for automation queue jobs
@@ -49,7 +42,7 @@ function getQueueConnection(): ConnectionOptions {
         connection.password = decodeURIComponent(url.password)
       }
     } catch (error) {
-      console.warn('Failed to parse REDIS_URL, using defaults:', error)
+      logQueue.warn('Failed to parse REDIS_URL, using defaults:', error)
     }
   }
 
@@ -59,15 +52,15 @@ function getQueueConnection(): ConnectionOptions {
 const queueConnection = getQueueConnection()
 
 // Log queue initialization
-queueLog('[Queue] Initializing automation queue...')
+logQueue.info('Initializing automation queue...')
 // Type guard to check if connection has host/port (not ClusterOptions)
 const hasHostPort = (conn: ConnectionOptions): conn is { host: string; port: number; password?: string } => {
   return 'host' in conn && 'port' in conn
 }
 if (hasHostPort(queueConnection)) {
-  queueLog(`[Queue] Connection: ${queueConnection.host}:${queueConnection.port}`)
+  logQueue.info(`Connection: ${queueConnection.host}:${queueConnection.port}`)
 } else {
-  queueLog(`[Queue] Connection: cluster mode`)
+  logQueue.info('Connection: cluster mode')
 }
 
 /**
@@ -103,7 +96,7 @@ export async function addAutomationJob(
   data: AutomationJobData,
   options?: { makeUnique?: boolean }
 ): Promise<string> {
-  queueLog(`[Queue] Adding job: automation=${data.automationId}, seed=${data.seedId}, user=${data.userId}, priority=${data.priority || 0}`)
+  logQueue.debug(`Adding job: automation=${data.automationId}, seed=${data.seedId}, user=${data.userId}, priority=${data.priority || 0}`)
   
   // Generate job ID - if makeUnique is true, add timestamp to allow re-running same automation
   const baseJobId = `${data.automationId}-${data.seedId}`
@@ -118,7 +111,7 @@ export async function addAutomationJob(
     }
   )
 
-  queueLog(`[Queue] Job added with ID: ${job.id}`)
+  logQueue.debug(`Job added with ID: ${job.id}`)
   return job.id!
 }
 

@@ -9,7 +9,7 @@ import { SeedView } from '../SeedView'
 import { FollowupsPanel } from '../FollowupsPanel'
 import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
 import type { SeedTransaction, SeedTransactionType, Seed, SeedState, Tag as TagType } from '../../types'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './Views.css'
 import './SeedDetailView.css'
 
@@ -137,7 +137,7 @@ const getTransactionColor = (transaction: SeedTransaction): string => {
   }
 }
 
-const log = logger.scope('SeedDetailView')
+const logSeedDetail = log.getLogger('SeedDetailView')
 
 /**
  * SeedDetailView displays:
@@ -230,7 +230,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       setCurrentState(stateData.current_state)
       setTags(tagsData)
     } catch (err) {
-      log.error('Error loading seed data', { seedId, error: err })
+      logSeedDetail.error('Error loading seed data', { seedId, error: err })
       setError(err instanceof Error ? err.message : 'Failed to load seed')
     } finally {
       setLoading(false)
@@ -247,7 +247,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       const automationsData = await api.get<Automation[]>(`${apiPath}/automations`)
       setAutomations(automationsData)
     } catch (err) {
-      log.error('Error loading automations', { seedId, error: err })
+      logSeedDetail.error('Error loading automations', { seedId, error: err })
       // Don't set error state - automations are optional
     } finally {
       setLoadingAutomations(false)
@@ -271,7 +271,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         `${apiPath}/automations/${automationId}/run`
       )
 
-      log.info('Automation queued', {
+      logSeedDetail.info('Automation queued', {
         seedId,
         automationId,
         jobId: response.jobId,
@@ -307,7 +307,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           
           // Check if new transactions were created (automation completed)
           if (currentTransactionCount > lastTransactionCount) {
-            log.info('Automation completed - new transactions detected', { seedId, automationId })
+            logSeedDetail.info('Automation completed - new transactions detected', { seedId, automationId })
             setRunningAutomations((prev) => {
               const next = new Set(prev)
               next.delete(automationId)
@@ -322,7 +322,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           if (attempts < maxAttempts) {
             setTimeout(pollForCompletion, pollInterval)
           } else {
-            log.warn('Polling stopped - max attempts reached', { seedId, automationId })
+            logSeedDetail.warn('Polling stopped - max attempts reached', { seedId, automationId })
             setRunningAutomations((prev) => {
               const next = new Set(prev)
               next.delete(automationId)
@@ -330,7 +330,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
             })
           }
         } catch (err) {
-          log.error('Error polling for automation completion', { seedId, automationId, error: err })
+          logSeedDetail.error('Error polling for automation completion', { seedId, automationId, error: err })
           setRunningAutomations((prev) => {
             const next = new Set(prev)
             next.delete(automationId)
@@ -342,7 +342,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       // Start polling after a short delay to give the job time to start
       setTimeout(pollForCompletion, pollInterval)
     } catch (err) {
-      log.error('Error running automation', { seedId, automationId, error: err })
+      logSeedDetail.error('Error running automation', { seedId, automationId, error: err })
       const errorMessage = err instanceof Error 
         ? err.message 
         : axios.isAxiosError(err) && err.response?.data?.error
@@ -454,7 +454,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
 
       setIsEditing(false)
     } catch (err) {
-      log.error('Error saving seed changes', { seedId, error: err })
+      logSeedDetail.error('Error saving seed changes', { seedId, error: err })
       const errorMessage = err instanceof Error 
         ? err.message 
         : axios.isAxiosError(err) && err.response?.data?.error

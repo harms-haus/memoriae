@@ -11,14 +11,7 @@ vi.mock('../services/notifications', () => ({
   stopNotificationPolling: vi.fn(),
 }))
 
-// Mock logger
-vi.mock('../utils/logger', () => ({
-  logger: {
-    scope: vi.fn(() => ({
-      warn: vi.fn(),
-    })),
-  },
-}))
+// Loglevel is initialized in test-setup.ts to SILENT level
 
 describe('useFollowupNotifications', () => {
   beforeEach(() => {

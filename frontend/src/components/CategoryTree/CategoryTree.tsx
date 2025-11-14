@@ -8,7 +8,7 @@ import { Panel } from '@mother/components/Panel'
 import { Badge } from '@mother/components/Badge'
 import { Button } from '@mother/components/Button'
 import type { Category } from '../../types'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './CategoryTree.css'
 
 interface CategoryItemData {
@@ -41,7 +41,7 @@ export function CategoryTree({
   const [seedCounts, setSeedCounts] = useState<Map<string, number>>(new Map())
   const [treeData, setTreeData] = useState<Record<string, CategoryItemData>>({})
   const [expandedItems, setExpandedItems] = useState<string[]>([])
-  const log = logger.scope('CategoryTree')
+  const logCategoryTree = log.getLogger('CategoryTree')
 
   // Build tree data structure from flat categories
   const buildTreeData = useCallback((categories: Category[]): Record<string, CategoryItemData> => {
@@ -152,7 +152,7 @@ export function CategoryTree({
         }
 
       } catch (err) {
-        log.error('Error loading categories', { error: err })
+        logCategoryTree.error('Error loading categories', { error: err })
         setError(err instanceof Error ? err.message : 'Failed to load categories')
       } finally {
         setLoading(false)

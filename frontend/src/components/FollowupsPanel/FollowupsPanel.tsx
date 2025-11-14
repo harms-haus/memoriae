@@ -5,7 +5,7 @@ import { Button } from '@mother/components/Button'
 import type { Followup } from '../../types'
 import { FollowupItem } from './FollowupItem'
 import { CreateFollowupModal } from './CreateFollowupModal'
-import { logger } from '../../utils/logger'
+import log from 'loglevel'
 import './FollowupsPanel.css'
 
 interface FollowupsPanelProps {
@@ -17,7 +17,7 @@ export function FollowupsPanel({ seedId }: FollowupsPanelProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
-  const log = logger.scope('FollowupsPanel')
+  const logFollowupsPanel = log.getLogger('FollowupsPanel')
 
   useEffect(() => {
     loadFollowups()
@@ -30,7 +30,7 @@ export function FollowupsPanel({ seedId }: FollowupsPanelProps) {
       const data = await api.getFollowups(seedId)
       setFollowups(data)
     } catch (err) {
-      log.error('Error loading followups', { seedId, error: err })
+      logFollowupsPanel.error('Error loading followups', { seedId, error: err })
       setError(err instanceof Error ? err.message : 'Failed to load followups')
     } finally {
       setLoading(false)
