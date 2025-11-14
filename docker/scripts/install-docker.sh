@@ -242,11 +242,18 @@ echo -e "${YELLOW}Pulling latest base images...${NC}"
 # Variables are already exported via set -a earlier
 (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG pull postgres redis) || true
 
-# Stop containers if --replace is specified
-if [ "$REPLACE" = true ]; then
-    echo -e "${YELLOW}Stopping existing containers (--replace)...${NC}"
-    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down 2>/dev/null) || true
-fi
+# Always stop and remove memoriae, redis, and postgres containers before starting
+echo -e "${YELLOW}Stopping and removing existing containers (memoriae, redis, postgres)...${NC}"
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down --remove-orphans 2>/dev/null) || true
+
+# Also remove containers individually if they still exist (safety check)
+# Check for both dev and prod container name patterns
+for container_name in "memoriae-app" "memoriae-redis" "memoriae-postgres" "memoriae-dev" "memoriae-redis-dev" "memoriae-postgres-dev"; do
+    if $DOCKER_CMD ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        echo -e "${YELLOW}Removing ${container_name} container...${NC}"
+        $DOCKER_CMD rm -f "${container_name}" 2>/dev/null || true
+    fi
+done
 
 # Start containers
 echo -e "${GREEN}Starting production environment...${NC}"

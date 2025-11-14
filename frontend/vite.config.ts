@@ -1,21 +1,18 @@
 /// <reference types="vitest" />
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import dotenv from 'dotenv'
-
-// Load .env from project root (one level up from frontend/)
-dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env vars from root .env file
-  const env = loadEnv(mode, path.resolve(__dirname, '..'), '')
-  
   // Get backend port from env (default to 3123)
-  const backendPort = env.PORT || '3123'
+  // In Docker, this will come from environment variables
+  // For local dev, Vite will load .env from the project root (frontend/)
+  const backendPort = process.env.PORT || '3123'
   
   return {
+  // Load .env files from parent directory (project root)
+  envDir: path.resolve(__dirname, '..'),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

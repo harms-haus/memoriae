@@ -45,38 +45,82 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
+  // Skip non-GET requests - let browser handle them
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Skip API requests - always use network
-  if (event.request.url.includes('/api/')) {
-    return;
-  }
-
-  // Skip unsupported request schemes (chrome-extension, moz-extension, etc.)
-  // Only cache http and https requests
+  // Parse URL early to check if we should handle this request
   let url;
   try {
     url = new URL(event.request.url);
   } catch (e) {
-    // Invalid URL, skip
+    // Invalid URL, skip - let browser handle it
     return;
   }
 
+  // Skip unsupported request schemes (chrome-extension, moz-extension, etc.)
+  // Only handle http and https requests
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     return;
   }
 
-  // Skip external domains (third-party scripts, analytics, etc.)
-  // Only cache requests from the same origin
-  const isSameOrigin = url.origin === self.location.origin;
-  if (!isSameOrigin) {
-    // Let external requests pass through without caching
+  // Skip API requests - always use network (don't cache)
+  if (url.pathname.startsWith('/api/')) {
     return;
   }
 
+  // Skip navigation requests (document requests) - let React Router handle them
+  // We'll only provide a fallback if the network request fails
+  const isNavigationRequest = event.request.destination === 'document' || 
+                               event.request.mode === 'navigate' ||
+                               event.request.mode === 'same-origin';
+
+  // Skip external domains (third-party scripts, analytics, CDNs, etc.)
+  // Only cache requests from the same origin
+  // Use a more robust check that handles edge cases
+  try {
+    const requestOrigin = url.origin;
+    const serviceWorkerOrigin = self.location.origin;
+    
+    // If origins don't match, skip (let browser handle external requests)
+    if (requestOrigin !== serviceWorkerOrigin) {
+      return;
+    }
+  } catch (e) {
+    // If we can't determine origin, skip to be safe
+    return;
+  }
+
+  // For navigation requests, always fetch fresh (don't cache) but provide offline fallback
+  if (isNavigationRequest) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // For navigation requests, always return fresh response (don't cache)
+          return response;
+        })
+        .catch((error) => {
+          // If fetch fails, provide fallback to index.html for SPA routing
+          return caches.match('/index.html').then((fallback) => {
+            return fallback || new Response('Network error', { 
+              status: 503, 
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'text/html' }
+            });
+          }).catch(() => {
+            return new Response('Network error', { 
+              status: 503, 
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'text/html' }
+            });
+          });
+        })
+    );
+    return;
+  }
+
+  // For same-origin requests, handle caching
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
@@ -88,52 +132,104 @@ self.addEventListener('fetch', (event) => {
         // Otherwise fetch from network
         return fetch(event.request)
           .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
+            // Validate response before caching
+            if (!response || !response.ok || response.status !== 200) {
               return response;
             }
 
-            // Only cache same-origin responses
-            const responseUrl = new URL(response.url);
-            if (responseUrl.origin !== self.location.origin) {
+            // Check response type - only cache 'basic' type (same-origin)
+            // 'cors' responses might be from external domains even if URL looks same-origin
+            if (response.type !== 'basic' && response.type !== 'default') {
+              return response;
+            }
+
+            // Double-check response URL is same-origin before caching
+            try {
+              const responseUrl = new URL(response.url);
+              if (responseUrl.origin !== self.location.origin) {
+                return response;
+              }
+            } catch (e) {
+              // If we can't parse response URL, don't cache
               return response;
             }
 
             // Clone the response (streams can only be consumed once)
             const responseToCache = response.clone();
 
-            // Cache the response (only for same-origin http/https requests)
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache).catch((err) => {
-                // Silently fail if caching fails (e.g., quota exceeded, unsupported scheme)
-                console.warn('[SW] Failed to cache response:', err);
+            // Cache the response asynchronously (don't block response)
+            // Only cache if request is cacheable
+            if (event.request.cache !== 'no-store' && event.request.cache !== 'no-cache') {
+              caches.open(CACHE_NAME).then((cache) => {
+                // Additional safety check before caching
+                try {
+                  const requestUrl = new URL(event.request.url);
+                  if (requestUrl.protocol === 'http:' || requestUrl.protocol === 'https:') {
+                    cache.put(event.request, responseToCache).catch((err) => {
+                      // Silently fail if caching fails (e.g., quota exceeded, unsupported scheme)
+                      // Don't log errors for known unsupported schemes
+                      if (!err.message || !err.message.includes('unsupported')) {
+                        console.warn('[SW] Failed to cache response:', err);
+                      }
+                    });
+                  }
+                } catch (e) {
+                  // If URL parsing fails, don't cache
+                }
+              }).catch(() => {
+                // If cache.open fails, silently continue
               });
-            });
+            }
 
             return response;
           })
           .catch((error) => {
-            // If fetch fails, provide fallback for document requests
-            if (event.request.destination === 'document') {
+            // If fetch fails, provide fallback for document requests (SPA routing)
+            if (event.request.destination === 'document' || event.request.mode === 'navigate') {
               return caches.match('/index.html').then((fallback) => {
                 // Return fallback if available, otherwise return a basic error response
-                return fallback || new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
+                return fallback || new Response('Network error', { 
+                  status: 503, 
+                  statusText: 'Service Unavailable',
+                  headers: { 'Content-Type': 'text/html' }
+                });
               }).catch(() => {
                 // If we can't get the fallback, return a basic error response
-                return new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
+                return new Response('Network error', { 
+                  status: 503, 
+                  statusText: 'Service Unavailable',
+                  headers: { 'Content-Type': 'text/html' }
+                });
               });
             }
             // For non-document requests, re-throw to let browser handle the error
-            // This will cause the fetch to fail, which is the expected behavior
             throw error;
           });
       })
       .catch((error) => {
-        // If cache match fails or fetch fails for non-document requests,
-        // try fetching directly (this will fail but browser will handle it)
+        // If cache match fails, fetch from network
         return fetch(event.request).catch(() => {
-          // If all else fails, return a basic error response
-          return new Response('Service Worker error', { status: 503, statusText: 'Service Unavailable' });
+          // If fetch also fails and it's a navigation request, return index.html
+          if (event.request.destination === 'document' || event.request.mode === 'navigate') {
+            return caches.match('/index.html').then((fallback) => {
+              return fallback || new Response('Service Worker error', { 
+                status: 503, 
+                statusText: 'Service Unavailable',
+                headers: { 'Content-Type': 'text/html' }
+              });
+            }).catch(() => {
+              return new Response('Service Worker error', { 
+                status: 503, 
+                statusText: 'Service Unavailable',
+                headers: { 'Content-Type': 'text/html' }
+              });
+            });
+          }
+          // For non-navigation requests, return error response
+          return new Response('Service Worker error', { 
+            status: 503, 
+            statusText: 'Service Unavailable' 
+          });
         });
       })
   );

@@ -7,6 +7,7 @@
 #   --stop       Stop all containers
 #   --logs       Show logs
 #   --clean      Stop and remove containers and volumes
+#   --force      Force remove all containers before starting
 
 set -e
 
@@ -69,6 +70,7 @@ REBUILD=false
 STOP=false
 LOGS=false
 CLEAN=false
+FORCE=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -84,9 +86,12 @@ for arg in "$@"; do
         --clean)
             CLEAN=true
             ;;
+        --force)
+            FORCE=true
+            ;;
         *)
             echo -e "${YELLOW}Unknown option: $arg${NC}"
-            echo "Usage: $0 [--rebuild] [--stop] [--logs] [--clean]"
+            echo "Usage: $0 [--rebuild] [--stop] [--logs] [--clean] [--force]"
             exit 1
             ;;
     esac
@@ -115,9 +120,26 @@ if [ "$LOGS" = true ]; then
     exit 0
 fi
 
-# Check if containers are already running
-if $COMPOSE_CMD -f "$COMPOSE_FILE" ps | grep -q "Up"; then
-    echo -e "${YELLOW}Containers are already running${NC}"
+# Remove containers if --force is specified
+if [ "$FORCE" = true ]; then
+    echo -e "${YELLOW}Force removing all containers...${NC}"
+    $COMPOSE_CMD -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+    # Also try to remove the memoriae-dev container directly if it exists
+    if $DOCKER_CMD ps -a --format '{{.Names}}' | grep -q "^memoriae-dev$"; then
+        echo -e "${YELLOW}Removing memoriae-dev container...${NC}"
+        $DOCKER_CMD rm -f memoriae-dev 2>/dev/null || true
+    fi
+fi
+
+# Always remove the memoriae-dev container before starting (if it exists)
+if $DOCKER_CMD ps -a --format '{{.Names}}' | grep -q "^memoriae-dev$"; then
+    echo -e "${YELLOW}Removing existing memoriae-dev container...${NC}"
+    $DOCKER_CMD rm -f memoriae-dev 2>/dev/null || true
+fi
+
+# Check if memoriae-dev container is already running (not just any container)
+if $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-dev$"; then
+    echo -e "${YELLOW}memoriae-dev container is already running${NC}"
     echo ""
     echo "Services available at:"
     echo "  - Frontend: http://localhost:5173"
@@ -126,6 +148,7 @@ if $COMPOSE_CMD -f "$COMPOSE_FILE" ps | grep -q "Up"; then
     echo ""
     echo "Use --stop to stop containers"
     echo "Use --logs to view logs"
+    echo "Use --force to force remove all containers"
     exit 0
 fi
 
@@ -162,6 +185,7 @@ if $COMPOSE_CMD -f "$COMPOSE_FILE" ps | grep -q "Up"; then
     echo "  npm run dev -- --stop    - Stop containers"
     echo "  npm run dev -- --clean   - Stop and remove everything"
     echo "  npm run dev -- --rebuild - Rebuild containers"
+    echo "  npm run dev -- --force   - Force remove all containers before starting"
     echo ""
     echo -e "${YELLOW}To view logs:${NC}"
     echo "  $COMPOSE_CMD -f $COMPOSE_FILE logs -f"
