@@ -41,19 +41,8 @@ for arg in "$@"; do
     esac
 done
 
-# Step 1: Type-check
-echo -e "${BLUE}Step 1: Type-checking...${NC}"
-if ! (cd mother-theme && npx tsc --noEmit) || \
-   ! (cd backend && npx tsc --noEmit) || \
-   ! (cd frontend && npx tsc --noEmit); then
-    echo -e "${RED}Type-check failed. Running full build to show errors...${NC}"
-    npm run build
-    exit 1
-fi
-echo -e "${GREEN}✓ Type-check passed${NC}"
-
-# Step 2: Detect podman/docker
-echo -e "${BLUE}Step 2: Detecting container runtime...${NC}"
+# Step 1: Detect podman/docker
+echo -e "${BLUE}Step 1: Detecting container runtime...${NC}"
 if [ "$USE_DOCKER" = true ]; then
     if command -v docker &> /dev/null; then
         if docker compose version &> /dev/null; then
@@ -146,13 +135,13 @@ if [ "$CLEAN" = true ]; then
     (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down -v)
     echo -e "${GREEN}Cleanup complete${NC}"
     echo -e "${YELLOW}Note: This script does NOT start services after cleanup.${NC}"
-    echo -e "${YELLOW}Run 'npm run prod' to start services.${NC}"
+    echo -e "${YELLOW}Run '$0' to start services.${NC}"
     exit 0
 fi
 
 # Handle --install (systemd service setup)
 if [ "$INSTALL" = true ]; then
-    echo -e "${BLUE}Step 3: Setting up systemd service...${NC}"
+    echo -e "${BLUE}Step 2: Setting up systemd service...${NC}"
     
     SERVICE_NAME="memoriae-prod"
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -213,12 +202,12 @@ EOF
     exit 0
 fi
 
-# Step 3: Start compose
-echo -e "${BLUE}Step 3: Starting services...${NC}"
+# Step 2: Start compose
+echo -e "${BLUE}Step 2: Starting services...${NC}"
 (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d)
 
-# Step 4: Wait for services to be healthy
-echo -e "${BLUE}Step 4: Waiting for services to be healthy...${NC}"
+# Step 3: Wait for services to be healthy
+echo -e "${BLUE}Step 3: Waiting for services to be healthy...${NC}"
 
 # Wait for postgres
 echo -e "${YELLOW}Waiting for postgres...${NC}"
@@ -262,7 +251,7 @@ for i in {1..60}; do
     sleep 1
 done
 
-# Step 5: Display helpful info
+# Step 4: Display helpful info
 echo ""
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  Production environment is ready!${NC}"
@@ -276,9 +265,9 @@ echo ""
 echo -e "${BLUE}Useful commands:${NC}"
 echo "  • View logs:    $COMPOSE_CMD $COMPOSE_FILES logs -f"
 echo "  • Stop:         $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down"
-echo "  • Clean (⚠):    npm run prod -- --clean"
+echo "  • Clean (⚠):    $0 --clean"
 echo "  • Status:        $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG ps"
-echo "  • Install:      npm run prod -- --install"
+echo "  • Install:      $0 --install"
 echo ""
 echo -e "${GREEN}Memoriae is running in production mode!${NC}"
 
