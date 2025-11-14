@@ -5,6 +5,9 @@ import type {
   EditTransactionData,
   SetColorTransactionData,
 } from '../types/tag-transactions'
+import log from 'loglevel'
+
+const logUtils = log.getLogger('Utils:TagState')
 
 /**
  * Tag state structure
@@ -95,7 +98,7 @@ export function computeTagState(transactions: TagTransaction[]): TagState {
     try {
       validateTransaction(transaction.transaction_type, transaction.transaction_data)
     } catch (error) {
-      console.error(`Failed to validate transaction ${transaction.id}:`, error)
+      logUtils.error(`Failed to validate transaction ${transaction.id}:`, error)
       // Skip invalid transactions but continue processing
       continue
     }
@@ -116,7 +119,7 @@ export function computeTagState(transactions: TagTransaction[]): TagState {
 
       default:
         // Unknown transaction type - log but continue
-        console.warn(`Unknown transaction type: ${(transaction as any).transaction_type}`)
+        logUtils.warn(`Unknown transaction type: ${(transaction as any).transaction_type}`)
     }
   }
 

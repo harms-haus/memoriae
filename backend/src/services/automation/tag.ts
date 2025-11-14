@@ -7,6 +7,9 @@ import { Automation, type AutomationContext, type AutomationProcessResult, type 
 import type { Seed } from '../seeds'
 import type { SeedTransaction } from '../../types/seed-transactions'
 import { create, setColor } from '../tags'
+import log from 'loglevel'
+
+const logAutomation = log.getLogger('Automation:Tag')
 
 /**
  * Tag record from database
@@ -422,7 +425,7 @@ Do not include any reasoning or explanation - only the JSON array.`
               }
               const parsed = JSON.parse(jsonToParse)
               if (Array.isArray(parsed) && parsed.length > 0) {
-                console.warn('TagExtractionAutomation: Response was truncated, but extracted partial tags:', parsed)
+                logAutomation.warn('Response was truncated, but extracted partial tags:', parsed)
                 jsonContent = jsonToParse
               }
             } catch {
@@ -430,7 +433,7 @@ Do not include any reasoning or explanation - only the JSON array.`
               const tagMatches = partialJson.match(/"([^"]+)"/g)
               if (tagMatches && tagMatches.length > 0) {
                 const extractedTags = tagMatches.map((m: string) => m.replace(/"/g, ''))
-                console.warn('TagExtractionAutomation: Response was truncated, extracted tags from partial JSON:', extractedTags)
+                logAutomation.warn('Response was truncated, extracted tags from partial JSON:', extractedTags)
                 // Return early with extracted tags (no colors for truncated responses)
                 const result: Array<{ name: string; color: string | null }> = []
                 for (const tag of extractedTags) {
@@ -523,7 +526,7 @@ Do not include any reasoning or explanation - only the JSON array.`
         })
         .filter((tag): tag is { name: string; color: string | null } => tag !== null)
     } catch (error) {
-      console.error('TagExtractionAutomation: Failed to generate tags:', error)
+      logAutomation.error('Failed to generate tags:', error)
       // Return empty array on error - don't fail the automation
       return []
     }
@@ -549,7 +552,7 @@ Do not include any reasoning or explanation - only the JSON array.`
         try {
           await setColor(existing.id, color)
         } catch (error) {
-          console.warn(`Failed to set color for tag ${existing.id}:`, error)
+          logAutomation.warn(`Failed to set color for tag ${existing.id}:`, error)
         }
         return { ...existing, color }
       }

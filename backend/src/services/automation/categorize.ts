@@ -6,6 +6,9 @@ import db from '../../db/connection'
 import { Automation, type AutomationContext, type AutomationProcessResult, type CategoryChange } from './base'
 import type { Seed } from '../seeds'
 import type { SeedTransaction } from '../../types/seed-transactions'
+import log from 'loglevel'
+
+const logAutomation = log.getLogger('Automation:Categorize')
 
 /**
  * Category record from database
@@ -370,7 +373,7 @@ Do not include any reasoning or explanation - only the JSON array.`
               }
               const parsed = JSON.parse(jsonToParse)
               if (Array.isArray(parsed) && parsed.length > 0) {
-                console.warn('CategorizeAutomation: Response was truncated, but extracted partial categories:', parsed)
+                logAutomation.warn('Response was truncated, but extracted partial categories:', parsed)
                 jsonContent = jsonToParse
               }
             } catch {
@@ -446,7 +449,7 @@ Do not include any reasoning or explanation - only the JSON array.`
         .filter((path): path is string => path !== null && path.length > 0)
         .slice(0, 1) // Only use the first category (seeds can only have one)
     } catch (error) {
-      console.error('CategorizeAutomation: Failed to generate categories:', error)
+      logAutomation.error('Failed to generate categories:', error)
       return []
     }
   }

@@ -1,6 +1,9 @@
 // Settings service - handles user settings operations
 import { v4 as uuidv4 } from 'uuid'
 import db from '../db/connection'
+import log from 'loglevel'
+
+const logService = log.getLogger('Service:Settings')
 
 export interface UserSettingsRow {
   id: string
@@ -119,7 +122,7 @@ export class SettingsService {
       // Return updated settings
       return await this.getByUserId(userId)
     } catch (error) {
-      console.error('Error updating user settings:', error)
+      logService.error(`Error updating user settings for user ${userId}:`, error)
       // Re-throw as Error if it isn't already
       if (error instanceof Error) {
         throw error

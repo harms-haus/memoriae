@@ -5,7 +5,9 @@ import { SeedTransactionsService } from '../services/seed-transactions'
 import { SeedsService } from '../services/seeds'
 import db from '../db/connection'
 import { computeSeedState } from '../utils/seed-state'
+import log from 'loglevel'
 
+const logRoutes = log.getLogger('Routes:Transactions')
 const router = Router()
 
 // All routes require authentication
@@ -20,7 +22,10 @@ router.get('/seeds/:hashId/:slug/transactions', async (req: Request, res: Respon
     const { hashId, slug } = req.params
     const userId = req.user!.id
 
+    logRoutes.debug(`GET /seeds/:hashId/:slug/transactions - hashId: ${hashId}, slug: ${slug}`)
+
     if (!hashId) {
+      logRoutes.warn(`GET /seeds/:hashId/:slug/transactions - Missing hashId`)
       res.status(400).json({ error: 'Hash ID is required' })
       return
     }
@@ -28,6 +33,7 @@ router.get('/seeds/:hashId/:slug/transactions', async (req: Request, res: Respon
     // Use hashId as primary identifier, slug as hint for collision resolution
     const seed = await SeedsService.getByHashId(hashId, userId, slug)
     if (!seed) {
+      logRoutes.warn(`GET /seeds/:hashId/:slug/transactions - Seed not found: ${hashId}`)
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -35,9 +41,10 @@ router.get('/seeds/:hashId/:slug/transactions', async (req: Request, res: Respon
     // Get all transactions for the seed
     const transactions = await SeedTransactionsService.getBySeedId(seed.id)
 
+    logRoutes.info(`GET /seeds/:hashId/:slug/transactions - Found ${transactions.length} transactions for seed ${seed.id}`)
     res.json(transactions)
   } catch (error) {
-    console.error('Error fetching transactions:', error)
+    logRoutes.error(`GET /seeds/:hashId/:slug/transactions - Error:`, error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -51,7 +58,10 @@ router.get('/seeds/:hashId/transactions', async (req: Request, res: Response): P
     const { hashId } = req.params
     const userId = req.user!.id
 
+    logRoutes.debug(`GET /seeds/:hashId/transactions - hashId: ${hashId}`)
+
     if (!hashId) {
+      logRoutes.warn(`GET /seeds/:hashId/transactions - Missing hashId`)
       res.status(400).json({ error: 'Hash ID is required' })
       return
     }
@@ -65,6 +75,7 @@ router.get('/seeds/:hashId/transactions', async (req: Request, res: Response): P
     }
     
     if (!seed) {
+      logRoutes.warn(`GET /seeds/:hashId/transactions - Seed not found: ${hashId}`)
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -72,9 +83,10 @@ router.get('/seeds/:hashId/transactions', async (req: Request, res: Response): P
     // Get all transactions for the seed
     const transactions = await SeedTransactionsService.getBySeedId(seed.id)
 
+    logRoutes.info(`GET /seeds/:hashId/transactions - Found ${transactions.length} transactions for seed ${seed.id}`)
     res.json(transactions)
   } catch (error) {
-    console.error('Error fetching transactions:', error)
+    logRoutes.error(`GET /seeds/:hashId/transactions - Error:`, error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -88,7 +100,10 @@ router.get('/seeds/:hashId/:slug/state', async (req: Request, res: Response): Pr
     const { hashId, slug } = req.params
     const userId = req.user!.id
 
+    logRoutes.debug(`GET /seeds/:hashId/:slug/state - hashId: ${hashId}, slug: ${slug}`)
+
     if (!hashId) {
+      logRoutes.warn(`GET /seeds/:hashId/:slug/state - Missing hashId`)
       res.status(400).json({ error: 'Hash ID is required' })
       return
     }
@@ -96,6 +111,7 @@ router.get('/seeds/:hashId/:slug/state', async (req: Request, res: Response): Pr
     // Use hashId as primary identifier, slug as hint for collision resolution
     const seed = await SeedsService.getByHashId(hashId, userId, slug)
     if (!seed) {
+      logRoutes.warn(`GET /seeds/:hashId/:slug/state - Seed not found: ${hashId}`)
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -106,6 +122,7 @@ router.get('/seeds/:hashId/:slug/state', async (req: Request, res: Response): Pr
     // Compute current state by replaying transactions
     const currentState = computeSeedState(transactions)
 
+    logRoutes.info(`GET /seeds/:hashId/:slug/state - Computed state for seed ${seed.id} with ${transactions.length} transactions`)
     res.json({
       seed_id: seed.id,
       current_state: {
@@ -115,7 +132,7 @@ router.get('/seeds/:hashId/:slug/state', async (req: Request, res: Response): Pr
       transactions_applied: transactions.length,
     })
   } catch (error) {
-    console.error('Error computing seed state:', error)
+    logRoutes.error(`GET /seeds/:hashId/:slug/state - Error:`, error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -129,7 +146,10 @@ router.get('/seeds/:hashId/state', async (req: Request, res: Response): Promise<
     const { hashId } = req.params
     const userId = req.user!.id
 
+    logRoutes.debug(`GET /seeds/:hashId/state - hashId: ${hashId}`)
+
     if (!hashId) {
+      logRoutes.warn(`GET /seeds/:hashId/state - Missing hashId`)
       res.status(400).json({ error: 'Hash ID is required' })
       return
     }
@@ -143,6 +163,7 @@ router.get('/seeds/:hashId/state', async (req: Request, res: Response): Promise<
     }
     
     if (!seed) {
+      logRoutes.warn(`GET /seeds/:hashId/state - Seed not found: ${hashId}`)
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -153,6 +174,7 @@ router.get('/seeds/:hashId/state', async (req: Request, res: Response): Promise<
     // Compute current state by replaying transactions
     const currentState = computeSeedState(transactions)
 
+    logRoutes.info(`GET /seeds/:hashId/state - Computed state for seed ${seed.id} with ${transactions.length} transactions`)
     res.json({
       seed_id: seed.id,
       current_state: {
@@ -162,7 +184,7 @@ router.get('/seeds/:hashId/state', async (req: Request, res: Response): Promise<
       transactions_applied: transactions.length,
     })
   } catch (error) {
-    console.error('Error computing seed state:', error)
+    logRoutes.error(`GET /seeds/:hashId/state - Error:`, error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -177,18 +199,23 @@ router.post('/seeds/:hashId/:slug/transactions', async (req: Request, res: Respo
     const userId = req.user!.id
     const { transaction_type, transaction_data, automation_id } = req.body
 
+    logRoutes.debug(`POST /seeds/:hashId/:slug/transactions - hashId: ${hashId}, slug: ${slug}, type: ${transaction_type}`)
+
     if (!hashId) {
+      logRoutes.warn(`POST /seeds/:hashId/:slug/transactions - Missing hashId`)
       res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
     // Validate input
     if (!transaction_type || typeof transaction_type !== 'string') {
+      logRoutes.warn(`POST /seeds/:hashId/:slug/transactions - Invalid transaction_type`)
       res.status(400).json({ error: 'transaction_type is required and must be a string' })
       return
     }
 
     if (!transaction_data || typeof transaction_data !== 'object') {
+      logRoutes.warn(`POST /seeds/:hashId/:slug/transactions - Invalid transaction_data`)
       res.status(400).json({ error: 'transaction_data is required and must be an object' })
       return
     }
@@ -196,6 +223,7 @@ router.post('/seeds/:hashId/:slug/transactions', async (req: Request, res: Respo
     // Use hashId as primary identifier, slug as hint for collision resolution
     const seed = await SeedsService.getByHashId(hashId, userId, slug)
     if (!seed) {
+      logRoutes.warn(`POST /seeds/:hashId/:slug/transactions - Seed not found: ${hashId}`)
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -209,9 +237,10 @@ router.post('/seeds/:hashId/:slug/transactions', async (req: Request, res: Respo
       automation_id: automation_id || null,
     })
 
+    logRoutes.info(`POST /seeds/:hashId/:slug/transactions - Created transaction ${transaction.id} for seed ${resolvedSeedId}`)
     res.status(201).json(transaction)
   } catch (error) {
-    console.error('Error creating transaction:', error)
+    logRoutes.error(`POST /seeds/:hashId/:slug/transactions - Error:`, error)
     if (error instanceof Error && error.message.includes('not allowed')) {
       res.status(400).json({ error: error.message })
       return
@@ -230,18 +259,23 @@ router.post('/seeds/:hashId/transactions', async (req: Request, res: Response): 
     const userId = req.user!.id
     const { transaction_type, transaction_data, automation_id } = req.body
 
+    logRoutes.debug(`POST /seeds/:hashId/transactions - hashId: ${hashId}, type: ${transaction_type}`)
+
     if (!hashId) {
+      logRoutes.warn(`POST /seeds/:hashId/transactions - Missing hashId`)
       res.status(400).json({ error: 'Hash ID is required' })
       return
     }
 
     // Validate input
     if (!transaction_type || typeof transaction_type !== 'string') {
+      logRoutes.warn(`POST /seeds/:hashId/transactions - Invalid transaction_type`)
       res.status(400).json({ error: 'transaction_type is required and must be a string' })
       return
     }
 
     if (!transaction_data || typeof transaction_data !== 'object') {
+      logRoutes.warn(`POST /seeds/:hashId/transactions - Invalid transaction_data`)
       res.status(400).json({ error: 'transaction_data is required and must be an object' })
       return
     }
@@ -255,6 +289,7 @@ router.post('/seeds/:hashId/transactions', async (req: Request, res: Response): 
     }
     
     if (!seed) {
+      logRoutes.warn(`POST /seeds/:hashId/transactions - Seed not found: ${hashId}`)
       res.status(404).json({ error: 'Seed not found' })
       return
     }
@@ -268,9 +303,10 @@ router.post('/seeds/:hashId/transactions', async (req: Request, res: Response): 
       automation_id: automation_id || null,
     })
 
+    logRoutes.info(`POST /seeds/:hashId/transactions - Created transaction ${transaction.id} for seed ${resolvedSeedId}`)
     res.status(201).json(transaction)
   } catch (error) {
-    console.error('Error creating transaction:', error)
+    logRoutes.error(`POST /seeds/:hashId/transactions - Error:`, error)
     if (error instanceof Error && error.message.includes('not allowed')) {
       res.status(400).json({ error: error.message })
       return
@@ -288,13 +324,17 @@ router.get('/transactions/:transactionId', async (req: Request, res: Response): 
     const { transactionId } = req.params
     const userId = req.user!.id
 
+    logRoutes.debug(`GET /transactions/:transactionId - transactionId: ${transactionId}`)
+
     if (!transactionId) {
+      logRoutes.warn(`GET /transactions/:transactionId - Missing transactionId`)
       res.status(400).json({ error: 'Transaction ID is required' })
       return
     }
 
     const transaction = await SeedTransactionsService.getById(transactionId)
     if (!transaction) {
+      logRoutes.warn(`GET /transactions/:transactionId - Transaction not found: ${transactionId}`)
       res.status(404).json({ error: 'Transaction not found' })
       return
     }
@@ -305,13 +345,15 @@ router.get('/transactions/:transactionId', async (req: Request, res: Response): 
       .first()
 
     if (!seed) {
+      logRoutes.warn(`GET /transactions/:transactionId - Seed not found or access denied: ${transaction.seed_id}`)
       res.status(404).json({ error: 'Seed not found' })
       return
     }
 
+    logRoutes.info(`GET /transactions/:transactionId - Found transaction ${transactionId}`)
     res.json(transaction)
   } catch (error) {
-    console.error('Error fetching transaction:', error)
+    logRoutes.error(`GET /transactions/:transactionId - Error:`, error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })

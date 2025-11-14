@@ -2,6 +2,9 @@
 import { NotificationService } from '../notifications'
 import { FollowupService } from '../followups'
 import db from '../../db/connection'
+import log from 'loglevel'
+
+const logScheduler = log.getLogger('Scheduler:Followup')
 
 /**
  * FollowupNotificationScheduler - Timer service that periodically checks for due followups
@@ -25,12 +28,12 @@ export class FollowupNotificationScheduler {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('Followup notification scheduler is already running')
+      logScheduler.debug('Followup notification scheduler is already running')
       return
     }
 
     const intervalMs = 60000 // 1 minute
-    console.log(`Starting followup notification scheduler (interval: ${intervalMs}ms)`)
+    logScheduler.info(`Starting followup notification scheduler (interval: ${intervalMs}ms)`)
 
     this.isRunning = true
 
@@ -54,7 +57,7 @@ export class FollowupNotificationScheduler {
         return
       }
 
-      console.log('Stopping followup notification scheduler...')
+      logScheduler.info('Stopping followup notification scheduler...')
 
       if (this.intervalId) {
         clearInterval(this.intervalId)
@@ -67,7 +70,7 @@ export class FollowupNotificationScheduler {
       const checkProcessing = setInterval(() => {
         if (!this.isProcessing) {
           clearInterval(checkProcessing)
-          console.log('Followup notification scheduler stopped')
+          logScheduler.info('Followup notification scheduler stopped')
           resolve()
           return
         }
@@ -76,7 +79,7 @@ export class FollowupNotificationScheduler {
       // Timeout after 5 seconds
       setTimeout(() => {
         clearInterval(checkProcessing)
-        console.log('Followup notification scheduler stopped (timeout)')
+        logScheduler.warn('Followup notification scheduler stopped (timeout)')
         resolve()
       }, 5000)
     })
@@ -93,7 +96,7 @@ export class FollowupNotificationScheduler {
   private async checkDueFollowups(): Promise<void> {
     if (this.isProcessing) {
       // Skip if previous check is still running
-      console.log('Previous followup check still in progress, skipping...')
+      logScheduler.debug('Previous followup check still in progress, skipping...')
       return
     }
 
@@ -131,7 +134,7 @@ export class FollowupNotificationScheduler {
                 if (shouldAutoSnooze) {
                   // Auto-snooze by 90 minutes
                   await FollowupService.snooze(followup.followup_id, 90, 'automatic')
-                  console.log(
+                  logScheduler.info(
                     `Auto-snoozed followup ${followup.followup_id} for seed ${followup.seed_id} (was ${Math.round((now.getTime() - followup.due_time.getTime()) / 60000)} minutes past due)`
                   )
                 }
@@ -140,11 +143,11 @@ export class FollowupNotificationScheduler {
           }
         } catch (error) {
           // Log error but continue processing other users
-          console.error(`Error checking followups for user ${user.id}:`, error)
+          logScheduler.error(`Error checking followups for user ${user.id}:`, error)
         }
       }
     } catch (error) {
-      console.error('Error in followup notification scheduler:', error)
+      logScheduler.error('Error in followup notification scheduler:', error)
     } finally {
       this.isProcessing = false
     }

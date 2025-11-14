@@ -4,6 +4,9 @@ import type { CategoryChange } from './automation/base'
 import { AutomationRegistry } from './automation/registry'
 import { PressurePointsService } from './pressure'
 import { SeedsService } from './seeds'
+import log from 'loglevel'
+
+const logService = log.getLogger('Service:CategoryChange')
 
 /**
  * Category row from database
@@ -198,7 +201,7 @@ export class CategoryChangeService {
           }
         } catch (error) {
           // Log error but continue processing other automations
-          console.error(
+          logService.error(
             `Error calculating pressure for automation ${automation.id} on seed ${seed.id}:`,
             error
           )

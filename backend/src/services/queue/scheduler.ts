@@ -4,6 +4,9 @@ import { config } from '../../config'
 import { PressurePointsService } from '../pressure'
 import { SeedsService } from '../seeds'
 import { AutomationRegistry } from '../automation/registry'
+import log from 'loglevel'
+
+const logScheduler = log.getLogger('Scheduler')
 
 /**
  * PressureEvaluationScheduler - Timer service that periodically evaluates pressure points
@@ -31,12 +34,12 @@ export class PressureEvaluationScheduler {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('Pressure evaluation scheduler is already running')
+      logScheduler.debug('Pressure evaluation scheduler is already running')
       return
     }
 
     const intervalMs = config.queue.checkInterval
-    console.log(`Starting pressure evaluation scheduler (interval: ${intervalMs}ms)`)
+    logScheduler.info(`Starting pressure evaluation scheduler (interval: ${intervalMs}ms)`)
 
     this.isRunning = true
 
@@ -60,7 +63,7 @@ export class PressureEvaluationScheduler {
         return
       }
 
-      console.log('Stopping pressure evaluation scheduler...')
+      logScheduler.info('Stopping pressure evaluation scheduler...')
 
       if (this.intervalId) {
         clearInterval(this.intervalId)
@@ -73,7 +76,7 @@ export class PressureEvaluationScheduler {
       const checkProcessing = setInterval(() => {
         if (!this.isProcessing) {
           clearInterval(checkProcessing)
-          console.log('Pressure evaluation scheduler stopped')
+          logScheduler.info('Pressure evaluation scheduler stopped')
           resolve()
           return
         }
@@ -82,7 +85,7 @@ export class PressureEvaluationScheduler {
       // Timeout after 5 seconds
       const timeoutId = setTimeout(() => {
         clearInterval(checkProcessing)
-        console.log('Pressure evaluation scheduler stopped (timeout)')
+        logScheduler.warn('Pressure evaluation scheduler stopped (timeout)')
         resolve()
       }, 5000)
       
@@ -105,7 +108,7 @@ export class PressureEvaluationScheduler {
   private async evaluatePressurePoints(): Promise<void> {
     if (this.isProcessing) {
       // Skip if previous evaluation is still running
-      console.log('Previous pressure evaluation still in progress, skipping...')
+      logScheduler.debug('Previous pressure evaluation still in progress, skipping...')
       return
     }
 
@@ -122,14 +125,14 @@ export class PressureEvaluationScheduler {
       const timeSinceLastError = now - this.lastErrorTime
       if (timeSinceLastError < this.recoveryDelayMs) {
         const remainingMs = this.recoveryDelayMs - timeSinceLastError
-        console.warn(
+        logScheduler.warn(
           `Skipping pressure evaluation due to ${this.consecutiveErrors} consecutive errors. Pool may be exhausted. Retrying in ${Math.ceil(remainingMs / 1000)}s.`
         )
         return
       }
       
       // Enough time has passed, allow one recovery attempt
-      console.log(
+      logScheduler.info(
         `Attempting recovery after ${this.consecutiveErrors} consecutive errors. Resetting error counter.`
       )
       this.consecutiveErrors = 0
@@ -156,7 +159,7 @@ export class PressureEvaluationScheduler {
         return
       }
 
-      console.log(
+      logScheduler.debug(
         `Evaluating ${exceededPoints.length} pressure point(s) that exceed threshold`
       )
 
@@ -168,7 +171,7 @@ export class PressureEvaluationScheduler {
           // Get the automation
           const automation = registry.getById(point.automation_id)
           if (!automation) {
-            console.warn(
+            logScheduler.warn(
               `Automation ${point.automation_id} not found for pressure point ${point.seed_id}`
             )
             continue
@@ -192,7 +195,7 @@ export class PressureEvaluationScheduler {
           )
 
           if (!seedRow) {
-            console.warn(`Could not find user_id for seed ${point.seed_id}`)
+            logScheduler.warn(`Could not find user_id for seed ${point.seed_id}`)
             continue
           }
 
@@ -225,7 +228,7 @@ export class PressureEvaluationScheduler {
           // This will typically add the seed to the automation queue
           await automation.handlePressure(fullSeed, point.pressure_amount, context)
 
-          console.log(
+          logScheduler.info(
             `Triggered re-evaluation for seed ${point.seed_id} via automation ${automation.name} (pressure: ${point.pressure_amount})`
           )
 
@@ -233,7 +236,7 @@ export class PressureEvaluationScheduler {
           await this.delay(100)
         } catch (error) {
           // Log error but continue processing other pressure points
-          console.error(
+          logScheduler.error(
             `Error processing pressure point for seed ${point.seed_id}, automation ${point.automation_id}:`,
             error
           )
@@ -250,14 +253,14 @@ export class PressureEvaluationScheduler {
       if (isConnectionError) {
         this.consecutiveErrors++
         this.lastErrorTime = Date.now()
-        console.error(
+        logScheduler.error(
           `Connection pool exhausted (consecutive errors: ${this.consecutiveErrors}/${this.maxConsecutiveErrors}). Skipping next evaluations to allow pool recovery.`
         )
       } else {
         // Reset error counter for non-connection errors
         this.consecutiveErrors = 0
         this.lastErrorTime = null
-        console.error('Error in pressure evaluation scheduler:', error)
+        logScheduler.error('Error in pressure evaluation scheduler:', error)
       }
     } finally {
       this.isProcessing = false

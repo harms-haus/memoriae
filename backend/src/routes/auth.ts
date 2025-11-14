@@ -4,7 +4,9 @@ import axios from 'axios'
 import { findOrCreateUser, generateToken } from '../services/auth'
 import { authenticate } from '../middleware/auth'
 import { config } from '../config'
+import log from 'loglevel'
 
+const logRoutes = log.getLogger('Routes:Auth')
 const router = Router()
 
 /**
@@ -13,6 +15,7 @@ const router = Router()
  */
 router.get('/status', authenticate, async (req, res) => {
   try {
+    logRoutes.debug(`GET /status - Checking auth status for user ${req.user!.id}`)
     res.json({
       authenticated: true,
       user: {
@@ -22,7 +25,9 @@ router.get('/status', authenticate, async (req, res) => {
         provider: req.user!.provider,
       },
     })
+    logRoutes.info(`GET /status - User ${req.user!.id} authenticated`)
   } catch (error) {
+    logRoutes.error(`GET /status - Error:`, error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -32,6 +37,7 @@ router.get('/status', authenticate, async (req, res) => {
  * Initiate Google OAuth flow - redirects to Google
  */
 router.get('/google', (req: Request, res: Response) => {
+  logRoutes.debug('GET /google - Initiating Google OAuth flow')
   const state = Buffer.from(JSON.stringify({ redirect: req.query.redirect || '/' })).toString('base64')
   
   const params = new URLSearchParams({
@@ -45,6 +51,7 @@ router.get('/google', (req: Request, res: Response) => {
   })
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+  logRoutes.info('GET /google - Redirecting to Google OAuth')
   res.redirect(googleAuthUrl)
 })
 
@@ -56,11 +63,15 @@ router.get('/google/callback', async (req: Request, res: Response) => {
   try {
     const { code, state } = req.query
 
+    logRoutes.debug('GET /google/callback - Processing Google OAuth callback')
+
     if (!code || typeof code !== 'string') {
+      logRoutes.warn('GET /google/callback - Missing code parameter')
       return res.redirect(`${config.frontend.url}/login?error=no_code`)
     }
 
     // Exchange code for token
+    logRoutes.debug('GET /google/callback - Exchanging code for token')
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       client_id: config.oauth.google.clientId,
       client_secret: config.oauth.google.clientSecret,
@@ -72,6 +83,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     const { access_token } = tokenResponse.data
 
     // Get user profile
+    logRoutes.debug('GET /google/callback - Fetching user profile')
     const profileResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
         Authorization: `Bearer ${access_token}`,
@@ -81,6 +93,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     const profile = profileResponse.data
 
     // Find or create user
+    logRoutes.debug(`GET /google/callback - Finding or creating user: ${profile.email}`)
     const user = await findOrCreateUser('google', {
       id: profile.id,
       email: profile.email,
@@ -100,9 +113,10 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     }
 
     // Redirect to frontend with token
+    logRoutes.info(`GET /google/callback - OAuth successful for user ${user.id}, redirecting to ${redirect}`)
     res.redirect(`${config.frontend.url}${redirect}?token=${token}`)
   } catch (error) {
-    console.error('Google OAuth error:', error)
+    logRoutes.error('GET /google/callback - Google OAuth error:', error)
     res.redirect(`${config.frontend.url}/login?error=oauth_failed`)
   }
 })
@@ -112,6 +126,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
  * Initiate GitHub OAuth flow - redirects to GitHub
  */
 router.get('/github', (req: Request, res: Response) => {
+  logRoutes.debug('GET /github - Initiating GitHub OAuth flow')
   const state = Buffer.from(JSON.stringify({ redirect: req.query.redirect || '/' })).toString('base64')
   
   const params = new URLSearchParams({
@@ -122,6 +137,7 @@ router.get('/github', (req: Request, res: Response) => {
   })
 
   const githubAuthUrl = `https://github.com/login/oauth/authorize?${params.toString()}`
+  logRoutes.info('GET /github - Redirecting to GitHub OAuth')
   res.redirect(githubAuthUrl)
 })
 
@@ -134,11 +150,11 @@ router.get('/github/callback', async (req: Request, res: Response) => {
     const { code, state } = req.query
 
     if (!code || typeof code !== 'string') {
-      console.error('GitHub OAuth callback: Missing code parameter')
+      logRoutes.error('GitHub OAuth callback: Missing code parameter')
       return res.redirect(`${config.frontend.url}/login?error=no_code`)
     }
 
-    console.log('GitHub OAuth callback: Exchanging code for token...')
+    logRoutes.debug('GitHub OAuth callback: Exchanging code for token...')
 
     // Exchange code for token
     let tokenResponse
@@ -158,23 +174,23 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         }
       )
     } catch (tokenError: any) {
-      console.error('GitHub token exchange error:', tokenError.response?.data || tokenError.message)
+      logRoutes.error('GitHub token exchange error:', tokenError.response?.data || tokenError.message)
       return res.redirect(`${config.frontend.url}/login?error=token_exchange_failed`)
     }
 
     const { access_token, error: tokenError } = tokenResponse.data
 
     if (tokenError) {
-      console.error('GitHub token exchange returned error:', tokenError)
+      logRoutes.error('GitHub token exchange returned error:', tokenError)
       return res.redirect(`${config.frontend.url}/login?error=token_error`)
     }
 
     if (!access_token) {
-      console.error('GitHub token exchange: No access token in response')
+      logRoutes.error('GitHub token exchange: No access token in response')
       return res.redirect(`${config.frontend.url}/login?error=no_token`)
     }
 
-    console.log('GitHub OAuth: Token received, fetching user profile...')
+    logRoutes.debug('GitHub OAuth: Token received, fetching user profile...')
 
     // Get user profile
     let profile
@@ -187,7 +203,7 @@ router.get('/github/callback', async (req: Request, res: Response) => {
       })
       profile = profileResponse.data
     } catch (profileError: any) {
-      console.error('GitHub profile fetch error:', profileError.response?.data || profileError.message)
+      logRoutes.error('GitHub profile fetch error:', profileError.response?.data || profileError.message)
       return res.redirect(`${config.frontend.url}/login?error=profile_fetch_failed`)
     }
 
@@ -204,13 +220,13 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         const primaryEmail = emailsResponse.data.find((e: any) => e.primary)
         email = primaryEmail ? primaryEmail.email : emailsResponse.data[0]?.email || `${profile.id}@users.noreply.github.com`
       } catch (emailError: any) {
-        console.error('GitHub email fetch error:', emailError.response?.data || emailError.message)
+        logRoutes.error('GitHub email fetch error:', emailError.response?.data || emailError.message)
         // Continue with fallback email
         email = `${profile.id}@users.noreply.github.com`
       }
     }
 
-    console.log('GitHub OAuth: Finding or creating user...')
+    logRoutes.debug('GitHub OAuth: Finding or creating user...')
 
     // Find or create user
     let user
@@ -221,18 +237,18 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         name: profile.name || profile.login || email,
       })
     } catch (userError: any) {
-      console.error('User creation error:', userError)
+      logRoutes.error('User creation error:', userError)
       return res.redirect(`${config.frontend.url}/login?error=user_creation_failed`)
     }
 
-    console.log('GitHub OAuth: Generating JWT token...')
+    logRoutes.debug('GitHub OAuth: Generating JWT token...')
 
     // Generate JWT token
     let token
     try {
       token = generateToken(user)
     } catch (tokenGenError: any) {
-      console.error('JWT generation error:', tokenGenError)
+      logRoutes.error('JWT generation error:', tokenGenError)
       return res.redirect(`${config.frontend.url}/login?error=token_generation_failed`)
     }
 
@@ -247,13 +263,13 @@ router.get('/github/callback', async (req: Request, res: Response) => {
       // Invalid state, use default
     }
 
-    console.log('GitHub OAuth: Success! Redirecting to frontend...')
+    logRoutes.info('GitHub OAuth: Success! Redirecting to frontend...')
 
     // Redirect to frontend with token
     res.redirect(`${config.frontend.url}${redirect}?token=${token}`)
   } catch (error: any) {
-    console.error('GitHub OAuth error:', error)
-    console.error('Error stack:', error.stack)
+    logRoutes.error('GitHub OAuth error:', error)
+    logRoutes.error('Error stack:', error.stack)
     // Ensure we always send a response
     if (!res.headersSent) {
       res.redirect(`${config.frontend.url}/login?error=oauth_failed`)
@@ -268,6 +284,7 @@ router.get('/github/callback', async (req: Request, res: Response) => {
 router.post('/logout', authenticate, (req: Request, res: Response) => {
   // Since we use JWT, logout is handled client-side by removing the token
   // This endpoint exists for consistency and can be used for logging
+  logRoutes.info(`POST /logout - User ${req.user!.id} logged out`)
   res.json({ message: 'Logged out successfully' })
 })
 

@@ -18,6 +18,9 @@ import type {
   DismissalType,
   SnoozeMethod,
 } from '../types/followups'
+import log from 'loglevel'
+
+const logService = log.getLogger('Service:Followups')
 
 /**
  * Compute followup state from transactions
@@ -96,71 +99,90 @@ export class FollowupService {
    * Get all followups for a seed with computed state
    */
   static async getBySeedId(seedId: string): Promise<Followup[]> {
-    // Get all followups for this seed
-    const followupRows = await db<FollowupRow>('followups')
-      .where({ seed_id: seedId })
-      .select('*')
+    logService.debug(`getBySeedId - Fetching followups for seed ${seedId}`)
+    try {
+      // Get all followups for this seed
+      const followupRows = await db<FollowupRow>('followups')
+        .where({ seed_id: seedId })
+        .select('*')
 
-    if (followupRows.length === 0) {
-      return []
-    }
-
-    // Get all transactions for these followups
-    const followupIds = followupRows.map((f) => f.id)
-    const transactionRows = await db<FollowupTransactionRow>('followup_transactions')
-      .whereIn('followup_id', followupIds)
-      .orderBy('created_at', 'asc')
-      .select('*')
-
-    // Group transactions by followup_id
-    const transactionsByFollowup = new Map<string, FollowupTransaction[]>()
-    for (const row of transactionRows) {
-      const transaction: FollowupTransaction = {
-        id: row.id,
-        followup_id: row.followup_id,
-        transaction_type: row.transaction_type,
-        transaction_data: row.transaction_data as any,
-        created_at: new Date(row.created_at),
+      if (followupRows.length === 0) {
+        logService.debug(`getBySeedId - No followups found for seed ${seedId}`)
+        return []
       }
 
-      const existing = transactionsByFollowup.get(row.followup_id) || []
-      existing.push(transaction)
-      transactionsByFollowup.set(row.followup_id, existing)
-    }
+      // Get all transactions for these followups
+      const followupIds = followupRows.map((f) => f.id)
+      const transactionRows = await db<FollowupTransactionRow>('followup_transactions')
+        .whereIn('followup_id', followupIds)
+        .orderBy('created_at', 'asc')
+        .select('*')
 
-    // Compute state for each followup
-    return followupRows.map((followupRow) => {
-      const transactions = transactionsByFollowup.get(followupRow.id) || []
-      return computeFollowupState(followupRow, transactions)
-    })
+      // Group transactions by followup_id
+      const transactionsByFollowup = new Map<string, FollowupTransaction[]>()
+      for (const row of transactionRows) {
+        const transaction: FollowupTransaction = {
+          id: row.id,
+          followup_id: row.followup_id,
+          transaction_type: row.transaction_type,
+          transaction_data: row.transaction_data as any,
+          created_at: new Date(row.created_at),
+        }
+
+        const existing = transactionsByFollowup.get(row.followup_id) || []
+        existing.push(transaction)
+        transactionsByFollowup.set(row.followup_id, existing)
+      }
+
+      // Compute state for each followup
+      const followups = followupRows.map((followupRow) => {
+        const transactions = transactionsByFollowup.get(followupRow.id) || []
+        return computeFollowupState(followupRow, transactions)
+      })
+
+      logService.info(`getBySeedId - Found ${followups.length} followups for seed ${seedId}`)
+      return followups
+    } catch (error) {
+      logService.error(`getBySeedId - Error fetching followups for seed ${seedId}:`, error)
+      throw error
+    }
   }
 
   /**
    * Get followup by ID with computed state
    */
   static async getById(followupId: string): Promise<Followup | null> {
-    const followupRow = await db<FollowupRow>('followups')
-      .where({ id: followupId })
-      .first()
+    logService.debug(`getById - Fetching followup ${followupId}`)
+    try {
+      const followupRow = await db<FollowupRow>('followups')
+        .where({ id: followupId })
+        .first()
 
-    if (!followupRow) {
-      return null
+      if (!followupRow) {
+        logService.debug(`getById - Followup ${followupId} not found`)
+        return null
+      }
+
+      const transactionRows = await db<FollowupTransactionRow>('followup_transactions')
+        .where({ followup_id: followupId })
+        .orderBy('created_at', 'asc')
+        .select('*')
+
+      const transactions: FollowupTransaction[] = transactionRows.map((row) => ({
+        id: row.id,
+        followup_id: row.followup_id,
+        transaction_type: row.transaction_type,
+        transaction_data: row.transaction_data as any,
+        created_at: new Date(row.created_at),
+      }))
+
+      const followup = computeFollowupState(followupRow, transactions)
+      logService.debug(`getById - Found followup ${followupId} for seed ${followup.seed_id}`)
+      return followup
+    } catch (error) {
+      logService.error(`getById - Error fetching followup ${followupId}:`, error)
+      throw error
     }
-
-    const transactionRows = await db<FollowupTransactionRow>('followup_transactions')
-      .where({ followup_id: followupId })
-      .orderBy('created_at', 'asc')
-      .select('*')
-
-    const transactions: FollowupTransaction[] = transactionRows.map((row) => ({
-      id: row.id,
-      followup_id: row.followup_id,
-      transaction_type: row.transaction_type,
-      transaction_data: row.transaction_data as any,
-      created_at: new Date(row.created_at),
-    }))
-
-    return computeFollowupState(followupRow, transactions)
   }
 
   /**
@@ -172,93 +194,109 @@ export class FollowupService {
     data: CreateFollowupDto,
     trigger: FollowupTrigger
   ): Promise<Followup> {
-    const followupId = uuidv4()
-    const now = new Date()
+    logService.debug(`create - Creating followup for seed ${seedId} (trigger: ${trigger}, due_time: ${data.due_time})`)
+    try {
+      const followupId = uuidv4()
+      const now = new Date()
 
-    // Create followup row
-    await db<FollowupRow>('followups').insert({
-      id: followupId,
-      seed_id: seedId,
-    })
+      // Create followup row
+      await db<FollowupRow>('followups').insert({
+        id: followupId,
+        seed_id: seedId,
+      })
 
-    // Create creation transaction for followup
-    const creationData: CreationTransactionData = {
-      trigger,
-      initial_time: data.due_time,
-      initial_message: data.message,
-    }
+      // Create creation transaction for followup
+      const creationData: CreationTransactionData = {
+        trigger,
+        initial_time: data.due_time,
+        initial_message: data.message,
+      }
 
-    await db<FollowupTransactionRow>('followup_transactions').insert({
-      id: uuidv4(),
-      followup_id: followupId,
-      transaction_type: 'creation',
-      transaction_data: db.raw('?::jsonb', [JSON.stringify(creationData)]),
-      created_at: now,
-    })
-
-    // Create add_followup transaction on the seed
-    await SeedTransactionsService.create({
-      seed_id: seedId,
-      transaction_type: 'add_followup',
-      transaction_data: {
+      await db<FollowupTransactionRow>('followup_transactions').insert({
+        id: uuidv4(),
         followup_id: followupId,
-      },
-      automation_id: null,
-    })
+        transaction_type: 'creation',
+        transaction_data: db.raw('?::jsonb', [JSON.stringify(creationData)]),
+        created_at: now,
+      })
 
-    // Return computed state
-    const followup = await this.getById(followupId)
-    if (!followup) {
-      throw new Error('Failed to create followup')
+      // Create add_followup transaction on the seed
+      await SeedTransactionsService.create({
+        seed_id: seedId,
+        transaction_type: 'add_followup',
+        transaction_data: {
+          followup_id: followupId,
+        },
+        automation_id: null,
+      })
+
+      // Return computed state
+      const followup = await this.getById(followupId)
+      if (!followup) {
+        throw new Error('Failed to create followup')
+      }
+
+      logService.info(`create - Created followup ${followupId} for seed ${seedId} (trigger: ${trigger})`)
+      return followup
+    } catch (error) {
+      logService.error(`create - Error creating followup for seed ${seedId}:`, error)
+      throw error
     }
-
-    return followup
   }
 
   /**
    * Edit followup (adds edit transaction)
    */
   static async edit(followupId: string, data: EditFollowupDto): Promise<Followup> {
-    // Get current state
-    const current = await this.getById(followupId)
-    if (!current) {
-      throw new Error('Followup not found')
-    }
+    logService.debug(`edit - Editing followup ${followupId}`, { hasDueTime: data.due_time !== undefined, hasMessage: data.message !== undefined })
+    try {
+      // Get current state
+      const current = await this.getById(followupId)
+      if (!current) {
+        logService.warn(`edit - Followup ${followupId} not found`)
+        throw new Error('Followup not found')
+      }
 
-    if (current.dismissed) {
-      throw new Error('Cannot edit dismissed followup')
-    }
+      if (current.dismissed) {
+        logService.warn(`edit - Cannot edit dismissed followup ${followupId}`)
+        throw new Error('Cannot edit dismissed followup')
+      }
 
-    // Build edit transaction data
-    const editData: EditTransactionData = {
-      new_time: data.due_time || current.due_time.toISOString(),
-      new_message: data.message || current.message,
-    }
+      // Build edit transaction data
+      const editData: EditTransactionData = {
+        new_time: data.due_time || current.due_time.toISOString(),
+        new_message: data.message || current.message,
+      }
 
-    // Only include old values if they're being changed
-    if (data.due_time && data.due_time !== current.due_time.toISOString()) {
-      editData.old_time = current.due_time.toISOString()
-    }
-    if (data.message && data.message !== current.message) {
-      editData.old_message = current.message
-    }
+      // Only include old values if they're being changed
+      if (data.due_time && data.due_time !== current.due_time.toISOString()) {
+        editData.old_time = current.due_time.toISOString()
+      }
+      if (data.message && data.message !== current.message) {
+        editData.old_message = current.message
+      }
 
-    // Create edit transaction
-    await db<FollowupTransactionRow>('followup_transactions').insert({
-      id: uuidv4(),
-      followup_id: followupId,
-      transaction_type: 'edit',
-      transaction_data: db.raw('?::jsonb', [JSON.stringify(editData)]),
-      created_at: new Date(),
-    })
+      // Create edit transaction
+      await db<FollowupTransactionRow>('followup_transactions').insert({
+        id: uuidv4(),
+        followup_id: followupId,
+        transaction_type: 'edit',
+        transaction_data: db.raw('?::jsonb', [JSON.stringify(editData)]),
+        created_at: new Date(),
+      })
 
-    // Return updated state
-    const updated = await this.getById(followupId)
-    if (!updated) {
-      throw new Error('Failed to update followup')
+      // Return updated state
+      const updated = await this.getById(followupId)
+      if (!updated) {
+        throw new Error('Failed to update followup')
+      }
+
+      logService.info(`edit - Updated followup ${followupId}`)
+      return updated
+    } catch (error) {
+      logService.error(`edit - Error editing followup ${followupId}:`, error)
+      throw error
     }
-
-    return updated
   }
 
   /**
@@ -269,75 +307,93 @@ export class FollowupService {
     durationMinutes: number,
     method: SnoozeMethod
   ): Promise<Followup> {
-    // Get current state
-    const current = await this.getById(followupId)
-    if (!current) {
-      throw new Error('Followup not found')
+    logService.debug(`snooze - Snoozing followup ${followupId} for ${durationMinutes} minutes (method: ${method})`)
+    try {
+      // Get current state
+      const current = await this.getById(followupId)
+      if (!current) {
+        logService.warn(`snooze - Followup ${followupId} not found`)
+        throw new Error('Followup not found')
+      }
+
+      if (current.dismissed) {
+        logService.warn(`snooze - Cannot snooze dismissed followup ${followupId}`)
+        throw new Error('Cannot snooze dismissed followup')
+      }
+
+      // Create snooze transaction
+      const snoozeData: SnoozeTransactionData = {
+        snoozed_at: new Date().toISOString(),
+        duration_minutes: durationMinutes,
+        method,
+      }
+
+      await db<FollowupTransactionRow>('followup_transactions').insert({
+        id: uuidv4(),
+        followup_id: followupId,
+        transaction_type: 'snooze',
+        transaction_data: db.raw('?::jsonb', [JSON.stringify(snoozeData)]),
+        created_at: new Date(),
+      })
+
+      // Return updated state
+      const updated = await this.getById(followupId)
+      if (!updated) {
+        throw new Error('Failed to snooze followup')
+      }
+
+      logService.info(`snooze - Snoozed followup ${followupId} for ${durationMinutes} minutes`)
+      return updated
+    } catch (error) {
+      logService.error(`snooze - Error snoozing followup ${followupId}:`, error)
+      throw error
     }
-
-    if (current.dismissed) {
-      throw new Error('Cannot snooze dismissed followup')
-    }
-
-    // Create snooze transaction
-    const snoozeData: SnoozeTransactionData = {
-      snoozed_at: new Date().toISOString(),
-      duration_minutes: durationMinutes,
-      method,
-    }
-
-    await db<FollowupTransactionRow>('followup_transactions').insert({
-      id: uuidv4(),
-      followup_id: followupId,
-      transaction_type: 'snooze',
-      transaction_data: db.raw('?::jsonb', [JSON.stringify(snoozeData)]),
-      created_at: new Date(),
-    })
-
-    // Return updated state
-    const updated = await this.getById(followupId)
-    if (!updated) {
-      throw new Error('Failed to snooze followup')
-    }
-
-    return updated
   }
 
   /**
    * Dismiss followup (adds dismissal transaction)
    */
   static async dismiss(followupId: string, type: DismissalType): Promise<Followup> {
-    // Get current state
-    const current = await this.getById(followupId)
-    if (!current) {
-      throw new Error('Followup not found')
+    logService.debug(`dismiss - Dismissing followup ${followupId} (type: ${type})`)
+    try {
+      // Get current state
+      const current = await this.getById(followupId)
+      if (!current) {
+        logService.warn(`dismiss - Followup ${followupId} not found`)
+        throw new Error('Followup not found')
+      }
+
+      if (current.dismissed) {
+        logService.warn(`dismiss - Followup ${followupId} already dismissed`)
+        throw new Error('Followup already dismissed')
+      }
+
+      // Create dismissal transaction
+      const dismissalData: DismissalTransactionData = {
+        dismissed_at: new Date().toISOString(),
+        type,
+      }
+
+      await db<FollowupTransactionRow>('followup_transactions').insert({
+        id: uuidv4(),
+        followup_id: followupId,
+        transaction_type: 'dismissal',
+        transaction_data: db.raw('?::jsonb', [JSON.stringify(dismissalData)]),
+        created_at: new Date(),
+      })
+
+      // Return updated state
+      const updated = await this.getById(followupId)
+      if (!updated) {
+        throw new Error('Failed to dismiss followup')
+      }
+
+      logService.info(`dismiss - Dismissed followup ${followupId} (type: ${type})`)
+      return updated
+    } catch (error) {
+      logService.error(`dismiss - Error dismissing followup ${followupId}:`, error)
+      throw error
     }
-
-    if (current.dismissed) {
-      throw new Error('Followup already dismissed')
-    }
-
-    // Create dismissal transaction
-    const dismissalData: DismissalTransactionData = {
-      dismissed_at: new Date().toISOString(),
-      type,
-    }
-
-    await db<FollowupTransactionRow>('followup_transactions').insert({
-      id: uuidv4(),
-      followup_id: followupId,
-      transaction_type: 'dismissal',
-      transaction_data: db.raw('?::jsonb', [JSON.stringify(dismissalData)]),
-      created_at: new Date(),
-    })
-
-    // Return updated state
-    const updated = await this.getById(followupId)
-    if (!updated) {
-      throw new Error('Failed to dismiss followup')
-    }
-
-    return updated
   }
 
   /**
@@ -345,76 +401,85 @@ export class FollowupService {
    * Returns followups where due_time <= now and not dismissed
    */
   static async getDueFollowups(userId: string): Promise<DueFollowup[]> {
-    const now = new Date()
+    logService.debug(`getDueFollowups - Fetching due followups for user ${userId}`)
+    try {
+      const now = new Date()
 
-    // Get all seeds for user
-    const seeds = await db('seeds')
-      .where({ user_id: userId })
-      .select('id')
+      // Get all seeds for user
+      const seeds = await db('seeds')
+        .where({ user_id: userId })
+        .select('id')
 
-    const seedIds = seeds.map((s) => s.id)
+      const seedIds = seeds.map((s) => s.id)
 
-    if (seedIds.length === 0) {
-      return []
-    }
-
-    // Get all followups for user's seeds
-    const followupRows = await db<FollowupRow>('followups')
-      .whereIn('seed_id', seedIds)
-      .select('*')
-
-    if (followupRows.length === 0) {
-      return []
-    }
-
-    // Get all transactions
-    const followupIds = followupRows.map((f) => f.id)
-    const transactionRows = await db<FollowupTransactionRow>('followup_transactions')
-      .whereIn('followup_id', followupIds)
-      .orderBy('created_at', 'asc')
-      .select('*')
-
-    // Group transactions by followup_id
-    const transactionsByFollowup = new Map<string, FollowupTransaction[]>()
-    for (const row of transactionRows) {
-      const transaction: FollowupTransaction = {
-        id: row.id,
-        followup_id: row.followup_id,
-        transaction_type: row.transaction_type,
-        transaction_data: row.transaction_data as any,
-        created_at: new Date(row.created_at),
+      if (seedIds.length === 0) {
+        logService.debug(`getDueFollowups - No seeds found for user ${userId}`)
+        return []
       }
 
-      const existing = transactionsByFollowup.get(row.followup_id) || []
-      existing.push(transaction)
-      transactionsByFollowup.set(row.followup_id, existing)
-    }
+      // Get all followups for user's seeds
+      const followupRows = await db<FollowupRow>('followups')
+        .whereIn('seed_id', seedIds)
+        .select('*')
 
-    // Compute state and filter for due followups
-    const dueFollowups: DueFollowup[] = []
+      if (followupRows.length === 0) {
+        logService.debug(`getDueFollowups - No followups found for user ${userId}`)
+        return []
+      }
 
-    for (const followupRow of followupRows) {
-      const transactions = transactionsByFollowup.get(followupRow.id) || []
-      const followup = computeFollowupState(followupRow, transactions)
+      // Get all transactions
+      const followupIds = followupRows.map((f) => f.id)
+      const transactionRows = await db<FollowupTransactionRow>('followup_transactions')
+        .whereIn('followup_id', followupIds)
+        .orderBy('created_at', 'asc')
+        .select('*')
 
-      // Check if due and not dismissed
-      if (!followup.dismissed && followup.due_time <= now) {
-        // Find seed (including slug)
-        const seed = seeds.find((s) => s.id === followup.seed_id)
-        if (seed) {
-          dueFollowups.push({
-            followup_id: followup.id,
-            seed_id: followup.seed_id,
-            seed_slug: null,
-            user_id: userId,
-            due_time: followup.due_time,
-            message: followup.message,
-          })
+      // Group transactions by followup_id
+      const transactionsByFollowup = new Map<string, FollowupTransaction[]>()
+      for (const row of transactionRows) {
+        const transaction: FollowupTransaction = {
+          id: row.id,
+          followup_id: row.followup_id,
+          transaction_type: row.transaction_type,
+          transaction_data: row.transaction_data as any,
+          created_at: new Date(row.created_at),
+        }
+
+        const existing = transactionsByFollowup.get(row.followup_id) || []
+        existing.push(transaction)
+        transactionsByFollowup.set(row.followup_id, existing)
+      }
+
+      // Compute state and filter for due followups
+      const dueFollowups: DueFollowup[] = []
+
+      for (const followupRow of followupRows) {
+        const transactions = transactionsByFollowup.get(followupRow.id) || []
+        const followup = computeFollowupState(followupRow, transactions)
+
+        // Check if due and not dismissed
+        if (!followup.dismissed && followup.due_time <= now) {
+          // Find seed (including slug)
+          const seed = seeds.find((s) => s.id === followup.seed_id)
+          if (seed) {
+            dueFollowups.push({
+              followup_id: followup.id,
+              seed_id: followup.seed_id,
+              seed_slug: null,
+              user_id: userId,
+              due_time: followup.due_time,
+              message: followup.message,
+            })
+          }
         }
       }
-    }
 
-    return dueFollowups
+      logService.info(`getDueFollowups - Found ${dueFollowups.length} due followups for user ${userId}`)
+      return dueFollowups
+    } catch (error) {
+      logService.error(`getDueFollowups - Error fetching due followups for user ${userId}:`, error)
+      throw error
+    }
   }
 }
 

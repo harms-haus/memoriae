@@ -199,7 +199,7 @@ automationWorker.on('active', (job) => {
 })
 
 automationWorker.on('stalled', (jobId) => {
-  log.warn(`Job ${jobId} stalled (taking too long)`)
+  logWorker.warn(`Job ${jobId} stalled (taking too long)`)
 })
 
 automationWorker.on('ready', () => {
@@ -214,7 +214,7 @@ automationWorker.on('closing', () => {
 setTimeout(() => {
   logWorker.debug(`Worker status check - isRunning: ${automationWorker.isRunning()}, isPaused: ${automationWorker.isPaused()}`)
   if (!automationWorker.isRunning()) {
-    log.warn('⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
+    logWorker.warn('⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
   }
 }, 2000)
 

@@ -13,6 +13,7 @@ import followupsRoutes from './routes/followups'
 import ideaMusingsRoutes from './routes/idea-musings'
 import { config } from './config'
 import log from 'loglevel'
+import { requestLogger } from './middleware/requestLogger'
 
 const logApp = log.getLogger('App')
 const app = express()
@@ -42,6 +43,9 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// Request logging middleware (after body parsers, before routes)
+app.use(requestLogger)
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
@@ -82,8 +86,20 @@ app.use('/api/*', (req: Request, res: Response) => {
 
 // Error handling middleware (must be last)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logApp.error('Error:', err)
-  logApp.error('Error stack:', err.stack)
+  const userId = (req as any).user?.id || 'anonymous'
+  const requestPath = req.originalUrl || req.path
+  const requestMethod = req.method
+  
+  logApp.error(`Error in ${requestMethod} ${requestPath} (user: ${userId}):`, err.message)
+  logApp.error(`Error stack:`, err.stack)
+  logApp.error(`Request details:`, {
+    method: requestMethod,
+    path: requestPath,
+    userId,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+  })
+  
   // In development, send more details
   if (process.env.NODE_ENV === 'development') {
     res.status(500).json({ 

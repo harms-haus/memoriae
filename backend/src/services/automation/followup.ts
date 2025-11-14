@@ -6,6 +6,9 @@ import type { Seed } from '../seeds'
 import { FollowupService } from '../followups'
 import { SettingsService } from '../settings'
 import { DateTime } from 'luxon'
+import log from 'loglevel'
+
+const logAutomation = log.getLogger('Automation:Followup')
 
 /**
  * FollowupAutomation - Identifies seeds that require follow-ups
@@ -181,7 +184,7 @@ ${seed.currentState.seed}`
 
       // Validate due_time - if invalid, treat as low confidence
       if (!parsed.due_time || typeof parsed.due_time !== 'string') {
-        console.warn(`FollowupAutomation: AI returned confidence ${parsed.confidence} but missing due_time. Treating as low confidence.`)
+        logAutomation.warn(`AI returned confidence ${parsed.confidence} but missing due_time. Treating as low confidence.`)
         return {
           confidence: parsed.confidence,
           due_time: DateTime.now().plus({ days: 1 }).toJSDate(),
@@ -211,7 +214,7 @@ ${seed.currentState.seed}`
         
         dueTime = dt.toUTC().toJSDate()
       } catch (error) {
-        console.warn(`FollowupAutomation: Failed to parse due_time "${parsed.due_time}" in timezone ${userTimezone}:`, error)
+        logAutomation.warn(`Failed to parse due_time "${parsed.due_time}" in timezone ${userTimezone}:`, error)
         return {
           confidence: parsed.confidence,
           due_time: DateTime.now().plus({ days: 1 }).toJSDate(),
@@ -220,7 +223,7 @@ ${seed.currentState.seed}`
       }
       
       if (isNaN(dueTime.getTime())) {
-        console.warn(`FollowupAutomation: AI returned confidence ${parsed.confidence} but invalid due_time format: ${parsed.due_time}. Treating as low confidence.`)
+        logAutomation.warn(`AI returned confidence ${parsed.confidence} but invalid due_time format: ${parsed.due_time}. Treating as low confidence.`)
         return {
           confidence: parsed.confidence,
           due_time: DateTime.now().plus({ days: 1 }).toJSDate(),
@@ -230,7 +233,7 @@ ${seed.currentState.seed}`
 
       // Validate message - if invalid, treat as low confidence
       if (!parsed.message || typeof parsed.message !== 'string' || parsed.message.trim().length === 0) {
-        console.warn(`FollowupAutomation: AI returned confidence ${parsed.confidence} but missing or empty message. Treating as low confidence.`)
+        logAutomation.warn(`AI returned confidence ${parsed.confidence} but missing or empty message. Treating as low confidence.`)
         return {
           confidence: parsed.confidence,
           due_time: DateTime.now().plus({ days: 1 }).toJSDate(),
@@ -244,7 +247,7 @@ ${seed.currentState.seed}`
         message: parsed.message.trim(),
       }
     } catch (error) {
-      console.error('FollowupAutomation: Failed to analyze seed:', error)
+      logAutomation.error('Failed to analyze seed:', error)
       // Return low confidence on error - don't create followup
       return {
         confidence: 0,

@@ -6,6 +6,9 @@ import { computeTagState } from '../utils/tag-state'
 import { computeCurrentState } from './seeds'
 import type { TagTransaction } from '../types/tag-transactions'
 import type { Seed, SeedRow } from './seeds'
+import log from 'loglevel'
+
+const logService = log.getLogger('Service:Tags')
 
 /**
  * Tag record from database
@@ -67,7 +70,7 @@ export async function getAllTags(): Promise<Tag[]> {
           currentState = computeTagState(transactions)
         } catch (error) {
           // If computeTagState fails (e.g., invalid transaction data), fall back to direct tag data
-          console.warn(`Failed to compute state from transactions for tag ${tag.id}:`, error)
+          logService.warn(`Failed to compute state from transactions for tag ${tag.id}:`, error)
           currentState = {
             name: tag.name,
             color: tag.color,

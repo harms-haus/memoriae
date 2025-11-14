@@ -2,6 +2,9 @@
 import { v4 as uuidv4 } from 'uuid'
 import db from '../db/connection'
 import { SeedsService } from './seeds'
+import log from 'loglevel'
+
+const logService = log.getLogger('Service:IdeaMusings')
 
 export type MusingTemplateType = 'numbered_ideas' | 'wikipedia_links' | 'markdown'
 
@@ -108,7 +111,7 @@ export class IdeaMusingsService {
     } catch (error: any) {
       // Handle case where table doesn't exist yet (migrations not run)
       if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
-        console.warn('idea_musings table does not exist yet, returning empty array')
+        logService.warn('idea_musings table does not exist yet, returning empty array')
         return []
       }
       throw error
@@ -139,7 +142,7 @@ export class IdeaMusingsService {
     } catch (error: any) {
       // Handle case where table doesn't exist yet
       if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
-        console.warn('idea_musings table does not exist yet, returning empty array')
+        logService.warn('idea_musings table does not exist yet, returning empty array')
         return []
       }
       throw error
@@ -301,7 +304,7 @@ export class IdeaMusingsService {
     } catch (error: any) {
       // Handle case where table doesn't exist yet
       if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
-        console.warn('idea_musing_shown_history table does not exist yet, returning empty set')
+        logService.warn('idea_musing_shown_history table does not exist yet, returning empty set')
         return new Set()
       }
       throw error

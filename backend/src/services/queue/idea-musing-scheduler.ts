@@ -7,6 +7,9 @@ import { AutomationRegistry } from '../automation/registry'
 import { SettingsService } from '../settings'
 import { createOpenRouterClient } from '../openrouter/client'
 import db from '../../db/connection'
+import log from 'loglevel'
+
+const logScheduler = log.getLogger('Scheduler:IdeaMusing')
 
 /**
  * IdeaMusingScheduler - Timer service that runs daily to generate musings
@@ -31,7 +34,7 @@ export class IdeaMusingScheduler {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('Idea musing scheduler is already running')
+      logScheduler.debug('Idea musing scheduler is already running')
       return
     }
 
@@ -39,12 +42,12 @@ export class IdeaMusingScheduler {
     const registry = AutomationRegistry.getInstance()
     const automation = registry.getByName('idea-musing')
     if (!automation || !(automation instanceof IdeaMusingAutomation)) {
-      console.error('Idea musing automation not found in registry')
+      logScheduler.error('Idea musing automation not found in registry')
       return
     }
     this.automation = automation
 
-    console.log(`Starting idea musing scheduler (runs daily at ${config.ideaMusing.scheduleTime} UTC)`)
+    logScheduler.info(`Starting idea musing scheduler (runs daily at ${config.ideaMusing.scheduleTime} UTC)`)
 
     this.isRunning = true
 
@@ -68,7 +71,7 @@ export class IdeaMusingScheduler {
         return
       }
 
-      console.log('Stopping idea musing scheduler...')
+      logScheduler.info('Stopping idea musing scheduler...')
 
       if (this.intervalId) {
         clearInterval(this.intervalId)
@@ -81,7 +84,7 @@ export class IdeaMusingScheduler {
       const checkProcessing = setInterval(() => {
         if (!this.isProcessing) {
           clearInterval(checkProcessing)
-          console.log('Idea musing scheduler stopped')
+          logScheduler.info('Idea musing scheduler stopped')
           resolve()
           return
         }
@@ -90,7 +93,7 @@ export class IdeaMusingScheduler {
       // Timeout after 5 seconds
       setTimeout(() => {
         clearInterval(checkProcessing)
-        console.log('Idea musing scheduler stopped (timeout)')
+        logScheduler.warn('Idea musing scheduler stopped (timeout)')
         resolve()
       }, 5000)
     })
@@ -125,7 +128,7 @@ export class IdeaMusingScheduler {
           this.generateDailyMusings()
         }
       }).catch(error => {
-        console.error('Error checking if should run today:', error)
+        logScheduler.error('Error checking if should run today:', error)
       })
     }
   }
@@ -155,25 +158,25 @@ export class IdeaMusingScheduler {
    */
   async generateDailyMusings(): Promise<void> {
     if (this.isProcessing) {
-      console.log('Idea musing generation already in progress, skipping...')
+      logScheduler.debug('Idea musing generation already in progress, skipping...')
       return
     }
 
     if (!this.automation) {
-      console.error('Automation not available')
+      logScheduler.error('Automation not available')
       return
     }
 
     this.isProcessing = true
 
     try {
-      console.log('Starting daily idea musing generation...')
+      logScheduler.info('Starting daily idea musing generation...')
 
       // Get all users
       const users = await db('users').select('id')
 
       if (users.length === 0) {
-        console.log('No users found, skipping musing generation')
+        logScheduler.debug('No users found, skipping musing generation')
         return
       }
 
@@ -190,7 +193,7 @@ export class IdeaMusingScheduler {
           const settings = await SettingsService.getByUserId(user.id)
           
           if (!settings.openrouter_api_key) {
-            console.log(`Skipping user ${user.id}: no OpenRouter API key configured`)
+            logScheduler.debug(`Skipping user ${user.id}: no OpenRouter API key configured`)
             continue
           }
 
@@ -205,7 +208,7 @@ export class IdeaMusingScheduler {
           const candidateSeeds = allSeeds.filter(seed => !excludedSeedIds.has(seed.id))
 
           if (candidateSeeds.length === 0) {
-            console.log(`No candidate seeds for user ${user.id} (all shown recently)`)
+            logScheduler.debug(`No candidate seeds for user ${user.id} (all shown recently)`)
             continue
           }
 
@@ -225,7 +228,7 @@ export class IdeaMusingScheduler {
           const ideaSeeds = await this.automation.identifyIdeaSeeds(candidateSeeds, context)
 
           if (ideaSeeds.length === 0) {
-            console.log(`No idea seeds found for user ${user.id}`)
+            logScheduler.debug(`No idea seeds found for user ${user.id}`)
             continue
           }
 
@@ -233,7 +236,7 @@ export class IdeaMusingScheduler {
           const maxMusings = config.ideaMusing.maxMusingsPerDay
           const seedsToProcess = ideaSeeds.slice(0, maxMusings)
 
-          console.log(`Processing ${seedsToProcess.length} idea seeds for user ${user.id}`)
+          logScheduler.info(`Processing ${seedsToProcess.length} idea seeds for user ${user.id}`)
 
           // Generate musings for each seed
           const today = new Date()
@@ -247,24 +250,24 @@ export class IdeaMusingScheduler {
                 await IdeaMusingsService.create(seed.id, musing.templateType, musing.content)
                 await IdeaMusingsService.recordShown(seed.id, today)
                 totalMusingsCreated++
-                console.log(`Created musing for seed ${seed.id} (template: ${musing.templateType})`)
+                logScheduler.info(`Created musing for seed ${seed.id} (template: ${musing.templateType})`)
               } else {
-                console.warn(`Failed to generate musing for seed ${seed.id}`)
+                logScheduler.warn(`Failed to generate musing for seed ${seed.id}`)
               }
             } catch (error) {
-              console.error(`Error generating musing for seed ${seed.id}:`, error)
+              logScheduler.error(`Error generating musing for seed ${seed.id}:`, error)
               // Continue with next seed
             }
           }
         } catch (error) {
-          console.error(`Error processing user ${user.id}:`, error)
+          logScheduler.error(`Error processing user ${user.id}:`, error)
           // Continue with next user
         }
       }
 
-      console.log(`Daily idea musing generation complete. Created ${totalMusingsCreated} musings.`)
+      logScheduler.info(`Daily idea musing generation complete. Created ${totalMusingsCreated} musings.`)
     } catch (error) {
-      console.error('Error in idea musing scheduler:', error)
+      logScheduler.error('Error in idea musing scheduler:', error)
     } finally {
       this.isProcessing = false
     }

@@ -3,6 +3,9 @@ import { Automation, type AutomationContext, type AutomationProcessResult, type 
 import type { Seed } from '../seeds'
 import type { MusingTemplateType, MusingContent } from '../idea-musings'
 import { SeedsService } from '../seeds'
+import log from 'loglevel'
+
+const logAutomation = log.getLogger('Automation:IdeaMusing')
 
 /**
  * IdeaMusingAutomation - Identifies creative idea seeds and generates daily musings
@@ -147,7 +150,7 @@ Return ONLY a JSON array of seed IDs (strings), or an empty array if none are id
       const seedIds = extractJsonArray(content) || extractJsonArray(reasoning) || []
       
       if (!Array.isArray(seedIds)) {
-        console.warn('LLM returned non-array for idea seed IDs')
+        logAutomation.warn('LLM returned non-array for idea seed IDs')
         return []
       }
 
@@ -158,7 +161,7 @@ Return ONLY a JSON array of seed IDs (strings), or an empty array if none are id
         .map(id => seedMap.get(id))
         .filter((seed): seed is Seed => seed !== undefined)
     } catch (error) {
-      console.error('Error identifying idea seeds:', error)
+      logAutomation.error('Error identifying idea seeds:', error)
       return []
     }
   }
@@ -277,21 +280,21 @@ Choose the most appropriate template type and generate engaging content to spark
       const result = extractJson(content) || extractJson(reasoning)
       
       if (!result || !result.template_type || !result.content) {
-        console.warn('LLM returned invalid musing structure')
+        logAutomation.warn('LLM returned invalid musing structure')
         return null
       }
 
       // Validate template type
       const validTemplateTypes: MusingTemplateType[] = ['numbered_ideas', 'wikipedia_links', 'markdown']
       if (!validTemplateTypes.includes(result.template_type)) {
-        console.warn(`Invalid template type: ${result.template_type}`)
+        logAutomation.warn(`Invalid template type: ${result.template_type}`)
         return null
       }
 
       // Validate content structure based on template type
       if (result.template_type === 'numbered_ideas') {
         if (!result.content.ideas || !Array.isArray(result.content.ideas)) {
-          console.warn('Invalid numbered_ideas content structure')
+          logAutomation.warn('Invalid numbered_ideas content structure')
           return null
         }
         // Ensure last item is custom prompt placeholder if not already
@@ -301,19 +304,19 @@ Choose the most appropriate template type and generate engaging content to spark
         }
       } else if (result.template_type === 'wikipedia_links') {
         if (!result.content.links || !Array.isArray(result.content.links)) {
-          console.warn('Invalid wikipedia_links content structure')
+          logAutomation.warn('Invalid wikipedia_links content structure')
           return null
         }
         // Validate links have title and url
         for (const link of result.content.links) {
           if (!link.title || !link.url) {
-            console.warn('Invalid link structure in wikipedia_links')
+            logAutomation.warn('Invalid link structure in wikipedia_links')
             return null
           }
         }
       } else if (result.template_type === 'markdown') {
         if (!result.content.markdown || typeof result.content.markdown !== 'string') {
-          console.warn('Invalid markdown content structure')
+          logAutomation.warn('Invalid markdown content structure')
           return null
         }
       }
@@ -323,7 +326,7 @@ Choose the most appropriate template type and generate engaging content to spark
         content: result.content as MusingContent,
       }
     } catch (error) {
-      console.error('Error generating musing:', error)
+      logAutomation.error('Error generating musing:', error)
       return null
     }
   }
