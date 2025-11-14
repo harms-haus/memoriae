@@ -33,6 +33,7 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
   const zenContainerRef = useRef<HTMLDivElement>(null)
   const cursorPositionRef = useRef<number>(0)
   const uiTimeoutRef = useRef<number | null>(null)
+  const selectionRef = useRef<{ start: number; end: number } | null>(null)
   const log = logger.scope('SeedEditor')
 
   /**
@@ -333,8 +334,14 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
     const textarea = textareaRef.current
     if (!textarea) return
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
+    // Use stored selection if available (from button click), otherwise use current selection
+    const storedSelection = selectionRef.current
+    const start = storedSelection?.start ?? textarea.selectionStart
+    const end = storedSelection?.end ?? textarea.selectionEnd
+    
+    // Clear stored selection after use
+    selectionRef.current = null
+    
     // Use textarea.value instead of content state to ensure we're working with the actual DOM value
     const textareaValue = textarea.value
     const selectedText = textareaValue.substring(start, end)
@@ -374,8 +381,14 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
     const textarea = textareaRef.current
     if (!textarea) return
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
+    // Use stored selection if available, otherwise use current selection
+    const storedSelection = selectionRef.current
+    const start = storedSelection?.start ?? textarea.selectionStart
+    const end = storedSelection?.end ?? textarea.selectionEnd
+    
+    // Clear stored selection after use
+    selectionRef.current = null
+    
     // Use textarea.value instead of content state
     const textareaValue = textarea.value
     const selectedText = textareaValue.substring(start, end)
@@ -383,6 +396,8 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
     if (selectedText) {
       const url = prompt('Enter URL:')
       if (url) {
+        // Store selection again before calling insertMarkdown
+        selectionRef.current = { start, end }
         insertMarkdown('[', `](${url})`)
       }
     } else {
@@ -395,6 +410,24 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
       }
     }
   }
+  
+  /**
+   * Capture textarea selection before button click
+   * Works even if textarea isn't currently focused (for test environments)
+   */
+  const captureSelection = useCallback(() => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      // Always capture selection, even if textarea isn't focused
+      // This is important for test environments where focus behavior may differ
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      // Only store if there's a valid selection (start !== end) or if we want to preserve cursor position
+      if (start !== end || start >= 0) {
+        selectionRef.current = { start, end }
+      }
+    }
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     handleContentChange(e.target.value)
@@ -484,6 +517,8 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
                 type="button"
                 className="seed-editor-toolbar-button"
                 onMouseDown={(e) => {
+                  // Capture selection before button takes focus
+                  captureSelection()
                   // Prevent button from taking focus, preserving textarea selection
                   e.preventDefault()
                   handleBold()
@@ -497,6 +532,8 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
                 type="button"
                 className="seed-editor-toolbar-button"
                 onMouseDown={(e) => {
+                  // Capture selection before button takes focus
+                  captureSelection()
                   // Prevent button from taking focus, preserving textarea selection
                   e.preventDefault()
                   handleItalic()
@@ -510,6 +547,8 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
                 type="button"
                 className="seed-editor-toolbar-button"
                 onMouseDown={(e) => {
+                  // Capture selection before button takes focus
+                  captureSelection()
                   // Prevent button from taking focus, preserving textarea selection
                   e.preventDefault()
                   handleLink()
