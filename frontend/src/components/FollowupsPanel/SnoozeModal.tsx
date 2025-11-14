@@ -3,6 +3,7 @@ import { api } from '../../services/api'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/components/Dialog'
 import { Button } from '@mother/components/Button'
 import type { Followup } from '../../types'
+import { logger } from '../../utils/logger'
 
 interface SnoozeModalProps {
   open: boolean
@@ -30,6 +31,7 @@ export function SnoozeModal({
   const [customMinutes, setCustomMinutes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const log = logger.scope('SnoozeModal')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,7 +63,7 @@ export function SnoozeModal({
       setSelectedDuration(null)
       setCustomMinutes('')
     } catch (err) {
-      console.error('Error snoozing followup:', err)
+      log.error('Error snoozing followup', { followupId: followup.id, error: err })
       setError(err instanceof Error ? err.message : 'Failed to snooze followup')
     } finally {
       setSubmitting(false)

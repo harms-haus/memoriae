@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import '@mother/styles/theme.css'
 import './styles/responsive.css'
+import { logger } from './utils/logger'
+
+const log = logger.scope('Main')
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
@@ -10,10 +13,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {
-        console.log('[SW] Service Worker registered:', registration.scope);
+        log.info('Service Worker registered', { scope: registration.scope })
       })
       .catch((error) => {
-        console.error('[SW] Service Worker registration failed:', error);
+        log.error('Service Worker registration failed', { error })
       });
   });
 }

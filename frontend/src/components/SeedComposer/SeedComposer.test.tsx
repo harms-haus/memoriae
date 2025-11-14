@@ -288,7 +288,11 @@ describe('SeedComposer Component', () => {
       }
       
       await waitFor(() => {
-        expect(consoleError).toHaveBeenCalledWith('Failed to create seed:', expect.any(Error))
+        expect(consoleError).toHaveBeenCalledWith(
+          '[ERROR] [SeedComposer]',
+          'Failed to create seed',
+          expect.objectContaining({ error: expect.any(Error) })
+        )
       })
       
       consoleError.mockRestore()

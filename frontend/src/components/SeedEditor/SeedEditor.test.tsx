@@ -357,7 +357,11 @@ describe('SeedEditor Component', () => {
       await user.click(saveButton)
       
       await waitFor(() => {
-        expect(consoleError).toHaveBeenCalledWith('Failed to create seed:', expect.any(Error))
+        expect(consoleError).toHaveBeenCalledWith(
+          '[ERROR] [SeedEditor]',
+          'Failed to create seed',
+          expect.objectContaining({ error: expect.any(Error) })
+        )
       })
       
       consoleError.mockRestore()

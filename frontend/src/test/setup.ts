@@ -1,28 +1,46 @@
 import '@testing-library/jest-dom'
 import { afterEach, beforeAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import { logger } from '../utils/logger'
 
 // WebSocket error suppression is handled in vitest.config.ts for earlier initialization
 
-// Suppress all console methods for expected errors/logs in tests
-// Components log errors/warnings/info for error handling tests, which is expected behavior
-// Tests can restore the original if they need to verify error logging
+// Suppress expected logging output (both console and structured logger helpers) in tests
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+let consoleDebugSpy: any
+let consoleInfoSpy: any
 let consoleErrorSpy: any
 let consoleWarnSpy: any
 let consoleLogSpy: any
+let loggerDebugSpy: any
+let loggerInfoSpy: any
+let loggerWarnSpy: any
+let loggerErrorSpy: any
+let loggerFatalSpy: any
 
-beforeAll(() => {
-  // Suppress all console methods by default in tests
-  // This prevents expected logs from cluttering test output
+const spyConsole = () => {
+  consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+  consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
   consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-  
+}
+
+const spyLogger = () => {
+  loggerDebugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => {})
+  loggerInfoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {})
+  loggerWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+  loggerErrorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+  loggerFatalSpy = vi.spyOn(logger, 'fatal').mockImplementation(() => {})
+}
+
+beforeAll(() => {
+  spyConsole()
+  spyLogger()
+
   // jsdom should provide localStorage, but ensure it has all methods
   if (typeof localStorage !== 'undefined') {
     if (!localStorage.getItem) {
-      // Create a minimal localStorage implementation if missing
       const storage: Record<string, string> = {}
       Object.defineProperty(window, 'localStorage', {
         value: {
@@ -50,17 +68,43 @@ afterEach(() => {
   if (typeof localStorage !== 'undefined' && typeof localStorage.clear === 'function') {
     localStorage.clear()
   }
-  // Restore console mocks after vi.clearAllMocks() might have cleared them
-  if (consoleErrorSpy) {
-    consoleErrorSpy.mockRestore()
+
+  const restoreSpy = (spy: any, factory: () => void) => {
+    if (spy) {
+      spy.mockRestore()
+      factory()
+    }
+  }
+
+  restoreSpy(consoleDebugSpy, () => {
+    consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
+  })
+  restoreSpy(consoleInfoSpy, () => {
+    consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+  })
+  restoreSpy(consoleErrorSpy, () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-  }
-  if (consoleWarnSpy) {
-    consoleWarnSpy.mockRestore()
+  })
+  restoreSpy(consoleWarnSpy, () => {
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  }
-  if (consoleLogSpy) {
-    consoleLogSpy.mockRestore()
+  })
+  restoreSpy(consoleLogSpy, () => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-  }
+  })
+
+  restoreSpy(loggerDebugSpy, () => {
+    loggerDebugSpy = vi.spyOn(logger, 'debug').mockImplementation(() => {})
+  })
+  restoreSpy(loggerInfoSpy, () => {
+    loggerInfoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {})
+  })
+  restoreSpy(loggerWarnSpy, () => {
+    loggerWarnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+  })
+  restoreSpy(loggerErrorSpy, () => {
+    loggerErrorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+  })
+  restoreSpy(loggerFatalSpy, () => {
+    loggerFatalSpy = vi.spyOn(logger, 'fatal').mockImplementation(() => {})
+  })
 })

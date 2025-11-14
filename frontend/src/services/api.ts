@@ -1,6 +1,7 @@
 // REST API client with authentication
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
 import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup, SeedTransaction, CreateSeedTransactionDto, IdeaMusing } from '../types'
+import { logger } from '../utils/logger'
 
 // In production, use relative URLs since backend serves frontend
 // In development, use explicit URL or Vite proxy
@@ -24,6 +25,7 @@ const API_URL = getApiUrl()
 class ApiClient {
   private client: AxiosInstance
   private token: string | null = null
+  private readonly log = logger.scope('ApiClient')
 
   constructor() {
     this.client = axios.create({
@@ -41,9 +43,9 @@ class ApiClient {
       (config) => {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`
-          console.log('API: Adding Authorization header to request:', config.url)
+          this.log.debug('Adding Authorization header', { url: config.url })
         } else {
-          console.log('API: No token available for request:', config.url)
+          this.log.debug('No token available for request', { url: config.url })
         }
         return config
       },
@@ -68,11 +70,14 @@ class ApiClient {
   }
 
   setToken(token: string): void {
-    console.log('API: Setting token, length:', token.length, 'first 20 chars:', token.substring(0, 20))
+    this.log.debug('Setting token', {
+      length: token.length,
+      preview: token.substring(0, 20),
+    })
     this.token = token
     if (typeof localStorage !== 'undefined' && typeof localStorage.setItem === 'function') {
       localStorage.setItem('auth_token', token)
-      console.log('API: Token stored in localStorage')
+      this.log.debug('Token stored in localStorage')
     }
   }
 
@@ -117,7 +122,7 @@ class ApiClient {
       await this.client.post('/auth/logout')
     } catch (error) {
       // Continue with logout even if request fails
-      console.error('Logout error:', error)
+      this.log.error('Logout error', { error })
     } finally {
       this.clearToken()
     }

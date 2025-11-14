@@ -4,6 +4,7 @@ import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@mother/componen
 import { Button } from '@mother/components/Button'
 import { api } from '../../services/api'
 import type { Seed } from '../../types'
+import { logger } from '../../utils/logger'
 import './SeedComposer.css'
 
 export interface SeedComposerProps {
@@ -18,6 +19,7 @@ export function SeedComposer({ onSeedCreated, onClose, isClosing = false }: Seed
   const [content, setContent] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('medium')
   const [isSaving, setIsSaving] = useState(false)
+  const log = logger.scope('SeedComposer')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -165,7 +167,7 @@ export function SeedComposer({ onSeedCreated, onClose, isClosing = false }: Seed
       setContent('')
       onClose()
     } catch (error) {
-      console.error('Failed to create seed:', error)
+      log.error('Failed to create seed', { error })
     } finally {
       setIsSaving(false)
     }

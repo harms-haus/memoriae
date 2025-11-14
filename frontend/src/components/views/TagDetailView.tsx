@@ -8,6 +8,7 @@ import { SeedView } from '../SeedView'
 import { HexColorPicker, HexColorInput } from 'react-colorful'
 import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
 import type { TagTransaction, Seed, Tag } from '../../types'
+import { logger } from '../../utils/logger'
 import './Views.css'
 import './TagDetailView.css'
 
@@ -28,6 +29,8 @@ interface TagDetailViewProps {
   tagName: string
   onBack: () => void
 }
+
+const log = logger.scope('TagDetailView')
 
 /**
  * TagDetailView displays:
@@ -71,7 +74,7 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
       setNameInput(tagData.name)
       setColorInput(tagData.color || '')
     } catch (err) {
-      console.error('Error loading tag:', err)
+      log.error('Error loading tag', { tagName, error: err })
       setError(err instanceof Error ? err.message : 'Failed to load tag')
     } finally {
       setLoading(false)
@@ -85,7 +88,7 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
       const seedsData = await api.get<Seed[]>(`/tags/${encodedName}/seeds`)
       setSeeds(seedsData)
     } catch (err) {
-      console.error('Error loading seeds:', err)
+      log.error('Error loading seeds for tag', { tagName, error: err })
     }
   }
 
@@ -94,7 +97,7 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
       const tagsData = await api.get<Tag[]>('/tags').catch(() => [])
       setTags(tagsData)
     } catch (err) {
-      console.error('Error loading tags:', err)
+      log.error('Error loading tag list', { error: err })
     }
   }
 
@@ -113,7 +116,7 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
         navigate(`/tags/${encodeURIComponent(updatedTag.name)}`)
       }
     } catch (err) {
-      console.error('Error updating tag name:', err)
+      log.error('Error updating tag name', { tagName, error: err })
     } finally {
       setSaving(false)
     }
@@ -134,7 +137,7 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
       setTag(updatedTag)
       setEditingColor(false)
     } catch (err) {
-      console.error('Error updating tag color:', err)
+      log.error('Error updating tag color', { tagName, error: err })
     } finally {
       setSaving(false)
     }

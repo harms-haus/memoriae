@@ -4,6 +4,7 @@ import {
   setupNotificationPolling,
   stopNotificationPolling,
 } from '../services/notifications'
+import { logger } from '../utils/logger'
 
 /**
  * Hook to manage follow-up notifications
@@ -15,6 +16,7 @@ import {
  * - Cleans up polling on unmount
  */
 export function useFollowupNotifications(): void {
+  const log = logger.scope('FollowupNotificationsHook')
   useEffect(() => {
     // Request permission on mount
     requestPermission().then((permission) => {
@@ -22,7 +24,7 @@ export function useFollowupNotifications(): void {
         // Set up polling
         setupNotificationPolling()
       } else {
-        console.log('Notification permission not granted:', permission)
+        log.warn('Notification permission not granted', { permission })
       }
     })
 

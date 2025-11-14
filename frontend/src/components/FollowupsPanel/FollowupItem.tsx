@@ -10,6 +10,7 @@ import { SnoozeModal } from './SnoozeModal'
 import { FollowupTransactions } from './FollowupTransactions'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { formatDateInTimezone, getBrowserTimezone } from '../../utils/timezone'
+import { logger } from '../../utils/logger'
 import './FollowupItem.css'
 
 interface FollowupItemProps {
@@ -22,6 +23,7 @@ export function FollowupItem({ followup, onUpdate }: FollowupItemProps) {
   const [snoozeModalOpen, setSnoozeModalOpen] = useState(false)
   const [dismissing, setDismissing] = useState(false)
   const { settings } = useUserSettings()
+  const log = logger.scope('FollowupItem')
 
   const formatDate = (dateString: string): string => {
     const userTimezone = settings?.timezone || getBrowserTimezone()
@@ -36,7 +38,7 @@ export function FollowupItem({ followup, onUpdate }: FollowupItemProps) {
       await api.dismissFollowup(followup.id, 'followup')
       onUpdate()
     } catch (err) {
-      console.error('Error dismissing followup:', err)
+      log.error('Error dismissing followup', { followupId: followup.id, error: err })
       alert(err instanceof Error ? err.message : 'Failed to dismiss followup')
     } finally {
       setDismissing(false)

@@ -6,6 +6,7 @@ import type { CreateFollowupDto } from '../../types'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { DateTime } from 'luxon'
 import { dateTimeLocalToUTC, getBrowserTimezone } from '../../utils/timezone'
+import { logger } from '../../utils/logger'
 
 interface CreateFollowupModalProps {
   open: boolean
@@ -25,6 +26,7 @@ export function CreateFollowupModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { settings } = useUserSettings()
+  const log = logger.scope('CreateFollowupModal')
 
   // Set default due time to 1 hour from now in user's timezone
   const getDefaultDueTime = (): string => {
@@ -68,7 +70,7 @@ export function CreateFollowupModal({
       setDueTime('')
       setMessage('')
     } catch (err) {
-      console.error('Error creating followup:', err)
+      log.error('Error creating followup', { seedId, error: err })
       setError(err instanceof Error ? err.message : 'Failed to create followup')
     } finally {
       setSubmitting(false)

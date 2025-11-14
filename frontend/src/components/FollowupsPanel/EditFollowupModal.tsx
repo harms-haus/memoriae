@@ -5,6 +5,7 @@ import { Button } from '@mother/components/Button'
 import type { Followup, EditFollowupDto } from '../../types'
 import { useUserSettings } from '../../hooks/useUserSettings'
 import { dateTimeLocalToUTC, utcToDateTimeLocal, getBrowserTimezone } from '../../utils/timezone'
+import { logger } from '../../utils/logger'
 
 interface EditFollowupModalProps {
   open: boolean
@@ -24,18 +25,19 @@ export function EditFollowupModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { settings } = useUserSettings()
+  const log = logger.scope('EditFollowupModal')
 
   useEffect(() => {
     if (open && followup) {
       // Convert UTC ISO string to datetime-local format in user's timezone
       const userTimezone = settings?.timezone || getBrowserTimezone()
-      try {
-        const localDateTime = utcToDateTimeLocal(followup.due_time, userTimezone)
-        setDueTime(localDateTime)
-      } catch (err) {
-        console.error('Error formatting date:', err)
-        setDueTime('')
-      }
+        try {
+          const localDateTime = utcToDateTimeLocal(followup.due_time, userTimezone)
+          setDueTime(localDateTime)
+        } catch (err) {
+          log.warn('Error formatting followup date', { followupId: followup.id, error: err })
+          setDueTime('')
+        }
       setMessage(followup.message)
       setError(null)
     }
@@ -73,7 +75,7 @@ export function EditFollowupModal({
       onUpdated()
       onOpenChange(false)
     } catch (err) {
-      console.error('Error editing followup:', err)
+      log.error('Error editing followup', { followupId: followup.id, error: err })
       setError(err instanceof Error ? err.message : 'Failed to edit followup')
     } finally {
       setSubmitting(false)

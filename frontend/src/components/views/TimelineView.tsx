@@ -6,6 +6,7 @@ import { Button } from '@mother/components/Button'
 import { api } from '../../services/api'
 import { SeedView } from '../SeedView'
 import type { Seed, Tag as TagType } from '../../types'
+import { logger } from '../../utils/logger'
 import './Views.css'
 import './TimelineView.css'
 
@@ -19,6 +20,8 @@ interface TimelineViewProps {
  * Uses the mother Timeline component with PointerPanel for each seed.
  * Seeds are positioned along the timeline based on their creation date.
  */
+const log = logger.scope('TimelineView')
+
 export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
   const navigate = useNavigate()
   const [seeds, setSeeds] = useState<Seed[]>([])
@@ -61,7 +64,7 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
       setSeeds(sortedSeeds)
       setAllTags(tagsData)
     } catch (err) {
-      console.error('Error loading seeds:', err)
+      log.error('Error loading seeds for timeline', { error: err })
       setError(err instanceof Error ? err.message : 'Failed to load seeds')
     } finally {
       setLoading(false)

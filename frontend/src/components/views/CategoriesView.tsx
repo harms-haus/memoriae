@@ -7,12 +7,15 @@ import { Panel } from '@mother/components/Panel'
 import { Button } from '@mother/components/Button'
 import { X } from 'lucide-react'
 import type { Seed, Category, Tag as TagType } from '../../types'
+import { logger } from '../../utils/logger'
 import './Views.css'
 import './CategoriesView.css'
 
 interface CategoriesViewProps {
   refreshRef?: React.MutableRefObject<(() => void) | null>
 }
+
+const log = logger.scope('CategoriesView')
 
 export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
   const navigate = useNavigate()
@@ -31,7 +34,7 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
         const categoriesData = await api.get<Category[]>('/categories')
         setCategories(categoriesData)
       } catch (err) {
-        console.error('Error loading categories:', err)
+        log.error('Error loading categories', { error: err })
       }
     }
     loadCategories()
@@ -81,7 +84,7 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
       setSeeds(filtered)
       setTags(tagsData)
     } catch (err) {
-      console.error('Error loading filtered seeds:', err)
+      log.error('Error loading filtered seeds', { categoryId: selectedCategoryId, error: err })
       setError(err instanceof Error ? err.message : 'Failed to load seeds')
     } finally {
       setLoading(false)

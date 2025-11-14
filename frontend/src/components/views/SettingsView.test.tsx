@@ -439,7 +439,11 @@ describe('SettingsView', () => {
     await userEvent.click(saveButton)
 
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error saving settings:', expect.any(Error))
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ERROR] [SettingsView]',
+        'Error saving settings',
+        expect.objectContaining({ error: expect.any(Error) })
+      )
     })
 
     consoleErrorSpy.mockRestore()

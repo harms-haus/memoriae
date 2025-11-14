@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { api } from '../services/api'
 import { getBrowserTimezone } from '../utils/timezone'
+import { logger } from '../utils/logger'
 import type { User } from '../types'
 
 interface UserSettings {
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const log = logger.scope('AuthContext')
 
   const checkAuth = useCallback(async () => {
     setLoading(true)
@@ -47,11 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await api.put('/settings', { timezone: browserTimezone })
           }
         } catch (err) {
-          // Silently fail - timezone detection is not critical
-          console.warn('Failed to set timezone:', err)
+          log.warn('Failed to set timezone', { error: err })
         }
       }
     } catch (err) {
+      log.error('Authentication check failed', { error: err })
       setError(err instanceof Error ? err.message : 'Authentication check failed')
       setAuthenticated(false)
       setUser(null)
@@ -74,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setError(null)
     } catch (err) {
+      log.error('Logout failed', { error: err })
       setError(err instanceof Error ? err.message : 'Logout failed')
     }
   }, [])
@@ -84,29 +87,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = urlParams.get('token')
     
     if (token) {
-      console.log('AuthContext: Token found in URL, length:', token.length)
-      console.log('AuthContext: Token value (first 50 chars):', token.substring(0, 50))
-      // Decode the token in case it's URL-encoded
       const decodedToken = decodeURIComponent(token)
-      console.log('AuthContext: Decoded token length:', decodedToken.length)
+      log.debug('Token found in URL', {
+        rawLength: token.length,
+        decodedLength: decodedToken.length,
+      })
       api.setToken(decodedToken)
       // Remove token from URL
       const newUrl = window.location.pathname + window.location.search.replace(/[?&]token=[^&]*/, '').replace(/^&/, '?')
       window.history.replaceState({}, '', newUrl)
       // Small delay to ensure token is set before checking auth
       setTimeout(() => {
-        console.log('AuthContext: Calling checkAuth after setting token')
+        log.debug('Calling checkAuth after setting token')
         checkAuth()
       }, 100)
     } else {
-      // Check if we have a stored token
-      console.log('AuthContext: No token in URL, loading from localStorage')
+      log.debug('No token in URL, loading from localStorage')
       api.loadToken()
       const storedToken = api.getToken()
       if (storedToken) {
-        console.log('AuthContext: Found stored token, length:', storedToken.length)
+        log.debug('Found stored token in localStorage', { length: storedToken.length })
       } else {
-        console.log('AuthContext: No stored token found')
+        log.info('No stored token found in localStorage')
       }
       checkAuth()
     }

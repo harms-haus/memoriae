@@ -8,6 +8,7 @@ import { Badge } from '@mother/components/Badge'
 import { Search, X, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
 import { SeedView } from '../SeedView'
 import type { Seed, Category, Tag as TagType } from '../../types'
+import { logger } from '../../utils/logger'
 import './Views.css'
 import './SeedsView.css'
 
@@ -17,6 +18,8 @@ interface SeedsViewProps {
 }
 
 type SortOption = 'newest' | 'oldest' | 'alphabetical'
+
+const log = logger.scope('SeedsView')
 
 export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
   const navigate = useNavigate()
@@ -61,7 +64,7 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
       setCategories(categoriesData)
       setTags(tagsData)
     } catch (err) {
-      console.error('Error loading data:', err)
+      log.error('Error loading seeds data', { error: err })
       setError(err instanceof Error ? err.message : 'Failed to load seeds')
     } finally {
       setLoading(false)
