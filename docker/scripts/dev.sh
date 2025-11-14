@@ -20,6 +20,7 @@ NC='\033[0m'
 # Parse arguments
 USE_DOCKER=false
 CLEAN=false
+DOWN=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -29,9 +30,12 @@ for arg in "$@"; do
         --clean)
             CLEAN=true
             ;;
+        --down)
+            DOWN=true
+            ;;
         *)
             echo -e "${YELLOW}Unknown option: $arg${NC}"
-            echo "Usage: $0 [--docker] [--clean]"
+            echo "Usage: $0 [--docker] [--clean] [--down]"
             exit 1
             ;;
     esac
@@ -93,6 +97,60 @@ else
 fi
 
 COMPOSE_FILE="docker/docker-compose.dev.yml"
+
+# Handle --down (stop containers without deleting volumes)
+if [ "$DOWN" = true ]; then
+    echo -e "${BLUE}Stopping development containers...${NC}"
+    echo -e "${YELLOW}Note: Containers will be stopped but volumes and data will be preserved${NC}"
+    
+    # Detect container runtime
+    if [ "$USE_DOCKER" = true ]; then
+        if command -v docker &> /dev/null; then
+            if docker compose version &> /dev/null; then
+                COMPOSE_CMD="docker compose"
+            elif command -v docker-compose &> /dev/null; then
+                COMPOSE_CMD="docker-compose"
+            else
+                echo -e "${RED}Error: Docker found but compose not available${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${RED}Error: Docker not found${NC}"
+            exit 1
+        fi
+    else
+        if command -v podman &> /dev/null && command -v podman-compose &> /dev/null; then
+            COMPOSE_CMD="podman-compose"
+        elif command -v docker &> /dev/null; then
+            if docker compose version &> /dev/null; then
+                COMPOSE_CMD="docker compose"
+            elif command -v docker-compose &> /dev/null; then
+                COMPOSE_CMD="docker-compose"
+            else
+                echo -e "${RED}Error: Docker found but compose not available${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${RED}Error: Neither Podman nor Docker found${NC}"
+            exit 1
+        fi
+    fi
+    
+    # Stop containers (no -v flag, so volumes are preserved)
+    set +e
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD -f "$COMPOSE_FILE" down 2>/dev/null)
+    DOWN_EXIT_CODE=$?
+    set -e
+    
+    if [ $DOWN_EXIT_CODE -eq 0 ]; then
+        echo -e "${GREEN}✓ Containers stopped successfully${NC}"
+        echo -e "${GREEN}Data and volumes are preserved${NC}"
+    else
+        echo -e "${YELLOW}⚠ Some containers may not have been stopped${NC}"
+    fi
+    
+    exit 0
+fi
 
 # Handle --clean
 if [ "$CLEAN" = true ]; then
