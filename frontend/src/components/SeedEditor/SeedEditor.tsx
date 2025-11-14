@@ -362,15 +362,23 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
     }, 0)
   }, [handleContentChange])
 
-  const handleBold = () => insertMarkdown('**', '**')
-  const handleItalic = () => insertMarkdown('*', '*')
+  const handleBold = () => {
+    insertMarkdown('**', '**')
+  }
+  
+  const handleItalic = () => {
+    insertMarkdown('*', '*')
+  }
+  
   const handleLink = () => {
     const textarea = textareaRef.current
     if (!textarea) return
 
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
-    const selectedText = content.substring(start, end)
+    // Use textarea.value instead of content state
+    const textareaValue = textarea.value
+    const selectedText = textareaValue.substring(start, end)
 
     if (selectedText) {
       const url = prompt('Enter URL:')
@@ -475,7 +483,11 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
               <button
                 type="button"
                 className="seed-editor-toolbar-button"
-                onClick={handleBold}
+                onMouseDown={(e) => {
+                  // Prevent button from taking focus, preserving textarea selection
+                  e.preventDefault()
+                  handleBold()
+                }}
                 title="Bold"
                 aria-label="Bold"
               >
@@ -484,7 +496,11 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
               <button
                 type="button"
                 className="seed-editor-toolbar-button"
-                onClick={handleItalic}
+                onMouseDown={(e) => {
+                  // Prevent button from taking focus, preserving textarea selection
+                  e.preventDefault()
+                  handleItalic()
+                }}
                 title="Italic"
                 aria-label="Italic"
               >
@@ -493,7 +509,11 @@ export function SeedEditor({ onContentChange, onSeedCreated }: SeedEditorProps) 
               <button
                 type="button"
                 className="seed-editor-toolbar-button"
-                onClick={handleLink}
+                onMouseDown={(e) => {
+                  // Prevent button from taking focus, preserving textarea selection
+                  e.preventDefault()
+                  handleLink()
+                }}
                 title="Link"
                 aria-label="Link"
               >
