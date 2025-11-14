@@ -6,16 +6,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-memoriae}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memoriae}
       POSTGRES_DB: ${POSTGRES_DB:-memoriae}
-      # Allow connections from Docker/Podman networks
+      # Set default authentication method for network connections
       POSTGRES_HOST_AUTH_METHOD: scram-sha-256
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
+      # Persistent volume - data survives container recreation
+      # CRITICAL: This volume contains all your database data
       - memoriae-postgres-data:/var/lib/postgresql/data
-      - ./postgres-entrypoint.sh:/usr/local/bin/custom-entrypoint.sh:ro
-    # Use custom entrypoint that configures pg_hba.conf
-    entrypoint: ["/usr/local/bin/custom-entrypoint.sh"]
-    # Configure PostgreSQL to listen on all addresses (not just localhost)
+      # Init script runs once on first database initialization only
+      - ./init-postgres-hba.sh:/docker-entrypoint-initdb.d/01-init-hba.sh:ro
+    # Configure PostgreSQL to listen on all network interfaces
     command: ["postgres", "-c", "listen_addresses=*"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memoriae}"]
@@ -68,8 +69,14 @@ services:
       - memoriae-network
 
 volumes:
+  # Persistent volumes - data is preserved across container restarts
+  # WARNING: These volumes contain your database data. Only remove with --clean if you want to lose all data.
   memoriae-postgres-data:
+    driver: local
+    # Volume persists even if containers are removed
   memoriae-redis-data:
+    driver: local
+    # Volume persists even if containers are removed
 
 networks:
   memoriae-network:

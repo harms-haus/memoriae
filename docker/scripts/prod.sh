@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Simple development environment script for Memoriae
-# Usage: ./docker/scripts/dev.sh [--docker] [--clean]
+# Simple production environment script for Memoriae
+# Usage: ./docker/scripts/prod.sh [--docker] [--clean] [--install]
 
 set -e
 
@@ -20,6 +20,7 @@ NC='\033[0m'
 # Parse arguments
 USE_DOCKER=false
 CLEAN=false
+INSTALL=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -29,9 +30,12 @@ for arg in "$@"; do
         --clean)
             CLEAN=true
             ;;
+        --install)
+            INSTALL=true
+            ;;
         *)
             echo -e "${YELLOW}Unknown option: $arg${NC}"
-            echo "Usage: $0 [--docker] [--clean]"
+            echo "Usage: $0 [--docker] [--clean] [--install]"
             exit 1
             ;;
     esac
@@ -92,14 +96,45 @@ else
     fi
 fi
 
-COMPOSE_FILE="docker/docker-compose.dev.yml"
+COMPOSE_FILES="-f docker/docker-compose.yml -f docker/docker-compose.prod.yml"
+
+# Check for .env file
+ENV_FILE="${PROJECT_DIR}/.env"
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "${RED}Error: .env file not found${NC}"
+    echo "Please create .env file with required environment variables"
+    exit 1
+fi
+
+# Load environment variables
+set -a
+source "$ENV_FILE"
+set +a
+
+# Validate required variables
+if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "your-super-secret-jwt-key-change-this-in-production" ]; then
+    echo -e "${RED}Error: JWT_SECRET is not set or is using the default value${NC}"
+    exit 1
+fi
+
+if [ -z "$DATABASE_URL" ] && [ -z "$DB_HOST" ]; then
+    echo -e "${RED}Error: DATABASE_URL or DB_HOST must be set${NC}"
+    exit 1
+fi
+
+if [ -z "$REDIS_URL" ]; then
+    echo -e "${RED}Error: REDIS_URL must be set${NC}"
+    exit 1
+fi
+
+ENV_FILE_FLAG="--env-file .env"
 
 # Handle --clean
 if [ "$CLEAN" = true ]; then
     echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
     echo -e "${RED}  WARNING: This will DELETE ALL DATABASE DATA!${NC}"
     echo -e "${RED}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${YELLOW}Volumes memoriae-postgres-data-dev and memoriae-redis-data-dev will be removed.${NC}"
+    echo -e "${YELLOW}Volumes memoriae-postgres-data and memoriae-redis-data will be removed.${NC}"
     echo -e "${YELLOW}This action cannot be undone.${NC}"
     echo ""
     read -p "Type 'DELETE ALL DATA' to confirm: " confirmation
@@ -108,16 +143,79 @@ if [ "$CLEAN" = true ]; then
         exit 0
     fi
     echo -e "${YELLOW}Stopping containers and removing volumes...${NC}"
-    $COMPOSE_CMD -f "$COMPOSE_FILE" down -v
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down -v)
     echo -e "${GREEN}Cleanup complete${NC}"
     echo -e "${YELLOW}Note: This script does NOT start services after cleanup.${NC}"
-    echo -e "${YELLOW}Run 'npm run dev' to start services.${NC}"
+    echo -e "${YELLOW}Run 'npm run prod' to start services.${NC}"
+    exit 0
+fi
+
+# Handle --install (systemd service setup)
+if [ "$INSTALL" = true ]; then
+    echo -e "${BLUE}Step 3: Setting up systemd service...${NC}"
+    
+    SERVICE_NAME="memoriae-prod"
+    SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+    SCRIPT_PATH="$(realpath "$0")"
+    
+    # Determine which runtime to use
+    if [ "$USE_DOCKER" = true ]; then
+        RUNTIME_CMD="docker"
+    else
+        RUNTIME_CMD="podman"
+    fi
+    
+    # Determine compose command for ExecStop
+    if [ "$USE_DOCKER" = true ]; then
+        if docker compose version &> /dev/null; then
+            COMPOSE_CMD_FULL="docker compose"
+        else
+            COMPOSE_CMD_FULL="docker-compose"
+        fi
+    else
+        COMPOSE_CMD_FULL="podman-compose"
+    fi
+    
+    # Build ExecStart command with correct flag
+    if [ "$USE_DOCKER" = true ]; then
+        EXEC_START="${SCRIPT_PATH} --docker"
+    else
+        EXEC_START="${SCRIPT_PATH}"
+    fi
+    
+    # Create systemd service file
+    sudo tee "$SERVICE_FILE" > /dev/null <<EOF
+[Unit]
+Description=Memoriae Production Environment
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=${PROJECT_DIR}
+ExecStart=${EXEC_START}
+ExecStop=/usr/bin/${COMPOSE_CMD_FULL} -f ${PROJECT_DIR}/docker/docker-compose.yml -f ${PROJECT_DIR}/docker/docker-compose.prod.yml --env-file ${PROJECT_DIR}/.env down
+User=$(whoami)
+Group=$(id -gn)
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    echo -e "${GREEN}✓ Systemd service created${NC}"
+    echo -e "${YELLOW}To enable and start the service:${NC}"
+    echo "  sudo systemctl daemon-reload"
+    echo "  sudo systemctl enable ${SERVICE_NAME}"
+    echo "  sudo systemctl start ${SERVICE_NAME}"
+    echo ""
+    echo -e "${YELLOW}To check status:${NC}"
+    echo "  sudo systemctl status ${SERVICE_NAME}"
     exit 0
 fi
 
 # Step 3: Start compose
 echo -e "${BLUE}Step 3: Starting services...${NC}"
-$COMPOSE_CMD -f "$COMPOSE_FILE" up -d
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d)
 
 # Step 4: Wait for services to be healthy
 echo -e "${BLUE}Step 4: Waiting for services to be healthy...${NC}"
@@ -125,7 +223,7 @@ echo -e "${BLUE}Step 4: Waiting for services to be healthy...${NC}"
 # Wait for postgres
 echo -e "${YELLOW}Waiting for postgres...${NC}"
 for i in {1..30}; do
-    if $DOCKER_CMD exec memoriae-postgres-dev pg_isready -U memoriae > /dev/null 2>&1; then
+    if $DOCKER_CMD exec memoriae-postgres pg_isready -U memoriae > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Postgres is ready${NC}"
         break
     fi
@@ -139,7 +237,7 @@ done
 # Wait for redis
 echo -e "${YELLOW}Waiting for redis...${NC}"
 for i in {1..30}; do
-    if $DOCKER_CMD exec memoriae-redis-dev redis-cli ping > /dev/null 2>&1; then
+    if $DOCKER_CMD exec memoriae-redis redis-cli ping > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Redis is ready${NC}"
         break
     fi
@@ -153,7 +251,7 @@ done
 # Wait for memoriae app (just check if container is running)
 echo -e "${YELLOW}Waiting for memoriae app...${NC}"
 for i in {1..60}; do
-    if $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-dev$"; then
+    if $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-app$"; then
         echo -e "${GREEN}✓ Memoriae app container is running${NC}"
         break
     fi
@@ -167,19 +265,20 @@ done
 # Step 5: Display helpful info
 echo ""
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  Development environment is ready!${NC}"
+echo -e "${GREEN}  Production environment is ready!${NC}"
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${BLUE}Services:${NC}"
-echo "  • Frontend: http://localhost:5173"
-echo "  • Backend API: http://localhost:3123"
-echo "  • Debugging: localhost:9229"
+echo "  • Application: http://localhost:${PORT:-3123}"
+echo "  • PostgreSQL: localhost:${POSTGRES_PORT:-5432}"
+echo "  • Redis: localhost:${REDIS_PORT:-6379}"
 echo ""
 echo -e "${BLUE}Useful commands:${NC}"
-echo "  • View logs:    $COMPOSE_CMD -f $COMPOSE_FILE logs -f"
-echo "  • Stop:        $COMPOSE_CMD -f $COMPOSE_FILE down"
-echo "  • Clean (⚠):   npm run dev -- --clean"
-echo "  • Attach:      $DOCKER_CMD exec -it memoriae-dev bash"
+echo "  • View logs:    $COMPOSE_CMD $COMPOSE_FILES logs -f"
+echo "  • Stop:         $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down"
+echo "  • Clean (⚠):    npm run prod -- --clean"
+echo "  • Status:        $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG ps"
+echo "  • Install:      npm run prod -- --install"
 echo ""
-echo -e "${GREEN}Services happy :)${NC}"
+echo -e "${GREEN}Memoriae is running in production mode!${NC}"
 

@@ -6,7 +6,8 @@
   "scripts": {
     "prepare": "node -e \"const fs = require('fs'); const path = require('path'); const { execSync } = require('child_process'); const isWin = process.platform === 'win32'; const huskyBin = isWin ? 'husky.cmd' : 'husky'; const huskyPath = path.join(__dirname, 'node_modules', '.bin', huskyBin); if (fs.existsSync(huskyPath)) { execSync((isWin ? '' : 'node ') + huskyPath + ' install', { stdio: 'inherit', cwd: __dirname }); }\"",
     "dev": "./docker/scripts/dev.sh",
-    "install-docker": "./docker/scripts/install-docker.sh",
+    "prod": "./docker/scripts/prod.sh",
+    "install-docker": "./docker/scripts/prod.sh",
     "build": "cd mother-theme && npm run build && cd ../backend && npm run build && cd ../frontend && npm run build",
     "test": "cd mother-theme && npm run test && cd ../backend && npm run test && cd ../frontend && npm run test",
     "test:coverage": "cd mother-theme && npm run test:coverage && cd ../backend && npm run test:coverage && cd ../frontend && npm run test:coverage",
