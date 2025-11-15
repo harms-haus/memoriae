@@ -7,6 +7,7 @@ import { Panel } from '@mother/components/Panel'
 import { Badge } from '@mother/components/Badge'
 import { SeedView } from '../SeedView'
 import { SeedTimeline } from '../SeedTimeline/SeedTimeline'
+import { getTagColor } from '../../utils/getTagColor'
 import type { TransactionHistoryMessage } from '../TransactionHistoryList'
 import type { SeedTransaction, SeedTransactionType, SeedTransactionData, Seed, SeedState, Tag as TagType, Sprout } from '../../types'
 import log from 'loglevel'
@@ -339,6 +340,8 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           return 'var(--accent-blue)'
         case 'musing':
           return 'var(--accent-yellow)'
+        case 'wikipedia_reference':
+          return 'var(--accent-green)'
         case 'extra_context':
           return 'var(--accent-purple)'
         case 'fact_check':
@@ -506,11 +509,12 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
                 }}
                 tagColors={(() => {
                   // Create tag color map: tag name (lowercase) -> color
+                  // Include ALL tags, generating colors for tags without colors
                   const tagColorMap = new Map<string, string>()
                   tags.forEach(tag => {
-                    if (tag.color) {
-                      tagColorMap.set(tag.name.toLowerCase(), tag.color)
-                    }
+                    // Use existing color if available, otherwise generate one
+                    const color = tag.color || getTagColor(tag.name, null)
+                    tagColorMap.set(tag.name.toLowerCase(), color)
                   })
                   return tagColorMap
                 })()}
@@ -549,7 +553,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
           {/* Timeline of Transactions and Sprouts */}
           <Panel variant="elevated" className="seed-detail-timeline">
             <h3 className="panel-header">Timeline</h3>
-            <SeedTimeline transactions={transactions} sprouts={sprouts} getColor={getColor} />
+            <SeedTimeline transactions={transactions} sprouts={sprouts} tags={tags} getColor={getColor} />
           </Panel>
         </div>
 

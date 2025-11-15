@@ -10,6 +10,8 @@ import type { Sprout, WikipediaSproutState, Seed } from '../../types'
 vi.mock('../../services/api', () => ({
   api: {
     editWikipediaSprout: vi.fn(),
+    getWikipediaSproutState: vi.fn(),
+    regenerateWikipediaSprout: vi.fn(),
     get: vi.fn(),
   },
 }))
@@ -89,6 +91,7 @@ vi.mock('@mother/components/ExpandingPanel', () => ({
 // Mock lucide-react icons
 vi.mock('lucide-react', () => ({
   Edit: () => <span data-testid="edit-icon">Edit</span>,
+  RefreshCw: () => <span data-testid="refresh-icon">RefreshCw</span>,
 }))
 
 // Suppress console.error for alert calls
@@ -127,9 +130,18 @@ const mockSeed: Seed = {
   },
 }
 
+const mockWikipediaState: WikipediaSproutState = {
+  reference: 'Human chimerism',
+  article_url: 'https://en.wikipedia.org/wiki/Human_chimerism',
+  article_title: 'Human chimerism',
+  summary: 'This is a summary about human chimerism.\n\nIt has multiple paragraphs.\n\nAnd more content.',
+  transactions: [],
+}
+
 describe('WikipediaSproutDetail', () => {
   describe('Rendering', () => {
     it('should render article title and URL', async () => {
+      vi.mocked(api.getWikipediaSproutState).mockResolvedValue(mockWikipediaState)
       vi.mocked(api.get).mockResolvedValue(mockSeed)
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)
@@ -141,6 +153,7 @@ describe('WikipediaSproutDetail', () => {
     })
 
     it('should render summary as markdown', async () => {
+      vi.mocked(api.getWikipediaSproutState).mockResolvedValue(mockWikipediaState)
       vi.mocked(api.get).mockResolvedValue(mockSeed)
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)
@@ -153,6 +166,7 @@ describe('WikipediaSproutDetail', () => {
     })
 
     it('should render attached seed info', async () => {
+      vi.mocked(api.getWikipediaSproutState).mockResolvedValue(mockWikipediaState)
       vi.mocked(api.get).mockResolvedValue(mockSeed)
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)
@@ -164,6 +178,7 @@ describe('WikipediaSproutDetail', () => {
     })
 
     it('should render edit button', async () => {
+      vi.mocked(api.getWikipediaSproutState).mockResolvedValue(mockWikipediaState)
       vi.mocked(api.get).mockResolvedValue(mockSeed)
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)
@@ -178,6 +193,7 @@ describe('WikipediaSproutDetail', () => {
   describe('Edit functionality', () => {
     it('should open edit modal when edit button is clicked', async () => {
       const user = userEvent.setup()
+      vi.mocked(api.getWikipediaSproutState).mockResolvedValue(mockWikipediaState)
       vi.mocked(api.get).mockResolvedValue(mockSeed)
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)
@@ -217,6 +233,9 @@ describe('WikipediaSproutDetail', () => {
         transactions: [],
       }
 
+      vi.mocked(api.getWikipediaSproutState)
+        .mockResolvedValueOnce(mockWikipediaState) // Initial load
+        .mockResolvedValueOnce(updatedState) // After edit
       vi.mocked(api.get).mockResolvedValue(mockSeed)
       vi.mocked(api.editWikipediaSprout).mockResolvedValue(updatedState)
 
@@ -249,6 +268,7 @@ describe('WikipediaSproutDetail', () => {
 
     it('should close modal when cancel is clicked', async () => {
       const user = userEvent.setup()
+      vi.mocked(api.getWikipediaSproutState).mockResolvedValue(mockWikipediaState)
       vi.mocked(api.get).mockResolvedValue(mockSeed)
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)
@@ -275,7 +295,7 @@ describe('WikipediaSproutDetail', () => {
 
   describe('Loading and error states', () => {
     it('should show loading state initially', () => {
-      vi.mocked(api.get).mockImplementation(() => new Promise(() => {})) // Never resolves
+      vi.mocked(api.getWikipediaSproutState).mockImplementation(() => new Promise(() => {})) // Never resolves
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)
 
@@ -283,6 +303,7 @@ describe('WikipediaSproutDetail', () => {
     })
 
     it('should handle seed load error gracefully', async () => {
+      vi.mocked(api.getWikipediaSproutState).mockResolvedValue(mockWikipediaState)
       vi.mocked(api.get).mockRejectedValue(new Error('Failed to load seed'))
 
       render(<WikipediaSproutDetail sprout={mockSprout} onUpdate={vi.fn()} />)

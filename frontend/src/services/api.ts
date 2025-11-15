@@ -59,7 +59,6 @@ class ApiClient {
       (config) => {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`
-          this.logApi.debug('Adding Authorization header', { url: config.url })
         } else {
           this.logApi.debug('No token available for request', { url: config.url })
         }

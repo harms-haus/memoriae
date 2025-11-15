@@ -146,6 +146,15 @@
   flex-shrink: 0;
 }
 
+/* Make seed-timeline wrapper flex to allow scrolling */
+.seed-detail-timeline .seed-timeline {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* Make TransactionHistoryList scrollable within the timeline panel */
 .seed-detail-timeline .transaction-history-list {
   flex: 1 1 auto;

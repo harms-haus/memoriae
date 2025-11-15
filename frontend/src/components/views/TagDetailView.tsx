@@ -7,6 +7,8 @@ import { Input } from '@mother/components/Input'
 import { SeedView } from '../SeedView'
 import { HexColorPicker, HexColorInput } from 'react-colorful'
 import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
+import { getAccentColorPalette } from '@mother/utils/colors'
+import { getTagColor } from '../../utils/getTagColor'
 import type { TagTransaction, Seed, Tag } from '../../types'
 import log from 'loglevel'
 import './Views.css'
@@ -50,6 +52,7 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
   const [nameInput, setNameInput] = useState('')
   const [colorInput, setColorInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [colorPalette, setColorPalette] = useState<string[]>([])
 
   useEffect(() => {
     if (!tagName) {
@@ -62,6 +65,18 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
     loadSeeds()
     loadTags()
   }, [tagName])
+
+  // Load color palette from mother theme
+  useEffect(() => {
+    try {
+      const palette = getAccentColorPalette()
+      setColorPalette(palette)
+    } catch (err) {
+      logTagDetail.warn('Failed to load color palette', { error: err })
+      // Fallback to empty array if palette can't be loaded
+      setColorPalette([])
+    }
+  }, [])
 
   const loadTagData = async () => {
     try {
@@ -162,12 +177,12 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
     navigate(`/seeds/${hashId}`)
   }
 
-  // Build tag color map for SeedView
+  // Build tag color map for SeedView: include ALL tags, generating colors for tags without colors
   const tagColorMap = new Map<string, string>()
   tags.forEach(tag => {
-    if (tag.color) {
-      tagColorMap.set(tag.name.toLowerCase(), tag.color)
-    }
+    // Use existing color if available, otherwise generate one
+    const color = tag.color || getTagColor(tag.name, null)
+    tagColorMap.set(tag.name.toLowerCase(), color)
   })
 
   const formatDate = (dateString: string) => {
@@ -377,6 +392,24 @@ export function TagDetailView({ tagName, onBack }: TagDetailViewProps) {
                 <label className="label">Color</label>
                 {editingColor ? (
                   <div className="tag-color-edit">
+                    {colorPalette.length > 0 && (
+                      <div className="tag-color-palette">
+                        <label className="label">Theme Colors</label>
+                        <div className="tag-color-swatches">
+                          {colorPalette.map((color, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              className="tag-color-swatch"
+                              style={{ backgroundColor: color }}
+                              onClick={() => setColorInput(color)}
+                              title={color}
+                              aria-label={`Select color ${color}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="tag-color-picker-wrapper">
                       <HexColorPicker
                         color={colorInput && colorInput.trim() !== '' ? colorInput : '#000000'}

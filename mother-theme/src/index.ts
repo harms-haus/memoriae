@@ -66,3 +66,11 @@ export type { PanelProps } from './components/Panel';
 export { ExpandingPanel } from './components/ExpandingPanel';
 export type { ExpandingPanelProps } from './components/ExpandingPanel';
 
+// Color Utilities
+export { 
+  getAccentColor, 
+  getAccentColorPalette, 
+  getAccentColorVarNames,
+  ACCENT_COLOR_VARS 
+} from './utils/colors';
+

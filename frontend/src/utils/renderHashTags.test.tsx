@@ -127,6 +127,84 @@ describe('renderHashTags', () => {
     expect(links[1]).toBeInTheDocument()
   })
 
+  it('should generate color for hashtag not in tagColorMap', () => {
+    const tagColorMap = new Map([
+      ['work', '#custom-color'],
+      // 'personal' is not in the map
+    ])
+    
+    const result = renderHashTags('This has #work and #personal tags', mockOnClick, tagColorMap)
+    const { container } = render(<>{result}</>)
+    
+    const links = container.querySelectorAll('a')
+    expect(links).toHaveLength(2)
+    // Both links should exist and have colors (one from map, one generated)
+    expect(links[0]).toBeInTheDocument()
+    expect(links[1]).toBeInTheDocument()
+  })
+
+  it('should generate color for hashtag with empty string color in map', () => {
+    const tagColorMap = new Map([
+      ['work', ''], // Empty string color
+      ['personal', '#another-color'],
+    ])
+    
+    const result = renderHashTags('This has #work and #personal tags', mockOnClick, tagColorMap)
+    const { container } = render(<>{result}</>)
+    
+    const links = container.querySelectorAll('a')
+    expect(links).toHaveLength(2)
+    // Both links should exist - work should get generated color, personal should use provided color
+    expect(links[0]).toBeInTheDocument()
+    expect(links[1]).toBeInTheDocument()
+  })
+
+  it('should handle case-insensitive tag name matching in tagColorMap', () => {
+    const tagColorMap = new Map([
+      ['work', '#custom-color'], // lowercase in map
+    ])
+    
+    const result = renderHashTags('This is #Work and #WORK', mockOnClick, tagColorMap)
+    const { container } = render(<>{result}</>)
+    
+    const links = container.querySelectorAll('a')
+    expect(links).toHaveLength(2)
+    // Both should match the lowercase 'work' in the map
+    expect(links[0]).toBeInTheDocument()
+    expect(links[1]).toBeInTheDocument()
+  })
+
+  it('should generate colors for all hashtags when tagColorMap is empty', () => {
+    const tagColorMap = new Map<string, string>()
+    
+    const result = renderHashTags('This has #work and #personal tags', mockOnClick, tagColorMap)
+    const { container } = render(<>{result}</>)
+    
+    const links = container.querySelectorAll('a')
+    expect(links).toHaveLength(2)
+    // Both should get generated colors
+    expect(links[0]).toBeInTheDocument()
+    expect(links[1]).toBeInTheDocument()
+  })
+
+  it('should handle mixed scenarios: some tags with colors, some without', () => {
+    const tagColorMap = new Map([
+      ['work', '#ff0000'],
+      ['personal', ''], // Empty string
+      // 'important' is not in map
+    ])
+    
+    const result = renderHashTags('This has #work #personal and #important tags', mockOnClick, tagColorMap)
+    const { container } = render(<>{result}</>)
+    
+    const links = container.querySelectorAll('a')
+    expect(links).toHaveLength(3)
+    // All should exist with appropriate colors
+    expect(links[0]).toBeInTheDocument()
+    expect(links[1]).toBeInTheDocument()
+    expect(links[2]).toBeInTheDocument()
+  })
+
   it('should handle hash tags with mixed case', () => {
     const result = renderHashTags('This is #Work and #PERSONAL', mockOnClick)
     const { container } = render(<>{result}</>)

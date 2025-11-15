@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import type { SeedTransaction, Sprout } from '../../types'
+import { useMemo, useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { api } from '../../services/api'
+import type { SeedTransaction, Sprout, WikipediaSproutState, Tag } from '../../types'
 import type { TransactionHistoryMessage } from '../TransactionHistoryList'
 import './SeedTimeline.css'
 import '../TransactionHistoryList/TransactionHistoryList.css'
@@ -11,6 +12,9 @@ interface ExtendedMessage extends TransactionHistoryMessage {
   transactionData?: any
   automationId?: string | null
   articleUrl?: string // For Wikipedia sprouts
+  tagInfo?: Array<{ name: string; color: string | null }> // For grouped tag messages
+  remainingTagCount?: number // For "and X more" text
+  isAutomated?: boolean // For automated indicator
 }
 
 const formatRelativeTime = (date: string | Date): string => {
@@ -56,11 +60,37 @@ const formatRelativeTime = (date: string | Date): string => {
 interface SeedTimelineProps {
   transactions: SeedTransaction[]
   sprouts: Sprout[]
+  tags?: Tag[]
   getColor: (message: TransactionHistoryMessage) => string
 }
 
-export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelineProps) {
+export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: SeedTimelineProps) {
   const navigate = useNavigate()
+  const [wikipediaStates, setWikipediaStates] = useState<Map<string, WikipediaSproutState>>(new Map())
+
+  // Fetch computed state for Wikipedia sprouts
+  useEffect(() => {
+    const wikipediaSprouts = sprouts.filter(s => s.sprout_type === 'wikipedia_reference')
+    if (wikipediaSprouts.length === 0) return
+
+    const fetchStates = async () => {
+      const states = new Map<string, WikipediaSproutState>()
+      await Promise.all(
+        wikipediaSprouts.map(async (sprout) => {
+          try {
+            const state = await api.getWikipediaSproutState(sprout.id)
+            states.set(sprout.id, state)
+          } catch (error) {
+            // If fetching fails, we'll fall back to sprout_data
+            console.warn(`Failed to fetch Wikipedia state for sprout ${sprout.id}:`, error)
+          }
+        })
+      )
+      setWikipediaStates(states)
+    }
+
+    fetchStates()
+  }, [sprouts])
 
   // Combine transactions and sprouts into a unified timeline
   const timelineItems = useMemo(() => {
@@ -187,16 +217,21 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
             content = `Musing (${musingData.template_type})`
             break
           case 'wikipedia_reference':
-            const wikipediaData = sprout.sprout_data as { reference: string; summary: string; article_url: string }
+            // Use computed state if available, otherwise fall back to sprout_data
+            const computedState = wikipediaStates.get(sprout.id)
+            const wikipediaData = computedState 
+              ? {
+                  reference: computedState.reference,
+                  summary: computedState.summary,
+                  article_url: computedState.article_url,
+                }
+              : (sprout.sprout_data as { reference: string; summary: string; article_url: string })
             title = wikipediaData.reference || 'Wikipedia Reference'
-            // Truncate summary to approximately 3 lines (around 250 characters)
+            // Truncate summary to first 3 paragraphs (lines separated by \n\n)
             const fullSummary = wikipediaData.summary || ''
-            const maxLength = 250
-            if (fullSummary.length > maxLength) {
-              // Find the last space before maxLength to avoid cutting words
-              const truncated = fullSummary.substring(0, maxLength)
-              const lastSpace = truncated.lastIndexOf(' ')
-              content = lastSpace > 0 ? truncated.substring(0, lastSpace) + '...' : truncated + '...'
+            const paragraphs = fullSummary.split('\n\n')
+            if (paragraphs.length > 3) {
+              content = paragraphs.slice(0, 3).join('\n\n')
             } else {
               content = fullSummary
             }
@@ -243,7 +278,7 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
         time: item.time.toISOString(),
       }
     })
-  }, [timelineItems])
+  }, [timelineItems, wikipediaStates])
 
   // Group consecutive tag additions that are within time threshold and not interrupted
   const messages: ExtendedMessage[] = useMemo(() => {
@@ -294,6 +329,15 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
               const displayTags = uniqueTagNames.slice(0, 10)
               const remainingCount = uniqueTagNames.length - displayTags.length
 
+              // Get tag info (name and color) for each tag
+              const tagInfo: Array<{ name: string; color: string | null }> = displayTags.map(tagName => {
+                const tag = tags.find(t => t.name === tagName)
+                return {
+                  name: tagName,
+                  color: tag?.color || null,
+                }
+              })
+
               let groupedContent = `Tags: ${displayTags.join(', ')}`
               if (remainingCount > 0) {
                 groupedContent += `, and ${remainingCount} more`
@@ -308,6 +352,9 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
                 content: groupedContent,
                 time: currentTagGroup[0]!.time, // Use newest (first) message time since sorted newest-first
                 groupKey: 'add_tag', // Use same groupKey as individual tag additions for color matching
+                tagInfo, // Store tag info for rendering links
+                remainingTagCount: remainingCount > 0 ? remainingCount : undefined,
+                isAutomated: hasAutomated,
               })
             } else {
               // Single message, add as-is
@@ -341,6 +388,15 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
             const displayTags = uniqueTagNames.slice(0, 10)
             const remainingCount = uniqueTagNames.length - displayTags.length
 
+            // Get tag info (name and color) for each tag
+            const tagInfo: Array<{ name: string; color: string | null }> = displayTags.map(tagName => {
+              const tag = tags.find(t => t.name === tagName)
+              return {
+                name: tagName,
+                color: tag?.color || null,
+              }
+            })
+
             let groupedContent = `Tags: ${displayTags.join(', ')}`
             if (remainingCount > 0) {
               groupedContent += `, and ${remainingCount} more`
@@ -355,6 +411,9 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
               content: groupedContent,
               time: currentTagGroup[currentTagGroup.length - 1]!.time, // Use newest (last) message time
               groupKey: 'add_tag', // Use same groupKey as individual tag additions for color matching
+              tagInfo, // Store tag info for rendering links
+              remainingTagCount: remainingCount > 0 ? remainingCount : undefined,
+              isAutomated: hasAutomated,
             })
           } else {
             // Single message, add as-is
@@ -389,6 +448,15 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
         const displayTags = uniqueTagNames.slice(0, 10)
         const remainingCount = uniqueTagNames.length - displayTags.length
 
+        // Get tag info (name and color) for each tag
+        const tagInfo: Array<{ name: string; color: string | null }> = displayTags.map(tagName => {
+          const tag = tags.find(t => t.name === tagName)
+          return {
+            name: tagName,
+            color: tag?.color || null,
+          }
+        })
+
         let groupedContent = `Tags: ${displayTags.join(', ')}`
         if (remainingCount > 0) {
           groupedContent += `, and ${remainingCount} more`
@@ -403,6 +471,9 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
           content: groupedContent,
           time: currentTagGroup[currentTagGroup.length - 1]!.time, // Use newest (last) message time
           groupKey: 'add_tag', // Use same groupKey as individual tag additions for color matching
+          tagInfo, // Store tag info for rendering links
+          remainingTagCount: remainingCount > 0 ? remainingCount : undefined,
+          isAutomated: hasAutomated,
         })
       } else {
         // Single message, add as-is
@@ -411,7 +482,7 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
     }
 
     return grouped
-  }, [rawMessages])
+  }, [rawMessages, tags])
 
   // Create a map to track which messages are sprouts
   const sproutMessageIds = useMemo(() => {
@@ -472,7 +543,47 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
                 </span>
               </div>
               <div className="transaction-history-content">
-                {message.content}
+                {message.tagInfo ? (
+                  <div>
+                    <span>Tags: </span>
+                    {message.tagInfo.map((tag, index) => (
+                      <span key={tag.name}>
+                        <Link
+                          to={`/tags/${encodeURIComponent(tag.name)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            color: tag.color || 'var(--text-secondary)',
+                            textDecoration: 'none',
+                            transition: 'all 0.2s ease',
+                            borderBottom: '1px solid transparent',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (tag.color) {
+                              e.currentTarget.style.borderBottomColor = tag.color
+                              e.currentTarget.style.opacity = '1'
+                            } else {
+                              e.currentTarget.style.borderBottomColor = 'var(--text-secondary)'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderBottomColor = 'transparent'
+                          }}
+                        >
+                          {tag.name}
+                        </Link>
+                        {index < message.tagInfo!.length - 1 && <span>, </span>}
+                      </span>
+                    ))}
+                    {message.remainingTagCount !== undefined && (
+                      <span>, and {message.remainingTagCount} more</span>
+                    )}
+                    {message.isAutomated && (
+                      <span> • (automated)</span>
+                    )}
+                  </div>
+                ) : (
+                  message.content
+                )}
               </div>
             </div>
           )

@@ -7,6 +7,7 @@ import { Input } from '@mother/components/Input'
 import { Badge } from '@mother/components/Badge'
 import { Search, X, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
 import { SeedView } from '../SeedView'
+import { getTagColor } from '../../utils/getTagColor'
 import type { Seed, Category, Tag as TagType } from '../../types'
 import log from 'loglevel'
 import './Views.css'
@@ -352,11 +353,12 @@ export function SeedsView({ onSeedSelect, refreshRef }: SeedsViewProps) {
         <div className="seeds-view-list">
           {filteredAndSortedSeeds.map((seed) => {
             // Create tag color map: tag name (lowercase) -> color
+            // Include ALL tags, generating colors for tags without colors
             const tagColorMap = new Map<string, string>()
             tags.forEach(tag => {
-              if (tag.color) {
-                tagColorMap.set(tag.name.toLowerCase(), tag.color)
-              }
+              // Use existing color if available, otherwise generate one
+              const color = tag.color || getTagColor(tag.name, null)
+              tagColorMap.set(tag.name.toLowerCase(), color)
             })
 
             return (

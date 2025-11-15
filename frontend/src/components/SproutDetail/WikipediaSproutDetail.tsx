@@ -78,7 +78,7 @@ export function WikipediaSproutDetail({ sprout, onUpdate }: WikipediaSproutDetai
 
     try {
       setSaving(true)
-      const newState = await api.editWikipediaSprout(sprout.id, editSummary)
+      await api.editWikipediaSprout(sprout.id, editSummary)
       // Reload the computed state to ensure we have the latest transactions
       const latestState = await api.getWikipediaSproutState(sprout.id)
       setState(latestState)

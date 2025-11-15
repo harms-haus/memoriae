@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../../services/api'
 import { Panel } from '@mother/components/Panel'
 import { Button } from '@mother/components/Button'
+import { getTagColor } from '../../utils/getTagColor'
 import type { IdeaMusing, Tag, Sprout, MusingSproutData } from '../../types'
 import { MusingItem } from '../MusingsView/MusingItem'
 import log from 'loglevel'
@@ -127,12 +128,12 @@ export function MusingsView() {
     }
   }
 
-  // Create tag color map
+  // Create tag color map: include ALL tags, generating colors for tags without colors
   const tagColorMap = new Map<string, string>()
   tags.forEach(tag => {
-    if (tag.color) {
-      tagColorMap.set(tag.name.toLowerCase(), tag.color)
-    }
+    // Use existing color if available, otherwise generate one
+    const color = tag.color || getTagColor(tag.name, null)
+    tagColorMap.set(tag.name.toLowerCase(), color)
   })
 
   if (loading) {

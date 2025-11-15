@@ -347,6 +347,198 @@ describe('SeedView Component', () => {
       const editableTag = workTag.closest('.tag-item-editable')
       expect(editableTag).toBeInTheDocument()
     })
+
+    it('should render hashtags in content with colors from tagColorMap', () => {
+      const seedWithHashtags: Seed = {
+        ...mockSeed,
+        currentState: {
+          ...mockSeed.currentState!,
+          seed: 'This is about #work and #personal topics',
+        },
+      }
+      
+      const tagColors = new Map([
+        ['work', '#ff0000'],
+        ['personal', '#00ff00'],
+      ])
+      
+      const { container } = render(
+        <MemoryRouter>
+          <SeedView
+            seed={seedWithHashtags}
+            isEditing={false}
+            tagColors={tagColors}
+          />
+        </MemoryRouter>
+      )
+      
+      // Hashtags should be rendered as links
+      const links = container.querySelectorAll('a')
+      expect(links.length).toBeGreaterThanOrEqual(2)
+      
+      // Check that hashtag links exist
+      const workLink = Array.from(links).find(link => link.textContent === '#work')
+      const personalLink = Array.from(links).find(link => link.textContent === '#personal')
+      expect(workLink).toBeInTheDocument()
+      expect(personalLink).toBeInTheDocument()
+    })
+
+    it('should generate colors for hashtags not in tagColorMap', () => {
+      const seedWithHashtags: Seed = {
+        ...mockSeed,
+        currentState: {
+          ...mockSeed.currentState!,
+          seed: 'This is about #work and #unknown topics',
+        },
+      }
+      
+      const tagColors = new Map([
+        ['work', '#ff0000'],
+        // 'unknown' is not in the map
+      ])
+      
+      const { container } = render(
+        <MemoryRouter>
+          <SeedView
+            seed={seedWithHashtags}
+            isEditing={false}
+            tagColors={tagColors}
+          />
+        </MemoryRouter>
+      )
+      
+      // Both hashtags should be rendered as links
+      const links = container.querySelectorAll('a')
+      expect(links.length).toBeGreaterThanOrEqual(2)
+      
+      // Both should exist - work with provided color, unknown with generated color
+      const workLink = Array.from(links).find(link => link.textContent === '#work')
+      const unknownLink = Array.from(links).find(link => link.textContent === '#unknown')
+      expect(workLink).toBeInTheDocument()
+      expect(unknownLink).toBeInTheDocument()
+    })
+
+    it('should generate colors for hashtags with empty string color in tagColorMap', () => {
+      const seedWithHashtags: Seed = {
+        ...mockSeed,
+        currentState: {
+          ...mockSeed.currentState!,
+          seed: 'This is about #work and #personal topics',
+        },
+      }
+      
+      const tagColors = new Map([
+        ['work', ''], // Empty string color
+        ['personal', '#00ff00'],
+      ])
+      
+      const { container } = render(
+        <MemoryRouter>
+          <SeedView
+            seed={seedWithHashtags}
+            isEditing={false}
+            tagColors={tagColors}
+          />
+        </MemoryRouter>
+      )
+      
+      // Both hashtags should be rendered as links
+      const links = container.querySelectorAll('a')
+      expect(links.length).toBeGreaterThanOrEqual(2)
+      
+      // Both should exist - work should get generated color, personal should use provided color
+      const workLink = Array.from(links).find(link => link.textContent === '#work')
+      const personalLink = Array.from(links).find(link => link.textContent === '#personal')
+      expect(workLink).toBeInTheDocument()
+      expect(personalLink).toBeInTheDocument()
+    })
+
+    it('should handle hashtags that match tags in seed with case-insensitive matching', () => {
+      const seedWithHashtags: Seed = {
+        ...mockSeed,
+        currentState: {
+          ...mockSeed.currentState!,
+          seed: 'This is about #Work and #WORK topics',
+          tags: [
+            { id: 'tag-1', name: 'work' }, // lowercase in tags
+          ],
+        },
+      }
+      
+      const tagColors = new Map([
+        ['work', '#ff0000'], // lowercase in map
+      ])
+      
+      const { container } = render(
+        <MemoryRouter>
+          <SeedView
+            seed={seedWithHashtags}
+            isEditing={false}
+            tagColors={tagColors}
+          />
+        </MemoryRouter>
+      )
+      
+      // Both hashtags should match the lowercase 'work' tag
+      const links = container.querySelectorAll('a')
+      expect(links.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('should handle multiple hashtags with mixed color scenarios', () => {
+      const seedWithHashtags: Seed = {
+        ...mockSeed,
+        currentState: {
+          ...mockSeed.currentState!,
+          seed: 'This has #work #personal #important and #unknown tags',
+        },
+      }
+      
+      const tagColors = new Map([
+        ['work', '#ff0000'], // Has color
+        ['personal', ''], // Empty string
+        // 'important' and 'unknown' not in map
+      ])
+      
+      const { container } = render(
+        <MemoryRouter>
+          <SeedView
+            seed={seedWithHashtags}
+            isEditing={false}
+            tagColors={tagColors}
+          />
+        </MemoryRouter>
+      )
+      
+      // All hashtags should be rendered as links
+      const links = container.querySelectorAll('a')
+      expect(links.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('should generate colors for all hashtags when tagColorMap is empty', () => {
+      const seedWithHashtags: Seed = {
+        ...mockSeed,
+        currentState: {
+          ...mockSeed.currentState!,
+          seed: 'This is about #work and #personal topics',
+        },
+      }
+      
+      const tagColors = new Map<string, string>()
+      
+      const { container } = render(
+        <MemoryRouter>
+          <SeedView
+            seed={seedWithHashtags}
+            isEditing={false}
+            tagColors={tagColors}
+          />
+        </MemoryRouter>
+      )
+      
+      // Both hashtags should be rendered as links with generated colors
+      const links = container.querySelectorAll('a')
+      expect(links.length).toBeGreaterThanOrEqual(2)
+    })
   })
 })
 

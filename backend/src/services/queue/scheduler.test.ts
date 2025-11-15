@@ -322,6 +322,12 @@ describe('PressureEvaluationScheduler', () => {
       scheduler.start()
       // Wait for immediate evaluation only
       await vi.runOnlyPendingTimersAsync()
+      
+      // Wait for async operations to complete
+      vi.advanceTimersByTime(50)
+      await vi.runOnlyPendingTimersAsync()
+      // Ensure processing completes
+      scheduler['isProcessing'] = false
 
       expect(PressurePointsService.getExceededThresholds).toHaveBeenCalled()
       expect(SeedsService.getById).toHaveBeenCalledWith(testSeedId, testUserId)

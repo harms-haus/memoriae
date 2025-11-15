@@ -6,6 +6,7 @@ import { api } from '../../services/api'
 import { Panel } from '@mother/components/Panel'
 import { Button } from '@mother/components/Button'
 import { X } from 'lucide-react'
+import { getTagColor } from '../../utils/getTagColor'
 import type { Seed, Category, Tag as TagType } from '../../types'
 import log from 'loglevel'
 import './Views.css'
@@ -179,11 +180,12 @@ export function CategoriesView({ refreshRef }: CategoriesViewProps = {}) {
             <div className="categories-view-seeds-list">
               {seeds.map((seed) => {
                 // Create tag color map: tag name (lowercase) -> color
+                // Include ALL tags, generating colors for tags without colors
                 const tagColorMap = new Map<string, string>()
                 tags.forEach(tag => {
-                  if (tag.color) {
-                    tagColorMap.set(tag.name.toLowerCase(), tag.color)
-                  }
+                  // Use existing color if available, otherwise generate one
+                  const color = tag.color || getTagColor(tag.name, null)
+                  tagColorMap.set(tag.name.toLowerCase(), color)
                 })
 
                 return (

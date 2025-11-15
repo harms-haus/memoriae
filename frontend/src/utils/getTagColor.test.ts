@@ -86,5 +86,29 @@ describe('getTagColor', () => {
     expect(typeof color).toBe('string')
     expect(color.length).toBeGreaterThan(0)
   })
+
+  it('should handle empty string existing color', () => {
+    const color = getTagColor('test-tag', '')
+    // Empty string is falsy, so should generate a color
+    expect(typeof color).toBe('string')
+    expect(color.length).toBeGreaterThan(0)
+    // Should be a theme color, not the empty string
+    const themeColors = [
+      '#ffd43b', '#4fc3f7', '#66bb6a', '#ab47bc', '#ec407a', '#ff9800',
+    ]
+    expect(themeColors).toContain(color)
+  })
+
+  it('should generate same color for same tag when existing color is empty string', () => {
+    const color1 = getTagColor('work', '')
+    const color2 = getTagColor('work', '')
+    expect(color1).toBe(color2)
+  })
+
+  it('should generate same color for same tag when existing color is null vs undefined', () => {
+    const color1 = getTagColor('work', null)
+    const color2 = getTagColor('work', undefined)
+    expect(color1).toBe(color2)
+  })
 })
 
