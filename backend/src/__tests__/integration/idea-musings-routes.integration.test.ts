@@ -12,6 +12,7 @@ import { IdeaMusingAutomation } from '../../services/automation/idea-musing'
 import { addAutomationJob } from '../../services/queue/queue'
 import { createOpenRouterClient } from '../../services/openrouter/client'
 import { SeedTransactionsService } from '../../services/seed-transactions'
+import * as musingSproutHandler from '../../services/sprouts/musing-sprout'
 import db from '../../db/connection'
 
 // Mock the services
@@ -58,6 +59,10 @@ vi.mock('../../services/seed-transactions', () => ({
   SeedTransactionsService: {
     create: vi.fn(),
   },
+}))
+
+vi.mock('../../services/sprouts/musing-sprout', () => ({
+  createMusingSprout: vi.fn(),
 }))
 
 // Mock database
@@ -318,16 +323,22 @@ describe('Idea Musings Routes', () => {
       }
 
       vi.mocked(IdeaMusingAutomation).mockImplementation(() => mockAutomation as any)
-      vi.mocked(IdeaMusingsService.create).mockResolvedValue({
+      vi.mocked(musingSproutHandler.createMusingSprout).mockResolvedValue({
         id: mockMusingId,
         seed_id: mockSeedId,
-        template_type: 'numbered_ideas',
-        content: { ideas: ['Idea 1'] },
+        sprout_type: 'musing',
+        sprout_data: {
+          template_type: 'numbered_ideas',
+          content: { ideas: ['Idea 1'] },
+          dismissed: false,
+          dismissed_at: null,
+          completed: false,
+          completed_at: null,
+        },
         created_at: new Date(),
-        dismissed: false,
-        dismissed_at: null,
+        automation_id: null,
       } as any)
-
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined as any)
       vi.mocked(IdeaMusingsService.recordShown).mockResolvedValue()
 
       const response = await request(app)

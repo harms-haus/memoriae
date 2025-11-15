@@ -4,13 +4,27 @@ import { FollowupAutomation } from './followup'
 import type { Seed, SeedState } from '../seeds'
 import type { OpenRouterClient, OpenRouterChatCompletionResponse } from '../openrouter/client'
 import type { AutomationContext, CategoryChange } from './base'
-import { FollowupService } from '../followups'
+import { SproutsService } from '../sprouts'
 import { SettingsService } from '../settings'
+import * as followupHandler from '../sprouts/followup-sprout'
+import { SeedTransactionsService } from '../seed-transactions'
 
-// Mock FollowupService
-vi.mock('../followups', () => ({
-  FollowupService: {
+// Mock SproutsService
+vi.mock('../sprouts', () => ({
+  SproutsService: {
     getBySeedId: vi.fn(),
+  },
+}))
+
+// Mock followup sprout handler
+vi.mock('../sprouts/followup-sprout', () => ({
+  createFollowupSprout: vi.fn(),
+  getFollowupState: vi.fn(),
+}))
+
+// Mock SeedTransactionsService
+vi.mock('../seed-transactions', () => ({
+  SeedTransactionsService: {
     create: vi.fn(),
   },
 }))
@@ -110,29 +124,41 @@ describe('FollowupAutomation', () => {
       }
 
       mockCreateChatCompletion.mockResolvedValue(mockResponse)
-      vi.mocked(FollowupService.getBySeedId).mockResolvedValue([])
-      vi.mocked(FollowupService.create).mockResolvedValue({
-        id: 'followup-123',
-        seed_id: 'seed-123',
-        created_at: new Date(),
-        due_time: new Date('2024-01-02T10:00:00Z'),
-        message: 'Call John about the project proposal',
-        dismissed: false,
-        transactions: [],
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
+      vi.mocked(followupHandler.createFollowupSprout).mockResolvedValue({
+        sprout: {
+          id: 'sprout-123',
+          seed_id: 'seed-123',
+          sprout_type: 'followup',
+          sprout_data: {
+            trigger: 'automatic',
+            initial_time: '2024-01-02T10:00:00Z',
+            initial_message: 'Call John about the project proposal',
+          },
+          created_at: new Date(),
+          automation_id: automation.id,
+        },
+        followupState: {
+          due_time: new Date('2024-01-02T10:00:00Z'),
+          message: 'Call John about the project proposal',
+          dismissed: false,
+          transactions: [],
+        },
       })
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined as any)
 
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.transactions).toEqual([])
-      expect(FollowupService.create).toHaveBeenCalled()
+      expect(followupHandler.createFollowupSprout).toHaveBeenCalled()
       // Verify the call arguments
-      const createCall = vi.mocked(FollowupService.create).mock.calls[0]
+      const createCall = vi.mocked(followupHandler.createFollowupSprout).mock.calls[0]
       expect(createCall[0]).toBe('seed-123')
-      expect(createCall[1]).toMatchObject({
-        message: 'Call John about the project proposal',
-      })
-      expect(createCall[1].due_time).toBeDefined()
-      expect(createCall[2]).toBe('automatic')
+      // The date is converted to ISO string, which may include milliseconds
+      expect(createCall[1]).toMatch(/^2024-01-02T10:00:00/)
+      expect(createCall[2]).toBe('Call John about the project proposal')
+      expect(createCall[3]).toBe('automatic')
+      expect(SeedTransactionsService.create).toHaveBeenCalled()
     })
 
     it('should not create followup if confidence <= 60%', async () => {
@@ -163,32 +189,47 @@ describe('FollowupAutomation', () => {
       }
 
       mockCreateChatCompletion.mockResolvedValue(mockResponse)
-      vi.mocked(FollowupService.getBySeedId).mockResolvedValue([])
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
 
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.transactions).toEqual([])
-      expect(FollowupService.create).not.toHaveBeenCalled()
+      expect(followupHandler.createFollowupSprout).not.toHaveBeenCalled()
     })
 
     it('should not create followup if seed already has active followup', async () => {
-      vi.mocked(FollowupService.getBySeedId).mockResolvedValue([
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([
         {
-          id: 'followup-123',
+          id: 'sprout-123',
           seed_id: 'seed-123',
+          sprout_type: 'followup',
+          sprout_data: {
+            trigger: 'automatic',
+            initial_time: '2024-01-02T10:00:00Z',
+            initial_message: 'Existing followup',
+          },
           created_at: new Date(),
-          due_time: new Date('2024-01-02T10:00:00Z'),
-          message: 'Existing followup',
-          dismissed: false,
-          transactions: [],
+          automation_id: automation.id,
+          followup_state: {
+            due_time: new Date('2024-01-02T10:00:00Z'),
+            message: 'Existing followup',
+            dismissed: false,
+            transactions: [],
+          },
         },
       ])
+      vi.mocked(followupHandler.getFollowupState).mockResolvedValue({
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Existing followup',
+        dismissed: false,
+        transactions: [],
+      })
 
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.transactions).toEqual([])
       expect(mockCreateChatCompletion).not.toHaveBeenCalled()
-      expect(FollowupService.create).not.toHaveBeenCalled()
+      expect(followupHandler.createFollowupSprout).not.toHaveBeenCalled()
     })
 
     it('should allow creating followup if existing followup is dismissed', async () => {
@@ -219,42 +260,70 @@ describe('FollowupAutomation', () => {
       }
 
       mockCreateChatCompletion.mockResolvedValue(mockResponse)
-      vi.mocked(FollowupService.getBySeedId).mockResolvedValue([
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([
         {
-          id: 'followup-123',
+          id: 'sprout-123',
           seed_id: 'seed-123',
+          sprout_type: 'followup',
+          sprout_data: {
+            trigger: 'automatic',
+            initial_time: '2024-01-02T10:00:00Z',
+            initial_message: 'Dismissed followup',
+          },
           created_at: new Date(),
-          due_time: new Date('2024-01-02T10:00:00Z'),
-          message: 'Dismissed followup',
-          dismissed: true,
-          dismissed_at: new Date(),
-          transactions: [],
+          automation_id: automation.id,
+          followup_state: {
+            due_time: new Date('2024-01-02T10:00:00Z'),
+            message: 'Dismissed followup',
+            dismissed: true,
+            dismissed_at: new Date(),
+            transactions: [],
+          },
         },
       ])
-      vi.mocked(FollowupService.create).mockResolvedValue({
-        id: 'followup-456',
-        seed_id: 'seed-123',
-        created_at: new Date(),
+      vi.mocked(followupHandler.getFollowupState).mockResolvedValue({
         due_time: new Date('2024-01-02T10:00:00Z'),
-        message: 'New followup',
-        dismissed: false,
+        message: 'Dismissed followup',
+        dismissed: true,
+        dismissed_at: new Date(),
         transactions: [],
       })
+      vi.mocked(followupHandler.createFollowupSprout).mockResolvedValue({
+        sprout: {
+          id: 'sprout-456',
+          seed_id: 'seed-123',
+          sprout_type: 'followup',
+          sprout_data: {
+            trigger: 'automatic',
+            initial_time: '2024-01-02T10:00:00Z',
+            initial_message: 'New followup',
+          },
+          created_at: new Date(),
+          automation_id: automation.id,
+        },
+        followupState: {
+          due_time: new Date('2024-01-02T10:00:00Z'),
+          message: 'New followup',
+          dismissed: false,
+          transactions: [],
+        },
+      })
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined as any)
 
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.transactions).toEqual([])
-      expect(FollowupService.create).toHaveBeenCalled()
+      expect(followupHandler.createFollowupSprout).toHaveBeenCalled()
     })
 
     it('should handle AI errors gracefully', async () => {
       mockCreateChatCompletion.mockRejectedValue(new Error('AI service error'))
-      vi.mocked(FollowupService.getBySeedId).mockResolvedValue([])
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
 
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.transactions).toEqual([])
-      expect(FollowupService.create).not.toHaveBeenCalled()
+      expect(followupHandler.createFollowupSprout).not.toHaveBeenCalled()
     })
 
     it('should handle invalid AI response gracefully', async () => {
@@ -281,12 +350,12 @@ describe('FollowupAutomation', () => {
       }
 
       mockCreateChatCompletion.mockResolvedValue(mockResponse)
-      vi.mocked(FollowupService.getBySeedId).mockResolvedValue([])
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
 
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.transactions).toEqual([])
-      expect(FollowupService.create).not.toHaveBeenCalled()
+      expect(followupHandler.createFollowupSprout).not.toHaveBeenCalled()
     })
 
     it('should return empty events array (followups are NOT timeline events)', async () => {
@@ -317,16 +386,28 @@ describe('FollowupAutomation', () => {
       }
 
       mockCreateChatCompletion.mockResolvedValue(mockResponse)
-      vi.mocked(FollowupService.getBySeedId).mockResolvedValue([])
-      vi.mocked(FollowupService.create).mockResolvedValue({
-        id: 'followup-123',
-        seed_id: 'seed-123',
-        created_at: new Date(),
-        due_time: new Date('2024-01-02T10:00:00Z'),
-        message: 'Test followup',
-        dismissed: false,
-        transactions: [],
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
+      vi.mocked(followupHandler.createFollowupSprout).mockResolvedValue({
+        sprout: {
+          id: 'sprout-123',
+          seed_id: 'seed-123',
+          sprout_type: 'followup',
+          sprout_data: {
+            trigger: 'automatic',
+            initial_time: '2024-01-02T10:00:00Z',
+            initial_message: 'Test followup',
+          },
+          created_at: new Date(),
+          automation_id: automation.id,
+        },
+        followupState: {
+          due_time: new Date('2024-01-02T10:00:00Z'),
+          message: 'Test followup',
+          dismissed: false,
+          transactions: [],
+        },
       })
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined as any)
 
       const result = await automation.process(mockSeed, mockContext)
 

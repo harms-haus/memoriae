@@ -247,10 +247,35 @@ export class IdeaMusingScheduler {
               const musing = await this.automation.generateMusing(seed, context)
               
               if (musing) {
-                await IdeaMusingsService.create(seed.id, musing.templateType, musing.content)
-                await IdeaMusingsService.recordShown(seed.id, today)
+                const { createMusingSprout } = await import('../sprouts/musing-sprout')
+                const { SeedTransactionsService } = await import('../seed-transactions')
+                
+                // Create musing sprout
+                const sprout = await createMusingSprout(
+                  seed.id,
+                  musing.templateType,
+                  musing.content,
+                  this.automation.id
+                )
+                
+                // Create add_sprout transaction on the seed
+                await SeedTransactionsService.create({
+                  seed_id: seed.id,
+                  transaction_type: 'add_sprout',
+                  transaction_data: {
+                    sprout_id: sprout.id,
+                  },
+                  automation_id: this.automation.id || null,
+                })
+                
+                // Record shown (keep for backward compatibility)
+                const { IdeaMusingsService } = await import('../idea-musings')
+                await IdeaMusingsService.recordShown(seed.id, today).catch(() => {
+                  // Ignore errors if table doesn't exist
+                })
+                
                 totalMusingsCreated++
-                logScheduler.info(`Created musing for seed ${seed.id} (template: ${musing.templateType})`)
+                logScheduler.info(`Created musing sprout for seed ${seed.id} (template: ${musing.templateType})`)
               } else {
                 logScheduler.warn(`Failed to generate musing for seed ${seed.id}`)
               }

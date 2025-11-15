@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { MusingsView } from './MusingsView'
 import { api } from '../../services/api'
-import type { IdeaMusing, Tag } from '../../types'
+import type { Tag } from '../../types'
 
 // Mock the API client
 vi.mock('../../services/api', () => ({
@@ -13,6 +13,7 @@ vi.mock('../../services/api', () => ({
     getDailyMusings: vi.fn(),
     generateMusings: vi.fn(),
     get: vi.fn(),
+    getSproutsBySeedId: vi.fn(),
   },
 }))
 
@@ -73,32 +74,6 @@ const mockTags: Tag[] = [
   },
 ]
 
-const mockMusings: IdeaMusing[] = [
-  {
-    id: 'musing-1',
-    seed_id: 'seed-1',
-    template_type: 'numbered_ideas',
-    content: {
-      ideas: ['Idea 1', 'Idea 2', 'Custom idea or prompt...'],
-    },
-    created_at: new Date().toISOString(),
-    dismissed: false,
-    completed: false,
-  },
-  {
-    id: 'musing-2',
-    seed_id: 'seed-2',
-    template_type: 'wikipedia_links',
-    content: {
-      links: [
-        { title: 'Article 1', url: 'https://en.wikipedia.org/wiki/Article1' },
-      ],
-    },
-    created_at: new Date().toISOString(),
-    dismissed: false,
-    completed: false,
-  },
-]
 
 describe('MusingsView', () => {
   beforeEach(() => {
@@ -106,8 +81,15 @@ describe('MusingsView', () => {
   })
 
   it('should render loading state initially', async () => {
-    vi.mocked(api.getDailyMusings).mockImplementation(() => new Promise(() => {})) // Never resolves
-    vi.mocked(api.get).mockResolvedValue(mockTags)
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return new Promise(() => {}) // Never resolves
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
 
     render(
       <MemoryRouter>
@@ -119,8 +101,71 @@ describe('MusingsView', () => {
   })
 
   it('should render musings list when loaded', async () => {
-    vi.mocked(api.getDailyMusings).mockResolvedValue(mockMusings)
-    vi.mocked(api.get).mockResolvedValue(mockTags)
+    // Use today's date at noon to ensure it passes the filter (clearly within today)
+    const today = new Date()
+    today.setHours(12, 0, 0, 0)
+    const todayISO = today.toISOString()
+    
+    const mockSeeds = [
+      { id: 'seed-1', user_id: 'user-1', created_at: todayISO, currentState: { seed: 'Test seed 1', timestamp: todayISO, metadata: {} } },
+      { id: 'seed-2', user_id: 'user-1', created_at: todayISO, currentState: { seed: 'Test seed 2', timestamp: todayISO, metadata: {} } },
+    ]
+    const mockSprouts = [
+      {
+        id: 'musing-1',
+        seed_id: 'seed-1',
+        sprout_type: 'musing',
+        sprout_data: {
+          template_type: 'numbered_ideas',
+          content: { ideas: ['Idea 1', 'Idea 2', 'Custom idea or prompt...'] },
+          dismissed: false,
+          dismissed_at: null,
+          completed: false,
+          completed_at: null,
+        },
+        created_at: todayISO,
+        automation_id: null,
+      },
+      {
+        id: 'musing-2',
+        seed_id: 'seed-2',
+        sprout_type: 'musing',
+        sprout_data: {
+          template_type: 'wikipedia_links',
+          content: {
+            links: [
+              { title: 'Article 1', url: 'https://en.wikipedia.org/wiki/Article1' },
+            ],
+          },
+          dismissed: false,
+          dismissed_at: null,
+          completed: false,
+          completed_at: null,
+        },
+        created_at: todayISO,
+        automation_id: null,
+      },
+    ]
+    // Mock api.get to return seeds when called with '/seeds'
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve(mockSeeds as any)
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    // Mock getSproutsBySeedId to return sprouts for each seed
+    vi.mocked(api.getSproutsBySeedId).mockImplementation((seedId: string) => {
+      if (seedId === 'seed-1') {
+        return Promise.resolve([mockSprouts[0]] as any)
+      }
+      if (seedId === 'seed-2') {
+        return Promise.resolve([mockSprouts[1]] as any)
+      }
+      return Promise.resolve([])
+    })
 
     render(
       <MemoryRouter>
@@ -131,11 +176,20 @@ describe('MusingsView', () => {
     await waitFor(() => {
       expect(screen.getByTestId('musing-item-musing-1')).toBeInTheDocument()
       expect(screen.getByTestId('musing-item-musing-2')).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 
   it('should render empty state with generate button', async () => {
-    vi.mocked(api.getDailyMusings).mockResolvedValue([])
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve([])
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
 
     render(
@@ -151,7 +205,16 @@ describe('MusingsView', () => {
   })
 
   it('should handle error state gracefully', async () => {
-    vi.mocked(api.getDailyMusings).mockRejectedValue(new Error('Network error'))
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.reject(new Error('Network error'))
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
 
     render(
@@ -168,7 +231,16 @@ describe('MusingsView', () => {
 
   it('should call generate API on button click', async () => {
     const user = userEvent.setup()
-    vi.mocked(api.getDailyMusings).mockResolvedValue([])
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve([])
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
     vi.mocked(api.generateMusings).mockResolvedValue({
       message: 'Generated 2 musings',
@@ -193,7 +265,17 @@ describe('MusingsView', () => {
 
   it('should show loading state during generation', async () => {
     const user = userEvent.setup()
-    vi.mocked(api.getDailyMusings).mockResolvedValue([])
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve([])
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
     vi.mocked(api.generateMusings).mockImplementation(
       () => new Promise(resolve => setTimeout(() => resolve({ message: 'Generated', musingsCreated: 1 }), 100))
@@ -222,16 +304,53 @@ describe('MusingsView', () => {
     const user = userEvent.setup()
     const callTracker = vi.hoisted(() => ({ count: 0, generationComplete: false }))
     
+    const mockSeeds = [
+      { id: 'seed-1', user_id: 'user-1', created_at: new Date().toISOString(), currentState: { seed: 'Test seed 1', timestamp: new Date().toISOString(), metadata: {} } },
+    ]
+    // Use today's date at noon to ensure it passes the filter (clearly within today)
+    const today = new Date()
+    today.setHours(12, 0, 0, 0)
+    const todayISO = today.toISOString()
+    
+    const mockSproutsAfterGen = [
+      {
+        id: 'musing-1',
+        seed_id: 'seed-1',
+        sprout_type: 'musing',
+        sprout_data: {
+          template_type: 'numbered_ideas',
+          content: { ideas: ['Idea 1', 'Idea 2', 'Custom idea or prompt...'] },
+          dismissed: false,
+          dismissed_at: null,
+          completed: false,
+          completed_at: null,
+        },
+        created_at: todayISO,
+        automation_id: null,
+      },
+    ]
+    
     // Track calls and return appropriate values
-    vi.mocked(api.getDailyMusings).mockImplementation(async () => {
-      callTracker.count++
-      // After generation is complete, return mockMusings
-      if (callTracker.generationComplete) {
-        return mockMusings
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/seeds') {
+        callTracker.count++
+        // After generation is complete, return mockSeeds
+        if (callTracker.generationComplete) {
+          return mockSeeds as any
+        }
+        return [] // Initial loads return empty array
       }
-      return [] // Initial loads return empty array
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
     })
-    vi.mocked(api.get).mockResolvedValue(mockTags)
+    vi.mocked(api.getSproutsBySeedId).mockImplementation(async (seedId: string) => {
+      if (callTracker.generationComplete && seedId === 'seed-1') {
+        return mockSproutsAfterGen as any
+      }
+      return []
+    })
     vi.mocked(api.generateMusings).mockImplementation(async () => {
       callTracker.generationComplete = true
       return {
@@ -258,18 +377,28 @@ describe('MusingsView', () => {
       expect(screen.queryByText('Generating...')).not.toBeInTheDocument()
     })
 
-    // Then wait for musings to appear
+    // Then wait for musings to appear (loadMusings is called after generation)
     await waitFor(() => {
       expect(screen.getByTestId('musing-item-musing-1')).toBeInTheDocument()
     }, { timeout: 3000 })
 
-    // Verify getDailyMusings was called for reload after generation
-    expect(api.getDailyMusings).toHaveBeenCalled()
+    // Verify api.get('/seeds') was called for reload after generation
+    expect(api.get).toHaveBeenCalledWith('/seeds')
   })
 
   it('should display error message on generation failure', async () => {
     const user = userEvent.setup()
-    vi.mocked(api.getDailyMusings).mockResolvedValue([])
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve([])
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
     vi.mocked(api.generateMusings).mockRejectedValue(new Error('Generation failed'))
 
@@ -293,7 +422,17 @@ describe('MusingsView', () => {
 
   it('should display message when no musings were generated', async () => {
     const user = userEvent.setup()
-    vi.mocked(api.getDailyMusings).mockResolvedValue([])
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve([])
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
     vi.mocked(api.generateMusings).mockResolvedValue({
       message: 'No idea seeds found',
@@ -319,7 +458,17 @@ describe('MusingsView', () => {
   })
 
   it('should load tags on mount', async () => {
-    vi.mocked(api.getDailyMusings).mockResolvedValue([])
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/seeds') {
+        return Promise.resolve([])
+      }
+      if (url === '/tags') {
+        return Promise.resolve(mockTags)
+      }
+      return Promise.resolve([])
+    })
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([])
     vi.mocked(api.get).mockResolvedValue(mockTags)
 
     render(

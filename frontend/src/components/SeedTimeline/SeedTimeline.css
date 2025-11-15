@@ -1,0 +1,18 @@
+/* Seed Timeline Component Styles */
+
+.seed-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Make sprout items clickable */
+.seed-timeline .transaction-history-item.sprout-item {
+  cursor: pointer;
+  transition: background-color var(--transition-base);
+}
+
+.seed-timeline .transaction-history-item.sprout-item:hover {
+  background-color: var(--hover-bg);
+}
+

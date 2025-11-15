@@ -13,6 +13,7 @@ vi.mock('../../services/api', () => ({
     get: vi.fn(),
     getSeedTransactions: vi.fn(),
     createSeedTransaction: vi.fn(),
+    getSproutsBySeedId: vi.fn(),
   },
 }))
 
@@ -89,16 +90,19 @@ vi.mock('@mother/components/Badge', () => ({
 }))
 
 // Mock other components
-vi.mock('../FollowupsPanel', () => ({
-  FollowupsPanel: () => <div data-testid="followups-panel">Followups</div>,
-}))
+// FollowupsPanel removed - sprouts are now in timeline
 
-vi.mock('../TransactionHistoryList', () => ({
-  TransactionHistoryList: ({ messages }: any) => (
-    <div data-testid="transaction-history">
-      {messages.map((msg: any) => (
-        <div key={msg.id}>{msg.title}</div>
-      ))}
+vi.mock('../SeedTimeline/SeedTimeline', () => ({
+  SeedTimeline: ({ transactions, sprouts, getColor }: any) => (
+    <div data-testid="seed-timeline">
+      <div data-testid="transaction-history">
+        {transactions.map((t: any) => (
+          <div key={t.id}>{t.transaction_type}</div>
+        ))}
+        {sprouts.map((s: any) => (
+          <div key={s.id}>Sprout: {s.sprout_type}</div>
+        ))}
+      </div>
     </div>
   ),
 }))
@@ -170,6 +174,7 @@ describe('SeedDetailView Component', () => {
     })
     
     vi.mocked(api.getSeedTransactions).mockResolvedValue(mockTransactions)
+    vi.mocked(api.getSproutsBySeedId).mockResolvedValue([]) // Default: no sprouts
   })
 
   describe('API Path Formatting', () => {

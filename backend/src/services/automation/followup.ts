@@ -3,7 +3,9 @@
 
 import { Automation, type AutomationContext, type AutomationProcessResult, type CategoryChange } from './base'
 import type { Seed } from '../seeds'
-import { FollowupService } from '../followups'
+import * as followupHandler from '../sprouts/followup-sprout'
+import { SproutsService } from '../sprouts'
+import { SeedTransactionsService } from '../seed-transactions'
 import { SettingsService } from '../settings'
 import { DateTime } from 'luxon'
 import log from 'loglevel'
@@ -31,9 +33,29 @@ export class FollowupAutomation extends Automation {
    * Returns empty events (followups are NOT timeline events).
    */
   async process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult> {
-    // Check if seed already has followups
-    const existingFollowups = await FollowupService.getBySeedId(seed.id)
-    const hasActiveFollowup = existingFollowups.some(f => !f.dismissed)
+    // Check if seed already has active followup sprouts
+    const existingSprouts = await SproutsService.getBySeedId(seed.id)
+    const followupSprouts = existingSprouts.filter(s => s.sprout_type === 'followup')
+    
+    // Check if any followup sprout is not dismissed by checking transactions
+    // We need to import getFollowupState to check dismissal status
+    const { getFollowupState } = await import('../sprouts/followup-sprout')
+    
+    let hasActiveFollowup = false
+    for (const sprout of followupSprouts) {
+      try {
+        const state = await getFollowupState(sprout)
+        if (!state.dismissed) {
+          hasActiveFollowup = true
+          break
+        }
+      } catch (error) {
+        // If we can't compute state, assume it's active to be safe
+        logAutomation.warn(`Could not compute state for sprout ${sprout.id}, assuming active`)
+        hasActiveFollowup = true
+        break
+      }
+    }
     
     if (hasActiveFollowup) {
       // Seed already has an active followup, don't create another
@@ -48,13 +70,26 @@ export class FollowupAutomation extends Automation {
       return { transactions: [] }
     }
 
-    // Create followup
-    await FollowupService.create(seed.id, {
-      due_time: analysis.due_time.toISOString(),
-      message: analysis.message,
-    }, 'automatic')
+    // Create followup sprout
+    const { sprout } = await followupHandler.createFollowupSprout(
+      seed.id,
+      analysis.due_time.toISOString(),
+      analysis.message,
+      'automatic',
+      this.id
+    )
 
-    // Return empty transactions (followups are NOT timeline transactions)
+    // Create add_sprout transaction on the seed
+    await SeedTransactionsService.create({
+      seed_id: seed.id,
+      transaction_type: 'add_sprout',
+      transaction_data: {
+        sprout_id: sprout.id,
+      },
+      automation_id: this.id || null,
+    })
+
+    // Return empty transactions (sprouts are tracked separately, not as timeline events)
     return { transactions: [] }
   }
 

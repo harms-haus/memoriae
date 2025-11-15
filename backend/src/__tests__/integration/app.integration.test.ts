@@ -1,6 +1,7 @@
 // App integration tests - test Express app setup, CORS, routing, error handling
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import request from 'supertest'
+import { generateTestToken } from '../../test-helpers'
 
 // Mock config before importing app (since app imports config)
 vi.mock('../../config', () => ({
@@ -113,6 +114,13 @@ vi.mock('../../routes/followups', () => {
 })
 
 vi.mock('../../routes/idea-musings', () => {
+  const express = require('express')
+  return {
+    default: express.Router(),
+  }
+})
+
+vi.mock('../../routes/sprouts', () => {
   const express = require('express')
   return {
     default: express.Router(),
@@ -258,16 +266,27 @@ describe('App Integration Tests', () => {
 
   describe('404 Handler', () => {
     it('should return 404 for non-existent API routes', async () => {
+      // Note: Authentication middleware runs first, so we need a valid token
+      // The 404 handler should still work for authenticated requests to non-existent routes
+      const token = generateTestToken({ id: 'test-user' })
       const response = await request(app)
         .get('/api/non-existent')
-        .expect(404)
+        .set('Authorization', `Bearer ${token}`)
 
+      // Debug: log the actual response if it's not 404
+      if (response.status !== 404) {
+        console.log('Expected 404, got:', response.status, 'Body:', response.body)
+      }
+      expect(response.status).toBe(404)
       expect(response.body).toMatchObject({ error: 'Not found' })
     })
 
     it('should return 404 for API routes with invalid paths', async () => {
+      // Note: Authentication middleware runs first, so we need a valid token
+      const token = generateTestToken({ id: 'test-user' })
       const response = await request(app)
         .get('/api/invalid/path/here')
+        .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
       expect(response.body).toMatchObject({ error: 'Not found' })
@@ -366,8 +385,11 @@ describe('App Integration Tests', () => {
     it('should not serve index.html for API routes in production', async () => {
       process.env.NODE_ENV = 'production'
       
+      // Note: Authentication middleware runs first, so we need a valid token
+      const token = generateTestToken({ id: 'test-user' })
       const response = await request(app)
         .get('/api/invalid')
+        .set('Authorization', `Bearer ${token}`)
         .expect(404)
 
       expect(response.body).toMatchObject({ error: 'Not found' })

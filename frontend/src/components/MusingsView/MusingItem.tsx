@@ -27,7 +27,8 @@ export function MusingItem({ musing, onUpdate, tagColors }: MusingItemProps) {
 
     try {
       setDismissing(true)
-      await api.dismissMusing(musing.id)
+      // Use sprout API for musing sprouts
+      await api.dismissMusingSprout(musing.id)
       onUpdate()
     } catch (err) {
       logMusingItem.error('Error dismissing musing', { musingId: musing.id, error: err })
@@ -42,7 +43,9 @@ export function MusingItem({ musing, onUpdate, tagColors }: MusingItemProps) {
 
     try {
       setRegenerating(true)
-      await api.regenerateMusing(musing.id)
+      // Regenerate not yet implemented for sprouts - would need to create new sprout
+      // For now, just reload
+      onUpdate()
       onUpdate()
     } catch (err) {
       logMusingItem.error('Error regenerating musing', { musingId: musing.id, error: err })

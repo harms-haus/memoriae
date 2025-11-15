@@ -131,10 +131,34 @@ router.post('/generate', async (req: Request, res: Response, next: NextFunction)
         const musing = await automation.generateMusing(seed, context)
         
         if (musing) {
-          await IdeaMusingsService.create(seed.id, musing.templateType, musing.content)
-          await IdeaMusingsService.recordShown(seed.id, today)
+          const { createMusingSprout } = await import('../services/sprouts/musing-sprout')
+          const { SeedTransactionsService } = await import('../services/seed-transactions')
+          
+          // Create musing sprout
+          const sprout = await createMusingSprout(
+            seed.id,
+            musing.templateType,
+            musing.content,
+            null // Manual generation, no automation_id
+          )
+          
+          // Create add_sprout transaction on the seed
+          await SeedTransactionsService.create({
+            seed_id: seed.id,
+            transaction_type: 'add_sprout',
+            transaction_data: {
+              sprout_id: sprout.id,
+            },
+            automation_id: null,
+          })
+          
+          // Record shown (keep for backward compatibility)
+          await IdeaMusingsService.recordShown(seed.id, today).catch(() => {
+            // Ignore errors if table doesn't exist
+          })
+          
           musingsCreated++
-          logRoutes.debug(`POST /generate - Created musing for seed ${seed.id} (template: ${musing.templateType})`)
+          logRoutes.debug(`POST /generate - Created musing sprout for seed ${seed.id} (template: ${musing.templateType})`)
         }
       } catch (error) {
         logRoutes.error(`POST /generate - Error generating musing for seed ${seed.id}:`, error)

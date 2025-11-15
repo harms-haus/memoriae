@@ -42,6 +42,7 @@ export type SeedTransactionType =
   | 'set_category'
   | 'remove_category'
   | 'add_followup'
+  | 'add_sprout'
 
 export interface CreateSeedTransactionData {
   content: string
@@ -75,6 +76,10 @@ export interface AddFollowupTransactionData {
   followup_id: string
 }
 
+export interface AddSproutTransactionData {
+  sprout_id: string
+}
+
 export type SeedTransactionData =
   | CreateSeedTransactionData
   | EditContentTransactionData
@@ -83,6 +88,7 @@ export type SeedTransactionData =
   | SetCategoryTransactionData
   | RemoveCategoryTransactionData
   | AddFollowupTransactionData
+  | AddSproutTransactionData
 
 export interface SeedTransaction {
   id: string
@@ -290,4 +296,90 @@ export interface IdeaMusing {
   completed: boolean
   completed_at?: string
   seed?: Seed // Optional, populated when fetching with seed details
+}
+
+// Sprout system types
+export type SproutType = 'followup' | 'musing' | 'extra_context' | 'fact_check'
+
+export interface FollowupSproutData {
+  trigger: 'manual' | 'automatic'
+  initial_time: string // ISO string
+  initial_message: string
+}
+
+export interface MusingSproutData {
+  template_type: MusingTemplateType
+  content: NumberedIdeasContent | WikipediaLinksContent | MarkdownContent
+  dismissed: boolean
+  dismissed_at: string | null
+  completed: boolean
+  completed_at: string | null
+}
+
+export interface ExtraContextSproutData {
+  [key: string]: unknown
+}
+
+export interface FactCheckSproutData {
+  [key: string]: unknown
+}
+
+export type SproutData =
+  | FollowupSproutData
+  | MusingSproutData
+  | ExtraContextSproutData
+  | FactCheckSproutData
+
+export interface Sprout {
+  id: string
+  seed_id: string
+  sprout_type: SproutType
+  sprout_data: SproutData
+  created_at: string
+  automation_id: string | null
+}
+
+// Sprout followup transaction types
+export type SproutFollowupTransactionType = 'creation' | 'edit' | 'dismissal' | 'snooze'
+
+export interface SproutFollowupTransaction {
+  id: string
+  sprout_id: string
+  transaction_type: SproutFollowupTransactionType
+  transaction_data: FollowupTransactionData
+  created_at: string
+}
+
+export interface FollowupSproutState {
+  due_time: string // ISO string
+  message: string
+  dismissed: boolean
+  dismissed_at?: string // ISO string
+  transactions: SproutFollowupTransaction[]
+}
+
+// DTOs for sprout API requests
+export interface CreateSproutDto {
+  sprout_type: SproutType
+  sprout_data: SproutData
+  automation_id?: string | null
+}
+
+export interface CreateFollowupSproutDto {
+  due_time: string // ISO string
+  message: string
+  trigger?: 'manual' | 'automatic'
+}
+
+export interface EditFollowupSproutDto {
+  due_time?: string // ISO string
+  message?: string
+}
+
+export interface SnoozeFollowupSproutDto {
+  duration_minutes: number
+}
+
+export interface DismissFollowupSproutDto {
+  type: DismissalType
 }

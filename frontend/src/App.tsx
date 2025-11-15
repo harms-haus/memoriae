@@ -24,6 +24,7 @@ const SettingsView = lazy(() => import('./components/views/SettingsView').then(m
 const SeedDetailView = lazy(() => import('./components/views/SeedDetailView').then(m => ({ default: m.SeedDetailView })))
 const TagDetailView = lazy(() => import('./components/views/TagDetailView').then(m => ({ default: m.TagDetailView })))
 const MusingsView = lazy(() => import('./components/views/MusingsView').then(m => ({ default: m.MusingsView })))
+const SproutDetailView = lazy(() => import('./components/views/SproutDetailView').then(m => ({ default: m.SproutDetailView })))
 
 export type ViewType = 'seeds' | 'categories' | 'tags' | 'settings' | 'musings'
 
@@ -415,6 +416,52 @@ function TagDetailWrapper() {
   )
 }
 
+function SproutDetailWrapper() {
+  const { sproutId } = useParams<{ sproutId: string }>()
+  const navigate = useNavigate()
+
+  if (!sproutId) {
+    navigate('/seeds')
+    return null
+  }
+
+  // Use browser history for back navigation, with fallback to /seeds
+  const handleBack = () => {
+    // Check if we can go back in history (more than just the current page)
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      // Fallback if no history (e.g., direct link)
+      navigate('/seeds')
+    }
+  }
+
+  return (
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
+      overflow: 'hidden',
+    }}>
+      <div className="tab-content-wrapper" style={{
+        flex: '1 1 auto',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        <Suspense fallback={<div className="flex items-center justify-center" style={{ height: '100%' }}>Loading...</div>}>
+          <SproutDetailView
+            sproutId={sproutId}
+            onBack={handleBack}
+          />
+        </Suspense>
+      </div>
+    </div>
+  )
+}
+
 function AppContent() {
   const { authenticated, loading } = useAuth()
   
@@ -448,6 +495,7 @@ function AppContent() {
       <Route path="/category/*" element={<TabNavigation />} />
       <Route path="/tags" element={<TabNavigation />} />
       <Route path="/tags/:name" element={<TagDetailWrapper />} />
+      <Route path="/sprouts/:sproutId" element={<SproutDetailWrapper />} />
       <Route path="/settings" element={<TabNavigation />} />
       <Route path="/musings" element={<TabNavigation />} />
     </Routes>

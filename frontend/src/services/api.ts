@@ -1,6 +1,21 @@
 // REST API client with authentication
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
-import type { AuthStatus, Followup, CreateFollowupDto, EditFollowupDto, DueFollowup, SeedTransaction, CreateSeedTransactionDto, IdeaMusing } from '../types'
+import type {
+  AuthStatus,
+  Followup,
+  CreateFollowupDto,
+  EditFollowupDto,
+  DueFollowup,
+  SeedTransaction,
+  CreateSeedTransactionDto,
+  IdeaMusing,
+  Sprout,
+  CreateSproutDto,
+  EditFollowupSproutDto,
+  SnoozeFollowupSproutDto,
+  DismissFollowupSproutDto,
+  FollowupSproutState,
+} from '../types'
 import log from 'loglevel'
 
 // In production, use relative URLs since backend serves frontend
@@ -219,6 +234,45 @@ class ApiClient {
 
   async getDueFollowups(): Promise<DueFollowup[]> {
     return this.get<DueFollowup[]>('/followups/due')
+  }
+
+  // Sprout endpoints
+  async getSproutsBySeedId(seedId: string): Promise<Sprout[]> {
+    return this.get<Sprout[]>(`${this.formatSeedPath(seedId)}/sprouts`)
+  }
+
+  async getSproutById(sproutId: string): Promise<Sprout> {
+    return this.get<Sprout>(`/sprouts/${sproutId}`)
+  }
+
+  async createSprout(seedId: string, data: CreateSproutDto): Promise<Sprout> {
+    return this.post<Sprout>(`${this.formatSeedPath(seedId)}/sprouts`, data)
+  }
+
+  async deleteSprout(sproutId: string): Promise<void> {
+    return this.delete<void>(`/sprouts/${sproutId}`)
+  }
+
+  // Followup sprout type-specific endpoints
+  async editFollowupSprout(sproutId: string, data: EditFollowupSproutDto): Promise<FollowupSproutState> {
+    return this.put<FollowupSproutState>(`/sprouts/${sproutId}/followup/edit`, data)
+  }
+
+  async snoozeFollowupSprout(sproutId: string, data: SnoozeFollowupSproutDto): Promise<FollowupSproutState> {
+    return this.post<FollowupSproutState>(`/sprouts/${sproutId}/followup/snooze`, data)
+  }
+
+  async dismissFollowupSprout(sproutId: string, data: DismissFollowupSproutDto): Promise<FollowupSproutState> {
+    return this.post<FollowupSproutState>(`/sprouts/${sproutId}/followup/dismiss`, data)
+  }
+
+  // Musing sprout type-specific endpoints
+  async dismissMusingSprout(sproutId: string): Promise<Sprout> {
+    return this.post<Sprout>(`/sprouts/${sproutId}/musing/dismiss`)
+  }
+
+  async completeMusingSprout(sproutId: string): Promise<Sprout> {
+    return this.post<Sprout>(`/sprouts/${sproutId}/musing/complete`)
   }
 
   // Transaction endpoints

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../../services/api'
 import { Panel } from '@mother/components/Panel'
 import { Button } from '@mother/components/Button'
-import type { IdeaMusing, Tag } from '../../types'
+import type { IdeaMusing, Tag, Sprout, MusingSproutData } from '../../types'
 import { MusingItem } from '../MusingsView/MusingItem'
 import log from 'loglevel'
 import './MusingsView.css'
@@ -25,11 +25,72 @@ export function MusingsView() {
     try {
       setLoading(true)
       setError(null)
-      const data = await api.getDailyMusings()
-      setMusings(data)
+      
+      // Get all seeds for the user to find musing sprouts
+      const seeds = await api.get<import('../../types').Seed[]>('/seeds')
+      const seedIds = seeds.map(s => s.id)
+      
+      if (seedIds.length === 0) {
+        setMusings([])
+        return
+      }
+      
+      // Get all musing sprouts for user's seeds
+      // Filter for today's musings (created today, not dismissed, not completed)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      const allSprouts: Sprout[] = []
+      for (const seedId of seedIds) {
+        try {
+          const sprouts = await api.getSproutsBySeedId(seedId)
+          allSprouts.push(...sprouts.filter(s => s.sprout_type === 'musing'))
+        } catch (err) {
+          // Skip seeds that fail
+          continue
+        }
+      }
+      
+      // Filter for today's musings that are not dismissed or completed
+      const todayMusings = allSprouts.filter(sprout => {
+        const created = new Date(sprout.created_at)
+        if (created < today || created >= tomorrow) return false
+        
+        const sproutData = sprout.sprout_data as MusingSproutData
+        if (sproutData.dismissed || sproutData.completed) return false
+        
+        return true
+      })
+      
+      // Convert sprouts to IdeaMusing format for compatibility
+      const musings: IdeaMusing[] = todayMusings.map(sprout => {
+        const sproutData = sprout.sprout_data as MusingSproutData
+        const seed = seeds.find(s => s.id === sprout.seed_id)
+        
+        const musing: IdeaMusing = {
+          id: sprout.id,
+          seed_id: sprout.seed_id,
+          template_type: sproutData.template_type,
+          content: sproutData.content,
+          created_at: sprout.created_at,
+          dismissed: sproutData.dismissed,
+          completed: sproutData.completed,
+          ...(sproutData.dismissed_at !== null && { dismissed_at: sproutData.dismissed_at }),
+          ...(sproutData.completed_at !== null && { completed_at: sproutData.completed_at }),
+          ...(seed !== undefined && { seed }),
+        }
+        return musing
+      })
+      
+      // Sort by created_at descending (newest first)
+      musings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      
+      setMusings(musings)
     } catch (err) {
       logMusings.warn('Error loading musings', { error: err })
-      // Handle gracefully - if it's a table doesn't exist error, just show empty
+      // Handle gracefully
       setError(null)
       setMusings([])
     } finally {

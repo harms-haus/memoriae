@@ -7,6 +7,8 @@ import { SettingsService } from '../settings'
 import { IdeaMusingAutomation } from '../automation/idea-musing'
 import { AutomationRegistry } from '../automation/registry'
 import { createOpenRouterClient } from '../openrouter/client'
+import * as musingSproutHandler from '../sprouts/musing-sprout'
+import { SeedTransactionsService } from '../seed-transactions'
 import db from '../../db/connection'
 import { config } from '../../config'
 
@@ -52,6 +54,16 @@ vi.mock('../automation/registry', () => ({
 
 vi.mock('../openrouter/client', () => ({
   createOpenRouterClient: vi.fn(),
+}))
+
+vi.mock('../sprouts/musing-sprout', () => ({
+  createMusingSprout: vi.fn(),
+}))
+
+vi.mock('../seed-transactions', () => ({
+  SeedTransactionsService: {
+    create: vi.fn(),
+  },
 }))
 
 describe('IdeaMusingScheduler', () => {
@@ -389,15 +401,31 @@ describe('IdeaMusingScheduler', () => {
         templateType: 'numbered',
         content: 'Test musing',
       })
-      vi.mocked(IdeaMusingsService.create).mockResolvedValue(undefined)
+      vi.mocked(musingSproutHandler.createMusingSprout).mockResolvedValue({
+        id: 'sprout-123',
+        seed_id: 'seed-1',
+        sprout_type: 'musing',
+        sprout_data: {
+          template_type: 'numbered_ideas',
+          content: { ideas: ['Test musing'] },
+          dismissed: false,
+          dismissed_at: null,
+          completed: false,
+          completed_at: null,
+        },
+        created_at: new Date(),
+        automation_id: 'automation-123',
+      } as any)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined as any)
       vi.mocked(IdeaMusingsService.recordShown).mockResolvedValue(undefined)
 
       // Ensure automation is set (normally done by start())
-      ;(scheduler as any).automation = mockAutomation
+      ;(scheduler as any).automation = { ...mockAutomation, id: 'automation-123' }
 
       await scheduler.generateDailyMusings()
 
-      expect(IdeaMusingsService.create).toHaveBeenCalled()
+      expect(musingSproutHandler.createMusingSprout).toHaveBeenCalled()
+      expect(SeedTransactionsService.create).toHaveBeenCalled()
       expect(IdeaMusingsService.recordShown).toHaveBeenCalled()
     })
 
@@ -531,16 +559,31 @@ describe('IdeaMusingScheduler', () => {
         templateType: 'numbered',
         content: 'Test musing',
       })
-      vi.mocked(IdeaMusingsService.create).mockResolvedValue(undefined)
+      vi.mocked(musingSproutHandler.createMusingSprout).mockResolvedValue({
+        id: 'sprout-123',
+        seed_id: 'seed-1',
+        sprout_type: 'musing',
+        sprout_data: {
+          template_type: 'numbered_ideas',
+          content: { ideas: ['Test musing'] },
+          dismissed: false,
+          dismissed_at: null,
+          completed: false,
+          completed_at: null,
+        },
+        created_at: new Date(),
+        automation_id: 'automation-123',
+      } as any)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined as any)
       vi.mocked(IdeaMusingsService.recordShown).mockResolvedValue(undefined)
 
       // Ensure automation is set (normally done by start())
-      ;(scheduler as any).automation = mockAutomation
+      ;(scheduler as any).automation = { ...mockAutomation, id: 'automation-123' }
 
       await scheduler.generateDailyMusings()
 
       // Should only process maxMusingsPerDay seeds
-      expect(IdeaMusingsService.create).toHaveBeenCalledTimes(config.ideaMusing.maxMusingsPerDay)
+      expect(musingSproutHandler.createMusingSprout).toHaveBeenCalledTimes(config.ideaMusing.maxMusingsPerDay)
     })
 
     it('should skip if already processing', async () => {
@@ -638,13 +681,31 @@ describe('IdeaMusingScheduler', () => {
           templateType: 'numbered',
           content: 'Test musing',
         })
-      vi.mocked(IdeaMusingsService.create).mockResolvedValue(undefined)
+      vi.mocked(musingSproutHandler.createMusingSprout).mockResolvedValue({
+        id: 'sprout-123',
+        seed_id: 'seed-2',
+        sprout_type: 'musing',
+        sprout_data: {
+          template_type: 'numbered_ideas',
+          content: { ideas: ['Test musing'] },
+          dismissed: false,
+          dismissed_at: null,
+          completed: false,
+          completed_at: null,
+        },
+        created_at: new Date(),
+        automation_id: 'automation-123',
+      } as any)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined as any)
       vi.mocked(IdeaMusingsService.recordShown).mockResolvedValue(undefined)
+
+      // Set automation manually since we're calling generateDailyMusings directly
+      ;(scheduler as any).automation = { ...mockAutomation, id: 'automation-123' }
 
       await scheduler.generateDailyMusings()
 
       // Should still process seed-2 even if seed-1 fails
-      expect(IdeaMusingsService.create).toHaveBeenCalledTimes(1)
+      expect(musingSproutHandler.createMusingSprout).toHaveBeenCalledTimes(1)
     })
   })
 

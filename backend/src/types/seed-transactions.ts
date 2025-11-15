@@ -7,7 +7,8 @@ export type SeedTransactionType =
   | 'remove_tag'       // Remove a tag
   | 'set_category'     // Set a category (replaces any existing category)
   | 'remove_category'  // Remove a category
-  | 'add_followup'     // Add a followup reference
+  | 'add_followup'     // Add a followup reference (deprecated, use add_sprout)
+  | 'add_sprout'       // Add a sprout reference
 
 /**
  * Transaction data structures for each transaction type
@@ -44,6 +45,10 @@ export interface AddFollowupTransactionData {
   followup_id: string
 }
 
+export interface AddSproutTransactionData {
+  sprout_id: string
+}
+
 export type SeedTransactionData =
   | CreateSeedTransactionData
   | EditContentTransactionData
@@ -52,6 +57,7 @@ export type SeedTransactionData =
   | SetCategoryTransactionData
   | RemoveCategoryTransactionData
   | AddFollowupTransactionData
+  | AddSproutTransactionData
 
 /**
  * Database row for seed_transactions table

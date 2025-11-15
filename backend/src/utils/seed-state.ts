@@ -80,6 +80,14 @@ export function validateTransaction(
     case 'add_followup':
       // Followup transactions don't affect seed state, so validation is minimal
       break
+    case 'add_sprout': {
+      const d = data as { sprout_id: string }
+      if (typeof d.sprout_id !== 'string') {
+        throw new Error('add_sprout transaction requires sprout_id string')
+      }
+      // Sprout transactions don't affect seed state, so validation is minimal
+      break
+    }
     default:
       throw new Error(`Unknown transaction type: ${type}`)
   }
@@ -185,6 +193,10 @@ export function computeSeedState(transactions: SeedTransaction[]): SeedState {
 
       case 'add_followup':
         // Followup transactions don't affect seed state
+        break
+
+      case 'add_sprout':
+        // Sprout transactions don't affect seed state
         break
 
       default:

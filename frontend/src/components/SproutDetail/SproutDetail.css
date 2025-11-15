@@ -1,0 +1,111 @@
+/* Sprout Detail Component Styles */
+
+.sprout-detail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sprout-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.sprout-detail-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sprout-detail-time {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sprout-detail-message {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.sprout-detail-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.sprout-dismissed-badge,
+.sprout-completed-badge {
+  margin-left: var(--space-2);
+}
+
+.sprout-transactions-panel {
+  margin-top: var(--space-4);
+}
+
+.sprout-transactions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sprout-transaction {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.sprout-transaction-type {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.sprout-transaction-time {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.sprout-detail-content {
+  margin-top: var(--space-4);
+}
+
+/* Modal styles (simplified for MVP) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--bg-elevated);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  max-width: 500px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.snooze-options {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+

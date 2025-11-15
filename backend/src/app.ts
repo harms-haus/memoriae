@@ -11,6 +11,7 @@ import settingsRoutes from './routes/settings'
 import searchRoutes from './routes/search'
 import followupsRoutes from './routes/followups'
 import ideaMusingsRoutes from './routes/idea-musings'
+import sproutsRoutes from './routes/sprouts'
 import { config } from './config'
 import log from 'loglevel'
 import { requestLogger } from './middleware/requestLogger'
@@ -62,6 +63,18 @@ app.use('/api/search', searchRoutes)
 app.use('/api', transactionsRoutes)
 app.use('/api', followupsRoutes)
 app.use('/api/idea-musings', ideaMusingsRoutes)
+app.use('/api', sproutsRoutes)
+
+// 404 handler for API routes (only reached if API route doesn't match)
+// This must come after all API routes but before static file serving
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // Only handle unmatched API routes
+  if (req.path.startsWith('/api/') && !res.headersSent) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
+  next()
+})
 
 // Serve frontend static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -69,20 +82,15 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(frontendDistPath))
   
   // Serve index.html for all non-API routes (SPA routing)
-  // This must come after API routes but before error handlers
+  // This must come after API routes and 404 handler
   app.get('*', (req: Request, res: Response) => {
-    // Don't serve index.html for API routes
+    // Don't serve index.html for API routes (should already be handled by 404 handler above)
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'Not found' })
     }
     return res.sendFile(path.join(frontendDistPath, 'index.html'))
   })
 }
-
-// 404 handler for API routes (only reached if API route doesn't match)
-app.use('/api/*', (req: Request, res: Response) => {
-  res.status(404).json({ error: 'Not found' })
-})
 
 // Error handling middleware (must be last)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

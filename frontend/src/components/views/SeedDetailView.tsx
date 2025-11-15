@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
@@ -6,9 +6,9 @@ import { Button } from '@mother/components/Button'
 import { Panel } from '@mother/components/Panel'
 import { Badge } from '@mother/components/Badge'
 import { SeedView } from '../SeedView'
-import { FollowupsPanel } from '../FollowupsPanel'
-import { TransactionHistoryList, type TransactionHistoryMessage } from '../TransactionHistoryList'
-import type { SeedTransaction, SeedTransactionType, Seed, SeedState, Tag as TagType } from '../../types'
+import { SeedTimeline } from '../SeedTimeline/SeedTimeline'
+import type { TransactionHistoryMessage } from '../TransactionHistoryList'
+import type { SeedTransaction, SeedTransactionType, Seed, SeedState, Tag as TagType, Sprout } from '../../types'
 import log from 'loglevel'
 import './Views.css'
 import './SeedDetailView.css'
@@ -31,91 +31,6 @@ interface SeedDetailViewProps {
   onBack: () => void
 }
 
-// Helper functions for formatting transactions
-const formatTransactionTitle = (transaction: SeedTransaction): string => {
-  switch (transaction.transaction_type) {
-    case 'create_seed':
-      return 'Seed Created'
-    case 'edit_content':
-      return 'Content Edited'
-    case 'add_tag':
-      return 'Tag Added'
-    case 'remove_tag':
-      return 'Tag Removed'
-    case 'set_category':
-      return 'Category Set'
-    case 'remove_category':
-      return 'Category Removed'
-    case 'add_followup':
-      return 'Follow-up Added'
-    default:
-      return transaction.transaction_type
-  }
-}
-
-const formatTransactionContent = (transaction: SeedTransaction): string => {
-  const parts: string[] = []
-  
-  switch (transaction.transaction_type) {
-    case 'create_seed': {
-      const data = transaction.transaction_data
-      if ('content' in data && data.content) {
-        parts.push(`Content: ${data.content.substring(0, 100)}${data.content.length > 100 ? '...' : ''}`)
-      }
-      break
-    }
-    case 'edit_content': {
-      const data = transaction.transaction_data
-      if ('content' in data && data.content) {
-        parts.push(`Content updated`)
-      }
-      break
-    }
-    case 'add_tag': {
-      const data = transaction.transaction_data
-      if ('tag_name' in data) {
-        parts.push(`Tag: ${data.tag_name}`)
-      }
-      break
-    }
-    case 'remove_tag': {
-      const data = transaction.transaction_data
-      if ('tag_id' in data) {
-        if ('tag_name' in data && data.tag_name) {
-          parts.push(`Tag: ${data.tag_name}`)
-        } else {
-          parts.push(`Tag removed`)
-        }
-      }
-      break
-    }
-    case 'set_category': {
-      const data = transaction.transaction_data
-      if ('category_name' in data) {
-        parts.push(`Category: ${data.category_name}`)
-        if ('category_path' in data && data.category_path) {
-          parts.push(`Path: ${data.category_path}`)
-        }
-      }
-      break
-    }
-    case 'remove_category': {
-      parts.push(`Category removed`)
-      break
-    }
-    case 'add_followup': {
-      parts.push(`Follow-up added`)
-      break
-    }
-  }
-
-  if (transaction.automation_id) {
-    parts.push('(automated)')
-  }
-
-  return parts.join(' • ') || 'Transaction'
-}
-
 const getTransactionColor = (transaction: SeedTransaction): string => {
   switch (transaction.transaction_type) {
     case 'create_seed':
@@ -132,6 +47,8 @@ const getTransactionColor = (transaction: SeedTransaction): string => {
       return 'var(--accent-orange)'
     case 'add_followup':
       return 'var(--accent-blue)'
+    case 'add_sprout':
+      return 'var(--accent-green)'
     default:
       return 'var(--text-secondary)'
   }
@@ -148,6 +65,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
   const navigate = useNavigate()
   const [seed, setSeed] = useState<Seed | null>(null)
   const [transactions, setTransactions] = useState<SeedTransaction[]>([])
+  const [sprouts, setSprouts] = useState<Sprout[]>([])
   const [currentState, setCurrentState] = useState<SeedState | null>(null)
   const [tags, setTags] = useState<TagType[]>([])
   const [loading, setLoading] = useState(true)
@@ -215,10 +133,11 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       // Format seedId for API calls
       const apiPath = getApiPath(seedId)
 
-      // Load seed, timeline transactions, current state, and tags in parallel
-      const [seedData, transactionsData, stateData, tagsData] = await Promise.all([
+      // Load seed, timeline transactions, sprouts, current state, and tags in parallel
+      const [seedData, transactionsData, sproutsData, stateData, tagsData] = await Promise.all([
         api.get<Seed>(apiPath),
         api.getSeedTransactions(seedId),
+        api.getSproutsBySeedId(seedId).catch(() => []), // Sprouts may not exist yet
         api.get<SeedStateResponse>(`${apiPath}/state`),
         api.get<TagType[]>('/tags').catch(() => []), // Tags may not exist yet
       ])
@@ -227,6 +146,7 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
       setTransactions(transactionsData.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       ))
+      setSprouts(sproutsData)
       setCurrentState(stateData.current_state)
       setTags(tagsData)
     } catch (err) {
@@ -289,11 +209,14 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
         try {
           // Reload seed data to check if new transactions were created
           const apiPath = getApiPath(seedId)
-          const [seedData, transactionsData, stateData] = await Promise.all([
+          const [seedData, transactionsData, sproutsData, stateData] = await Promise.all([
             api.get<Seed>(apiPath),
             api.getSeedTransactions(seedId),
+            api.getSproutsBySeedId(seedId).catch(() => []), // Sprouts may not exist yet
             api.get<SeedStateResponse>(`${apiPath}/state`),
           ])
+          
+          setSprouts(sproutsData)
 
           const sortedTransactions = transactionsData.sort((a, b) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -357,27 +280,32 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
     }
   }
 
-  // Transform transactions into TransactionHistoryMessage format
-  const transactionMessages: TransactionHistoryMessage[] = useMemo(() => {
-    return transactions.map((transaction) => ({
-      id: transaction.id,
-      title: formatTransactionTitle(transaction),
-      content: formatTransactionContent(transaction),
-      time: transaction.created_at,
-      groupKey: transaction.transaction_type, // Use transaction type as group key
-    }))
-  }, [transactions])
-
-  const transactionTypeMap = useMemo(() => {
-    const map = new Map<string, SeedTransaction>()
-    transactions.forEach(t => map.set(t.id, t))
-    return map
-  }, [transactions])
-
+  // Color function for timeline items (handles both transactions and sprouts)
   const getColor = (message: TransactionHistoryMessage): string => {
-    const transaction = transactionTypeMap.get(message.id)
-    if (!transaction) return 'var(--text-secondary)'
-    return getTransactionColor(transaction)
+    // Check if it's a transaction
+    const transaction = transactions.find(t => t.id === message.id)
+    if (transaction) {
+      return getTransactionColor(transaction)
+    }
+    
+    // Check if it's a sprout
+    const sprout = sprouts.find(s => s.id === message.id)
+    if (sprout) {
+      switch (sprout.sprout_type) {
+        case 'followup':
+          return 'var(--accent-blue)'
+        case 'musing':
+          return 'var(--accent-yellow)'
+        case 'extra_context':
+          return 'var(--accent-purple)'
+        case 'fact_check':
+          return 'var(--accent-orange)'
+        default:
+          return 'var(--text-secondary)'
+      }
+    }
+    
+    return 'var(--text-secondary)'
   }
 
   const handleContentChange = (content: string) => {
@@ -575,17 +503,15 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
             </div>
           )}
 
-          {/* Timeline of Transactions */}
+          {/* Timeline of Transactions and Sprouts */}
           <Panel variant="elevated" className="seed-detail-timeline">
             <h3 className="panel-header">Timeline</h3>
-            <TransactionHistoryList messages={transactionMessages} getColor={getColor} />
+            <SeedTimeline transactions={transactions} sprouts={sprouts} getColor={getColor} />
           </Panel>
         </div>
 
-        {/* Right Column: Followups + Automations */}
+        {/* Right Column: Automations */}
         <div className="seed-detail-right-column">
-          {/* Follow-ups Panel */}
-          <FollowupsPanel seedId={seedId} />
 
           {/* Automations Section */}
           <Panel variant="elevated" className="seed-detail-automations">
