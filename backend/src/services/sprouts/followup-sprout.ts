@@ -135,8 +135,15 @@ export async function editFollowup(
       throw new Error('Sprout is not a followup type')
     }
 
-    // Get current state
-    const currentState = await getFollowupState(sprout)
+    // Get current state (this will throw if no creation transaction exists)
+    let currentState: FollowupSproutState
+    try {
+      currentState = await getFollowupState(sprout)
+    } catch (error: any) {
+      // If error is about missing creation transaction, that's a data integrity issue
+      // But we should still throw the original error
+      throw error
+    }
 
     if (currentState.dismissed) {
       throw new Error('Cannot edit dismissed followup sprout')
@@ -197,8 +204,15 @@ export async function snoozeFollowup(
       throw new Error('Sprout is not a followup type')
     }
 
-    // Get current state
-    const currentState = await getFollowupState(sprout)
+    // Get current state (this will throw if no creation transaction exists)
+    let currentState: FollowupSproutState
+    try {
+      currentState = await getFollowupState(sprout)
+    } catch (error: any) {
+      // If error is about missing creation transaction, that's a data integrity issue
+      // But we should still throw the original error
+      throw error
+    }
 
     if (currentState.dismissed) {
       throw new Error('Cannot snooze dismissed followup sprout')
@@ -245,8 +259,15 @@ export async function dismissFollowup(
       throw new Error('Sprout is not a followup type')
     }
 
-    // Get current state
-    const currentState = await getFollowupState(sprout)
+    // Get current state (this will throw if no creation transaction exists)
+    let currentState: FollowupSproutState
+    try {
+      currentState = await getFollowupState(sprout)
+    } catch (error: any) {
+      // If error is about missing creation transaction, that's a data integrity issue
+      // But we should still throw the original error
+      throw error
+    }
 
     if (currentState.dismissed) {
       // Already dismissed, return current state

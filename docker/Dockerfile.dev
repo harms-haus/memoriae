@@ -30,8 +30,9 @@ COPY mother-theme/ ./mother-theme/
 
 # Copy startup scripts
 COPY docker/start-backend.sh /start-backend.sh
+COPY docker/start-dev.sh /start-dev.sh
 COPY docker/run-migrations.sh /run-migrations.sh
-RUN chmod +x /start-backend.sh /run-migrations.sh
+RUN chmod +x /start-backend.sh /start-dev.sh /run-migrations.sh
 
 # Install PostgreSQL client for migration checks
 RUN apt-get update && apt-get install -y \

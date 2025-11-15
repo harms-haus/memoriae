@@ -453,7 +453,11 @@ router.post('/sprouts/:sproutId/musing/dismiss', async (req: Request, res: Respo
 
     const sprout = await musingHandler.dismissMusing(sproutId)
     logRoutes.info(`POST /sprouts/:sproutId/musing/dismiss - Dismissed sprout ${sproutId}`)
-    res.json(sprout)
+    // Return sprout with sprout_data properties flattened for convenience
+    res.json({
+      ...sprout,
+      ...(sprout.sprout_data as any),
+    })
   } catch (error: any) {
     if (error.message === 'Sprout not found' || error.message === 'Sprout is not a musing type') {
       res.status(404).json({ error: error.message })
@@ -490,7 +494,11 @@ router.post('/sprouts/:sproutId/musing/complete', async (req: Request, res: Resp
 
     const sprout = await musingHandler.completeMusing(sproutId)
     logRoutes.info(`POST /sprouts/:sproutId/musing/complete - Completed sprout ${sproutId}`)
-    res.json(sprout)
+    // Return sprout with sprout_data properties flattened for convenience
+    res.json({
+      ...sprout,
+      ...(sprout.sprout_data as any),
+    })
   } catch (error: any) {
     if (error.message === 'Sprout not found' || error.message === 'Sprout is not a musing type') {
       res.status(404).json({ error: error.message })

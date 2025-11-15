@@ -72,19 +72,82 @@ fi
 echo -e "${YELLOW}Verifying migrations completed...${NC}"
 for i in {1..30}; do
     if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1 FROM automations LIMIT 1" > /dev/null 2>&1; then
-        echo -e "${GREEN}Migrations verified! Starting backend...${NC}"
+        echo -e "${GREEN}Migrations verified!${NC}"
         break
     fi
     if [ $i -eq 30 ]; then
         echo -e "${RED}Migrations verification failed after 30 attempts${NC}"
-        echo -e "${YELLOW}Starting backend anyway - it will retry on errors${NC}"
+        echo -e "${YELLOW}Continuing anyway - backend will retry on errors${NC}"
         break
     fi
     sleep 1
 done
 
-# Start the backend
-cd /app/backend
-exec npm run dev
+# Function to handle shutdown
+cleanup() {
+    echo -e "${YELLOW}Shutting down services...${NC}"
+    if [ ! -z "$BACKEND_PID" ]; then
+        kill $BACKEND_PID 2>/dev/null || true
+    fi
+    if [ ! -z "$FRONTEND_PID" ]; then
+        kill $FRONTEND_PID 2>/dev/null || true
+    fi
+    # Wait a moment for processes to exit gracefully
+    sleep 1
+    # Force kill if still running
+    if [ ! -z "$BACKEND_PID" ] && kill -0 $BACKEND_PID 2>/dev/null; then
+        kill -9 $BACKEND_PID 2>/dev/null || true
+    fi
+    if [ ! -z "$FRONTEND_PID" ] && kill -0 $FRONTEND_PID 2>/dev/null; then
+        kill -9 $FRONTEND_PID 2>/dev/null || true
+    fi
+    exit 0
+}
 
+# Set up signal handlers
+trap cleanup SIGTERM SIGINT
+
+# Start backend in background
+echo -e "${YELLOW}Starting backend server...${NC}"
+cd /app/backend
+npm run dev &
+BACKEND_PID=$!
+
+# Wait a moment for backend to start
+sleep 2
+
+# Start frontend in background
+echo -e "${YELLOW}Starting frontend dev server...${NC}"
+cd /app/frontend
+npm run dev &
+FRONTEND_PID=$!
+
+echo -e "${GREEN}Both services started!${NC}"
+echo -e "${GREEN}Backend PID: $BACKEND_PID${NC}"
+echo -e "${GREEN}Frontend PID: $FRONTEND_PID${NC}"
+echo -e "${GREEN}Backend API: http://localhost:3123/api${NC}"
+echo -e "${GREEN}Frontend: http://localhost:5173${NC}"
+
+# Wait for both processes (monitor until both exit)
+while true; do
+    # Check if processes are still running
+    BACKEND_RUNNING=0
+    FRONTEND_RUNNING=0
+    
+    if kill -0 $BACKEND_PID 2>/dev/null; then
+        BACKEND_RUNNING=1
+    fi
+    
+    if kill -0 $FRONTEND_PID 2>/dev/null; then
+        FRONTEND_RUNNING=1
+    fi
+    
+    # If both processes have exited, break
+    if [ $BACKEND_RUNNING -eq 0 ] && [ $FRONTEND_RUNNING -eq 0 ]; then
+        echo -e "${YELLOW}Both processes have exited${NC}"
+        break
+    fi
+    
+    sleep 1
+done
 

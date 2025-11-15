@@ -90,6 +90,7 @@ services:
     #   - 8.8.8.8     # Google DNS
     #   - 8.8.4.4     # Google DNS
     #   - 1.1.1.1     # Cloudflare DNS
+    command: ["/bin/bash", "/start-dev.sh"]
     stdin_open: true
     tty: true
     restart: unless-stopped

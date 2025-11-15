@@ -1,0 +1,1191 @@
+// Followup sprout handler tests
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import * as followupHandler from './followup-sprout'
+import { SproutsService } from '../sprouts'
+import type {
+  Sprout,
+  FollowupSproutData,
+  FollowupSproutState,
+  SproutFollowupTransaction,
+  SproutFollowupTransactionRow,
+} from '../../types/sprouts'
+import db from '../../db/connection'
+
+// Mock SproutsService
+vi.mock('../sprouts', () => ({
+  SproutsService: {
+    getById: vi.fn(),
+    create: vi.fn(),
+  },
+}))
+
+// Mock database
+const mockWhere = vi.fn()
+const mockOrderBy = vi.fn()
+const mockSelect = vi.fn()
+const mockInsert = vi.fn()
+
+let selectResolvedValue: any[] = []
+let selectCallQueue: any[][] = []
+let selectCallIndex = 0
+
+vi.mock('../../db/connection', () => {
+  const createQueryBuilder = () => {
+    const builder: any = {
+      where: (...args: any[]) => {
+        mockWhere(...args)
+        return builder
+      },
+      orderBy: (...args: any[]) => {
+        mockOrderBy(...args)
+        return builder
+      },
+      select: (...args: any[]) => {
+        mockSelect(...args)
+        // If queue is set, use it; otherwise use single value
+        if (selectCallQueue.length > 0) {
+          const value = selectCallQueue[selectCallIndex] || []
+          selectCallIndex++
+          return Promise.resolve(value)
+        }
+        return Promise.resolve(selectResolvedValue)
+      },
+      insert: (...args: any[]) => {
+        mockInsert(...args)
+        return Promise.resolve(undefined)
+      },
+    }
+    return builder
+  }
+
+  const mockDb = vi.fn((table: string) => {
+    return createQueryBuilder()
+  })
+
+  mockDb.raw = vi.fn((sql: string, params: any[]) => {
+    return { sql, params }
+  })
+
+  return {
+    default: mockDb,
+  }
+})
+
+describe('FollowupSprout Handler', () => {
+  const mockSproutId = 'sprout-123'
+  const mockSeedId = 'seed-123'
+  const initialTime = new Date('2024-01-01T10:00:00Z')
+  const initialMessage = 'Initial followup message'
+
+  const mockSproutData: FollowupSproutData = {
+    trigger: 'manual',
+    initial_time: initialTime.toISOString(),
+    initial_message: initialMessage,
+  }
+
+  const mockSprout: Sprout = {
+    id: mockSproutId,
+    seed_id: mockSeedId,
+    sprout_type: 'followup',
+    sprout_data: mockSproutData,
+    created_at: new Date(),
+    automation_id: null,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    selectResolvedValue = []
+    selectCallQueue = []
+    selectCallIndex = 0
+  })
+
+  describe('getFollowupState', () => {
+    it('should compute state from creation transaction only', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const state = await followupHandler.getFollowupState(mockSprout)
+
+      expect(state.due_time).toEqual(initialTime)
+      expect(state.message).toBe(initialMessage)
+      expect(state.dismissed).toBe(false)
+      expect(state.transactions).toHaveLength(1)
+    })
+
+    it('should throw error if no creation transaction exists', async () => {
+      selectResolvedValue = []
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      await expect(followupHandler.getFollowupState(mockSprout)).rejects.toThrow(
+        'Followup sprout must have a creation transaction'
+      )
+    })
+
+    it('should apply edit transaction', async () => {
+      const newTime = new Date('2024-01-02T10:00:00Z')
+      const newMessage = 'Updated message'
+
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const editTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'edit',
+        transaction_data: {
+          old_time: initialTime.toISOString(),
+          new_time: newTime.toISOString(),
+          old_message: initialMessage,
+          new_message: newMessage,
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: editTransaction.id,
+          sprout_id: editTransaction.sprout_id,
+          transaction_type: editTransaction.transaction_type,
+          transaction_data: editTransaction.transaction_data,
+          created_at: editTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const state = await followupHandler.getFollowupState(mockSprout)
+
+      expect(state.due_time).toEqual(newTime)
+      expect(state.message).toBe(newMessage)
+      expect(state.dismissed).toBe(false)
+      expect(state.transactions).toHaveLength(2)
+    })
+
+    it('should apply snooze transaction', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const snoozeTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'snooze',
+        transaction_data: {
+          snoozed_at: new Date('2024-01-01T11:00:00Z').toISOString(),
+          duration_minutes: 60,
+          method: 'manual',
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: snoozeTransaction.id,
+          sprout_id: snoozeTransaction.sprout_id,
+          transaction_type: snoozeTransaction.transaction_type,
+          transaction_data: snoozeTransaction.transaction_data,
+          created_at: snoozeTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const state = await followupHandler.getFollowupState(mockSprout)
+
+      const expectedTime = new Date(initialTime.getTime() + 60 * 60 * 1000)
+      expect(state.due_time).toEqual(expectedTime)
+      expect(state.message).toBe(initialMessage)
+      expect(state.dismissed).toBe(false)
+    })
+
+    it('should apply dismissal transaction', async () => {
+      const dismissedAt = new Date('2024-01-01T12:00:00Z')
+
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const dismissalTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'dismissal',
+        transaction_data: {
+          dismissed_at: dismissedAt.toISOString(),
+          type: 'followup',
+        },
+        created_at: dismissedAt,
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: dismissalTransaction.id,
+          sprout_id: dismissalTransaction.sprout_id,
+          transaction_type: dismissalTransaction.transaction_type,
+          transaction_data: dismissalTransaction.transaction_data,
+          created_at: dismissalTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const state = await followupHandler.getFollowupState(mockSprout)
+
+      expect(state.dismissed).toBe(true)
+      expect(state.dismissed_at).toEqual(dismissedAt)
+      expect(state.due_time).toEqual(initialTime)
+      expect(state.message).toBe(initialMessage)
+    })
+
+    it('should apply multiple snoozes in order', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const snooze1: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'snooze',
+        transaction_data: {
+          snoozed_at: new Date('2024-01-01T11:00:00Z').toISOString(),
+          duration_minutes: 30,
+          method: 'manual',
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      const snooze2: SproutFollowupTransaction = {
+        id: 'txn-3',
+        sprout_id: mockSproutId,
+        transaction_type: 'snooze',
+        transaction_data: {
+          snoozed_at: new Date('2024-01-01T12:00:00Z').toISOString(),
+          duration_minutes: 60,
+          method: 'manual',
+        },
+        created_at: new Date('2024-01-01T12:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: snooze1.id,
+          sprout_id: snooze1.sprout_id,
+          transaction_type: snooze1.transaction_type,
+          transaction_data: snooze1.transaction_data,
+          created_at: snooze1.created_at,
+        },
+        {
+          id: snooze2.id,
+          sprout_id: snooze2.sprout_id,
+          transaction_type: snooze2.transaction_type,
+          transaction_data: snooze2.transaction_data,
+          created_at: snooze2.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const state = await followupHandler.getFollowupState(mockSprout)
+
+      const expectedTime = new Date(initialTime.getTime() + (30 + 60) * 60 * 1000)
+      expect(state.due_time).toEqual(expectedTime)
+    })
+
+    it('should apply edit after snooze', async () => {
+      const newTime = new Date('2024-01-03T10:00:00Z')
+
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const snoozeTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'snooze',
+        transaction_data: {
+          snoozed_at: new Date('2024-01-01T11:00:00Z').toISOString(),
+          duration_minutes: 60,
+          method: 'manual',
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      const editTransaction: SproutFollowupTransaction = {
+        id: 'txn-3',
+        sprout_id: mockSproutId,
+        transaction_type: 'edit',
+        transaction_data: {
+          old_time: new Date(initialTime.getTime() + 60 * 60 * 1000).toISOString(),
+          new_time: newTime.toISOString(),
+          old_message: initialMessage,
+          new_message: 'Updated after snooze',
+        },
+        created_at: new Date('2024-01-01T13:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: snoozeTransaction.id,
+          sprout_id: snoozeTransaction.sprout_id,
+          transaction_type: snoozeTransaction.transaction_type,
+          transaction_data: snoozeTransaction.transaction_data,
+          created_at: snoozeTransaction.created_at,
+        },
+        {
+          id: editTransaction.id,
+          sprout_id: editTransaction.sprout_id,
+          transaction_type: editTransaction.transaction_type,
+          transaction_data: editTransaction.transaction_data,
+          created_at: editTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const state = await followupHandler.getFollowupState(mockSprout)
+
+      expect(state.due_time).toEqual(newTime)
+      expect(state.message).toBe('Updated after snooze')
+    })
+  })
+
+  describe('editFollowup', () => {
+    it('should create edit transaction and return updated state', async () => {
+      const newTime = new Date('2024-01-02T10:00:00Z')
+      const newMessage = 'Updated message'
+
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      // First call: get current state (before edit)
+      const editTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'edit',
+        transaction_data: {
+          old_time: initialTime.toISOString(),
+          new_time: newTime.toISOString(),
+          old_message: initialMessage,
+          new_message: newMessage,
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      // Setup call queue: first call returns only creation, second call returns both
+      selectCallQueue = [
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: 'creation',
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+        ],
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: 'creation',
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+          {
+            id: editTransaction.id,
+            sprout_id: editTransaction.sprout_id,
+            transaction_type: editTransaction.transaction_type,
+            transaction_data: editTransaction.transaction_data,
+            created_at: editTransaction.created_at,
+          },
+        ],
+      ]
+      selectCallIndex = 0
+
+      vi.mocked(SproutsService.getById)
+        .mockResolvedValueOnce(mockSprout) // First call
+        .mockResolvedValueOnce(mockSprout) // Second call after insert
+
+      const result = await followupHandler.editFollowup(mockSproutId, {
+        due_time: newTime.toISOString(),
+        message: newMessage,
+      })
+
+      expect(mockInsert).toHaveBeenCalled()
+      expect(result.due_time).toEqual(newTime)
+      expect(result.message).toBe(newMessage)
+    })
+
+    it('should return current state if no changes', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const result = await followupHandler.editFollowup(mockSproutId, {
+        due_time: initialTime.toISOString(),
+        message: initialMessage,
+      })
+
+      expect(mockInsert).not.toHaveBeenCalled()
+      expect(result.due_time).toEqual(initialTime)
+      expect(result.message).toBe(initialMessage)
+    })
+
+    it('should throw error if sprout not found', async () => {
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(null)
+      // No transactions needed since getFollowupState won't be called
+      selectResolvedValue = []
+
+      await expect(
+        followupHandler.editFollowup(mockSproutId, {
+          due_time: new Date().toISOString(),
+        })
+      ).rejects.toThrow('Sprout not found')
+      
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if sprout is not followup type', async () => {
+      const musingSprout: Sprout = {
+        ...mockSprout,
+        sprout_type: 'musing',
+        sprout_data: {} as any,
+      }
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(musingSprout)
+      // No transactions needed since it fails before getFollowupState
+      selectResolvedValue = []
+
+      await expect(
+        followupHandler.editFollowup(mockSproutId, {
+          due_time: new Date().toISOString(),
+        })
+      ).rejects.toThrow('Sprout is not a followup type')
+      
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if sprout is dismissed', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const dismissalTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'dismissal',
+        transaction_data: {
+          dismissed_at: new Date('2024-01-01T12:00:00Z').toISOString(),
+          type: 'followup',
+        },
+        created_at: new Date('2024-01-01T12:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: dismissalTransaction.id,
+          sprout_id: dismissalTransaction.sprout_id,
+          transaction_type: dismissalTransaction.transaction_type,
+          transaction_data: dismissalTransaction.transaction_data,
+          created_at: dismissalTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      await expect(
+        followupHandler.editFollowup(mockSproutId, {
+          due_time: new Date().toISOString(),
+        })
+      ).rejects.toThrow('Cannot edit dismissed followup sprout')
+    })
+
+    it('should allow partial updates (time only)', async () => {
+      const newTime = new Date('2024-01-02T10:00:00Z')
+
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+            const editTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'edit',
+        transaction_data: {
+          old_time: initialTime.toISOString(),
+          new_time: newTime.toISOString(),
+          old_message: initialMessage,
+          new_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      // Setup call queue: first call returns only creation, second call returns both
+      selectCallQueue = [
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+        ],
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+          {
+            id: editTransaction.id,
+            sprout_id: editTransaction.sprout_id,
+            transaction_type: editTransaction.transaction_type,
+            transaction_data: editTransaction.transaction_data,
+            created_at: editTransaction.created_at,
+          },
+        ],
+      ]
+      selectCallIndex = 0
+
+      vi.mocked(SproutsService.getById)
+        .mockResolvedValueOnce(mockSprout)
+        .mockResolvedValueOnce(mockSprout)
+
+      const result = await followupHandler.editFollowup(mockSproutId, {
+        due_time: newTime.toISOString(),
+      })
+
+      expect(mockInsert).toHaveBeenCalled()
+      expect(result.due_time).toEqual(newTime)
+      expect(result.message).toBe(initialMessage) // Unchanged
+    })
+  })
+
+  describe('snoozeFollowup', () => {
+    it('should create snooze transaction and return updated state', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      
+      const snoozeTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'snooze',
+        transaction_data: {
+          snoozed_at: new Date().toISOString(),
+          duration_minutes: 60,
+          method: 'manual',
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      // Setup call queue: first call returns only creation, second call returns both
+      selectCallQueue = [
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+        ],
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+          {
+            id: snoozeTransaction.id,
+            sprout_id: snoozeTransaction.sprout_id,
+            transaction_type: snoozeTransaction.transaction_type,
+            transaction_data: snoozeTransaction.transaction_data,
+            created_at: snoozeTransaction.created_at,
+          },
+        ],
+      ]
+      selectCallIndex = 0
+
+      vi.mocked(SproutsService.getById)
+        .mockResolvedValueOnce(mockSprout)
+        .mockResolvedValueOnce(mockSprout)
+
+      const result = await followupHandler.snoozeFollowup(mockSproutId, { duration_minutes: 60 }, 'manual')
+
+      expect(mockInsert).toHaveBeenCalled()
+      const expectedTime = new Date(initialTime.getTime() + 60 * 60 * 1000)
+      expect(result.due_time).toEqual(expectedTime)
+    })
+
+    it('should throw error if sprout not found', async () => {
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(null)
+
+      await expect(followupHandler.snoozeFollowup(mockSproutId, { duration_minutes: 60 })).rejects.toThrow(
+        'Sprout not found'
+      )
+      
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if sprout is not followup type', async () => {
+      const musingSprout: Sprout = {
+        ...mockSprout,
+        sprout_type: 'musing',
+        sprout_data: {} as any,
+      }
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(musingSprout)
+      selectResolvedValue = []
+
+      await expect(followupHandler.snoozeFollowup(mockSproutId, { duration_minutes: 60 })).rejects.toThrow(
+        'Sprout is not a followup type'
+      )
+      
+      expect(mockInsert).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if sprout is dismissed', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const dismissalTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'dismissal',
+        transaction_data: {
+          dismissed_at: new Date('2024-01-01T12:00:00Z').toISOString(),
+          type: 'followup',
+        },
+        created_at: new Date('2024-01-01T12:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: dismissalTransaction.id,
+          sprout_id: dismissalTransaction.sprout_id,
+          transaction_type: dismissalTransaction.transaction_type,
+          transaction_data: dismissalTransaction.transaction_data,
+          created_at: dismissalTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      await expect(followupHandler.snoozeFollowup(mockSproutId, { duration_minutes: 60 })).rejects.toThrow(
+        'Cannot snooze dismissed followup sprout'
+      )
+    })
+
+    it('should support automatic method', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const snoozeTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'snooze',
+        transaction_data: {
+          snoozed_at: new Date().toISOString(),
+          duration_minutes: 30,
+          method: 'automatic',
+        },
+        created_at: new Date('2024-01-01T11:00:00Z'),
+      }
+
+      // Setup call queue: first call returns only creation, second call returns both
+      selectCallQueue = [
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+        ],
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+          {
+            id: snoozeTransaction.id,
+            sprout_id: snoozeTransaction.sprout_id,
+            transaction_type: snoozeTransaction.transaction_type,
+            transaction_data: snoozeTransaction.transaction_data,
+            created_at: snoozeTransaction.created_at,
+          },
+        ],
+      ]
+      selectCallIndex = 0
+
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById)
+        .mockResolvedValueOnce(mockSprout)
+        .mockResolvedValueOnce(mockSprout)
+
+      await followupHandler.snoozeFollowup(mockSproutId, { duration_minutes: 30 }, 'automatic')
+
+      expect(mockInsert).toHaveBeenCalled()
+      const insertCall = mockInsert.mock.calls[0]?.[0]
+      expect(insertCall).toBeDefined()
+      const transactionData = JSON.parse(insertCall.transaction_data.params[0])
+      expect(transactionData.method).toBe('automatic')
+    })
+  })
+
+  describe('dismissFollowup', () => {
+    it('should create dismissal transaction and return updated state', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const dismissalTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'dismissal',
+        transaction_data: {
+          dismissed_at: new Date().toISOString(),
+          type: 'followup',
+        },
+        created_at: new Date('2024-01-01T12:00:00Z'),
+      }
+
+      // Setup call queue: first call returns only creation, second call returns both
+      selectCallQueue = [
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+        ],
+        [
+          {
+            id: creationTransaction.id,
+            sprout_id: creationTransaction.sprout_id,
+            transaction_type: creationTransaction.transaction_type,
+            transaction_data: creationTransaction.transaction_data,
+            created_at: creationTransaction.created_at,
+          },
+          {
+            id: dismissalTransaction.id,
+            sprout_id: dismissalTransaction.sprout_id,
+            transaction_type: dismissalTransaction.transaction_type,
+            transaction_data: dismissalTransaction.transaction_data,
+            created_at: dismissalTransaction.created_at,
+          },
+        ],
+      ]
+      selectCallIndex = 0
+
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById)
+        .mockResolvedValueOnce(mockSprout)
+        .mockResolvedValueOnce(mockSprout)
+
+      const result = await followupHandler.dismissFollowup(mockSproutId, { type: 'followup' })
+
+      expect(mockInsert).toHaveBeenCalled()
+      expect(result.dismissed).toBe(true)
+      expect(result.dismissed_at).toBeDefined()
+    })
+
+    it('should return current state if already dismissed', async () => {
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: initialTime.toISOString(),
+          initial_message: initialMessage,
+        },
+        created_at: new Date('2024-01-01T09:00:00Z'),
+      }
+
+      const dismissalTransaction: SproutFollowupTransaction = {
+        id: 'txn-2',
+        sprout_id: mockSproutId,
+        transaction_type: 'dismissal',
+        transaction_data: {
+          dismissed_at: new Date('2024-01-01T12:00:00Z').toISOString(),
+          type: 'followup',
+        },
+        created_at: new Date('2024-01-01T12:00:00Z'),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+        {
+          id: dismissalTransaction.id,
+          sprout_id: dismissalTransaction.sprout_id,
+          transaction_type: dismissalTransaction.transaction_type,
+          transaction_data: dismissalTransaction.transaction_data,
+          created_at: dismissalTransaction.created_at,
+        },
+      ]
+
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(mockSprout)
+
+      const currentState = await followupHandler.getFollowupState(mockSprout)
+      // State already computed
+
+      const result = await followupHandler.dismissFollowup(mockSproutId, { type: 'followup' })
+
+      expect(mockInsert).not.toHaveBeenCalled()
+      expect(result).toEqual(currentState)
+    })
+
+    it('should throw error if sprout not found', async () => {
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(null)
+
+      await expect(followupHandler.dismissFollowup(mockSproutId, { type: 'followup' })).rejects.toThrow(
+        'Sprout not found'
+      )
+    })
+
+    it('should throw error if sprout is not followup type', async () => {
+      const musingSprout: Sprout = {
+        ...mockSprout,
+        sprout_type: 'musing',
+        sprout_data: {} as any,
+      }
+      vi.mocked(SproutsService.getById).mockReset()
+      vi.mocked(SproutsService.getById).mockResolvedValueOnce(musingSprout)
+
+      await expect(followupHandler.dismissFollowup(mockSproutId, { type: 'followup' })).rejects.toThrow(
+        'Sprout is not a followup type'
+      )
+    })
+  })
+
+  describe('createFollowupSprout', () => {
+    it('should create sprout and creation transaction', async () => {
+      const dueTime = new Date('2024-01-02T10:00:00Z')
+      const message = 'Followup message'
+
+      // After creation, getFollowupState should return state with creation transaction
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'manual',
+          initial_time: dueTime.toISOString(),
+          initial_message: message,
+        },
+        created_at: new Date(),
+      }
+
+      // Update mockSprout to have the correct initial_time in sprout_data
+      const sproutWithCorrectData: Sprout = {
+        ...mockSprout,
+        sprout_data: {
+          trigger: 'manual',
+          initial_time: dueTime.toISOString(),
+          initial_message: message,
+        },
+      }
+
+      vi.mocked(SproutsService.create).mockResolvedValueOnce(sproutWithCorrectData)
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+      ]
+
+      const result = await followupHandler.createFollowupSprout(
+        mockSeedId,
+        dueTime.toISOString(),
+        message,
+        'manual',
+        null
+      )
+
+      expect(SproutsService.create).toHaveBeenCalledWith({
+        seed_id: mockSeedId,
+        sprout_type: 'followup',
+        sprout_data: {
+          trigger: 'manual',
+          initial_time: dueTime.toISOString(),
+          initial_message: message,
+        },
+        automation_id: null,
+      })
+      expect(mockInsert).toHaveBeenCalled()
+      expect(result.sprout.id).toBe(mockSprout.id)
+      expect(result.sprout.sprout_type).toBe('followup')
+      expect(result.state.due_time).toEqual(dueTime)
+      expect(result.state.message).toBe(message)
+    })
+
+    it('should create sprout with automation_id', async () => {
+      const automationId = 'automation-123'
+      const dueTime = new Date('2024-01-02T10:00:00Z')
+      const message = 'Followup message'
+
+      vi.mocked(SproutsService.create).mockResolvedValueOnce({
+        ...mockSprout,
+        automation_id: automationId,
+      })
+
+      const creationTransaction: SproutFollowupTransaction = {
+        id: 'txn-1',
+        sprout_id: mockSproutId,
+        transaction_type: 'creation',
+        transaction_data: {
+          trigger: 'automatic',
+          initial_time: dueTime.toISOString(),
+          initial_message: message,
+        },
+        created_at: new Date(),
+      }
+
+      selectResolvedValue = [
+        {
+          id: creationTransaction.id,
+          sprout_id: creationTransaction.sprout_id,
+          transaction_type: creationTransaction.transaction_type,
+          transaction_data: creationTransaction.transaction_data,
+          created_at: creationTransaction.created_at,
+        },
+      ]
+
+      const result = await followupHandler.createFollowupSprout(
+        mockSeedId,
+        dueTime.toISOString(),
+        message,
+        'automatic',
+        automationId
+      )
+
+      expect(SproutsService.create).toHaveBeenCalledWith({
+        seed_id: mockSeedId,
+        sprout_type: 'followup',
+        sprout_data: {
+          trigger: 'automatic',
+          initial_time: dueTime.toISOString(),
+          initial_message: message,
+        },
+        automation_id: automationId,
+      })
+      expect(result.sprout.automation_id).toBe(automationId)
+    })
+  })
+})
+
