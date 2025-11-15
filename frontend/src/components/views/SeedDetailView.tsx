@@ -8,7 +8,7 @@ import { Badge } from '@mother/components/Badge'
 import { SeedView } from '../SeedView'
 import { SeedTimeline } from '../SeedTimeline/SeedTimeline'
 import type { TransactionHistoryMessage } from '../TransactionHistoryList'
-import type { SeedTransaction, SeedTransactionType, Seed, SeedState, Tag as TagType, Sprout } from '../../types'
+import type { SeedTransaction, SeedTransactionType, SeedTransactionData, Seed, SeedState, Tag as TagType, Sprout } from '../../types'
 import log from 'loglevel'
 import './Views.css'
 import './SeedDetailView.css'
@@ -282,6 +282,49 @@ export function SeedDetailView({ seedId, onBack }: SeedDetailViewProps) {
 
   // Color function for timeline items (handles both transactions and sprouts)
   const getColor = (message: TransactionHistoryMessage): string => {
+    // Check if it's a grouped message (has groupKey but ID doesn't match a transaction)
+    // Also check for "Tags Added" title as a fallback
+    if ((message.groupKey && message.id.startsWith('group-')) || message.title === 'Tags Added') {
+      // For grouped messages, use the groupKey to determine color
+      // If groupKey is 'add_tag' or title is 'Tags Added', use add_tag color
+      const transactionType = (message.groupKey === 'add_tag' || message.title === 'Tags Added') 
+        ? 'add_tag' 
+        : (message.groupKey as SeedTransactionType | undefined)
+      
+      if (transactionType) {
+        // Create a synthetic transaction object to use getTransactionColor
+        // Use appropriate transaction data type based on transaction type
+        let transactionData: SeedTransactionData
+        if (transactionType === 'add_tag') {
+          transactionData = { tag_id: '', tag_name: '' }
+        } else if (transactionType === 'create_seed') {
+          transactionData = { content: '' }
+        } else if (transactionType === 'edit_content') {
+          transactionData = { content: '' }
+        } else if (transactionType === 'remove_tag') {
+          transactionData = { tag_id: '', tag_name: '' }
+        } else if (transactionType === 'set_category') {
+          transactionData = { category_id: '', category_name: '', category_path: '' }
+        } else if (transactionType === 'remove_category') {
+          transactionData = { category_id: '' }
+        } else if (transactionType === 'add_followup') {
+          transactionData = { followup_id: '' }
+        } else {
+          transactionData = { sprout_id: '' }
+        }
+        
+        const syntheticTransaction: SeedTransaction = {
+          id: message.id,
+          seed_id: '',
+          transaction_type: transactionType,
+          transaction_data: transactionData,
+          created_at: typeof message.time === 'string' ? message.time : message.time.toISOString(),
+          automation_id: null,
+        }
+        return getTransactionColor(syntheticTransaction)
+      }
+    }
+    
     // Check if it's a transaction
     const transaction = transactions.find(t => t.id === message.id)
     if (transaction) {
