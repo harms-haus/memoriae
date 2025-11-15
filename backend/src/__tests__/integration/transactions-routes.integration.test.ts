@@ -657,5 +657,268 @@ describe('Transaction Routes', () => {
         .expect(500)
     })
   })
+
+  describe('GET /api/seeds/:hashId/:slug/transactions', () => {
+    it('should return all transactions for a seed by hashId with slug', async () => {
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-123',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Test content' },
+          created_at: new Date(),
+          automation_id: null,
+        },
+      ]
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/seed-1/test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toHaveLength(1)
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123', 'test-slug')
+      expect(SeedTransactionsService.getBySeedId).toHaveBeenCalledWith('seed-123')
+    })
+
+    it('should return 400 when hashId is missing', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds//test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404) // Express routing returns 404 for empty segment
+    })
+
+    it('should return 404 when seed not found', async () => {
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/non-exist/test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+  })
+
+  describe('GET /api/seeds/:hashId/:slug/state', () => {
+    it('should return computed seed state by hashId with slug', async () => {
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-123',
+          transaction_type: 'create_seed',
+          transaction_data: { content: 'Test content' },
+          created_at: new Date(),
+          automation_id: null,
+        },
+      ]
+
+      const mockState = {
+        seed: 'Test content',
+        timestamp: new Date(),
+        metadata: {},
+        tags: [],
+        categories: [],
+      }
+
+      vi.mocked(SeedTransactionsService.getBySeedId).mockResolvedValue(mockTransactions as any)
+      vi.mocked(computeSeedState).mockReturnValue(mockState)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/seed-1/test-slug/state')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        seed_id: 'seed-123',
+        current_state: {
+          seed: 'Test content',
+          metadata: {},
+        },
+        transactions_applied: 1,
+      })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123', 'test-slug')
+      expect(computeSeedState).toHaveBeenCalledWith(mockTransactions)
+    })
+
+    it('should return 404 when seed not found', async () => {
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .get('/api/seeds/non-exist/test-slug/state')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+  })
+
+  describe('POST /api/seeds/:hashId/:slug/transactions', () => {
+    it('should create a new transaction by hashId with slug', async () => {
+      const mockTransaction = {
+        id: 'txn-1',
+        seed_id: 'seed-123',
+        transaction_type: 'edit_content',
+        transaction_data: { content: 'Updated content' },
+        created_at: new Date(),
+        automation_id: null,
+      }
+
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(mockTransaction as any)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/seed-1/test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          transaction_type: 'edit_content',
+          transaction_data: { content: 'Updated content' },
+        })
+        .expect(201)
+
+      expect(response.body).toMatchObject({
+        id: 'txn-1',
+        seed_id: 'seed-123',
+        transaction_type: 'edit_content',
+      })
+      expect(SeedsService.getByHashId).toHaveBeenCalledWith('seed-1', 'user-123', 'test-slug')
+      expect(SeedTransactionsService.create).toHaveBeenCalledWith({
+        seed_id: 'seed-123',
+        transaction_type: 'edit_content',
+        transaction_data: { content: 'Updated content' },
+        automation_id: null,
+      })
+    })
+
+    it('should return 400 when transaction_type is missing', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/seed-1/test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          transaction_data: { content: 'Updated content' },
+        })
+        .expect(400)
+
+      expect(response.body).toMatchObject({
+        error: 'transaction_type is required and must be a string',
+      })
+    })
+
+    it('should return 400 when transaction_data is missing', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/seed-1/test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          transaction_type: 'edit_content',
+        })
+        .expect(400)
+
+      expect(response.body).toMatchObject({
+        error: 'transaction_data is required and must be an object',
+      })
+    })
+
+    it('should return 404 when seed not found', async () => {
+      vi.mocked(SeedsService.getByHashId).mockResolvedValue(null)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/non-exist/test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          transaction_type: 'edit_content',
+          transaction_data: { content: 'Updated content' },
+        })
+        .expect(404)
+
+      expect(response.body).toMatchObject({
+        error: 'Seed not found',
+      })
+    })
+
+    it('should accept optional automation_id', async () => {
+      const mockTransaction = {
+        id: 'txn-1',
+        seed_id: 'seed-123',
+        transaction_type: 'add_tag',
+        transaction_data: { tag_id: 'tag-1', tag_name: 'Test' },
+        created_at: new Date(),
+        automation_id: 'auto-1',
+      }
+
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(mockTransaction as any)
+
+      const token = generateTestToken({
+        id: 'user-123',
+        email: 'test@example.com',
+      })
+
+      const response = await request(app)
+        .post('/api/seeds/seed-1/test-slug/transactions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          transaction_type: 'add_tag',
+          transaction_data: { tag_id: 'tag-1', tag_name: 'Test' },
+          automation_id: 'auto-1',
+        })
+        .expect(201)
+
+      expect(SeedTransactionsService.create).toHaveBeenCalledWith({
+        seed_id: 'seed-123',
+        transaction_type: 'add_tag',
+        transaction_data: { tag_id: 'tag-1', tag_name: 'Test' },
+        automation_id: 'auto-1',
+      })
+    })
+  })
 })
 

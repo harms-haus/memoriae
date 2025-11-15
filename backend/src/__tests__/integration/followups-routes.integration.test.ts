@@ -92,6 +92,20 @@ describe('Followups Routes', () => {
           },
         } as any
       }
+      // Handle seed-123 as hashId (for backward compatibility tests)
+      if (hashId === 'seed-123' && userId === 'user-123') {
+        return {
+          id: 'seed-123',
+          user_id: 'user-123',
+          created_at: new Date(),
+          slug: slugHint || null,
+          currentState: {
+            seed: 'Test content',
+            timestamp: new Date().toISOString(),
+            metadata: {},
+          },
+        } as any
+      }
       // For full UUID (36 chars), return null (should use getById instead)
       if (hashId.length === 36) {
         return null
@@ -458,6 +472,54 @@ describe('Followups Routes', () => {
 
       expect(response.body.error).toContain('message')
     })
+
+    it('should validate due_time is a valid date', async () => {
+      const token = generateTestToken()
+
+      const response = await request(app)
+        .post('/api/seeds/seed-123/followups')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          due_time: 'invalid-date',
+          message: 'Test',
+        })
+        .expect(400)
+
+      expect(response.body.error).toContain('valid ISO date string')
+    })
+
+    it('should trim message when creating followup', async () => {
+      const token = generateTestToken()
+      const mockFollowup = {
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date('2024-01-01T10:00:00Z'),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Test followup',
+        dismissed: false,
+        transactions: [],
+      }
+
+      vi.mocked(FollowupService.create).mockResolvedValue(mockFollowup)
+
+      await request(app)
+        .post('/api/seeds/seed-123/followups')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          due_time: '2024-01-02T10:00:00Z',
+          message: '  Test followup  ',
+        })
+        .expect(201)
+
+      expect(FollowupService.create).toHaveBeenCalledWith(
+        'seed-123',
+        {
+          due_time: '2024-01-02T10:00:00Z',
+          message: 'Test followup',
+        },
+        'manual'
+      )
+    })
   })
 
   describe('PUT /api/followups/:followupId', () => {
@@ -544,6 +606,108 @@ describe('Followups Routes', () => {
 
       expect(response.body.error).toBe('Cannot edit dismissed followup')
     })
+
+    it('should return 400 when no fields provided', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Original',
+        dismissed: false,
+        transactions: [],
+      })
+
+      const response = await request(app)
+        .put('/api/followups/followup-123')
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(400)
+
+      expect(response.body.error).toContain('At least one field')
+    })
+
+    it('should validate due_time type', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Original',
+        dismissed: false,
+        transactions: [],
+      })
+
+      const response = await request(app)
+        .put('/api/followups/followup-123')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ due_time: 123 })
+        .expect(400)
+
+      expect(response.body.error).toContain('due_time must be a string')
+    })
+
+    it('should validate message type', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Original',
+        dismissed: false,
+        transactions: [],
+      })
+
+      const response = await request(app)
+        .put('/api/followups/followup-123')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ message: 123 })
+        .expect(400)
+
+      expect(response.body.error).toContain('message must be a string')
+    })
+
+    it('should trim message when updating', async () => {
+      const token = generateTestToken()
+      const mockFollowup = {
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date('2024-01-01T10:00:00Z'),
+        due_time: new Date('2024-01-03T10:00:00Z'),
+        message: 'Updated message',
+        dismissed: false,
+        transactions: [],
+      }
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Original message',
+        dismissed: false,
+        transactions: [],
+      })
+      vi.mocked(FollowupService.edit).mockResolvedValue(mockFollowup)
+
+      await request(app)
+        .put('/api/followups/followup-123')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          message: '  Updated message  ',
+        })
+        .expect(200)
+
+      expect(FollowupService.edit).toHaveBeenCalledWith('followup-123', {
+        message: 'Updated message',
+      })
+    })
   })
 
   describe('POST /api/followups/:followupId/snooze', () => {
@@ -598,6 +762,76 @@ describe('Followups Routes', () => {
         .expect(400)
 
       expect(response.body.error).toContain('duration_minutes')
+    })
+
+    it('should validate duration_minutes is a number', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Test',
+        dismissed: false,
+        transactions: [],
+      })
+
+      const response = await request(app)
+        .post('/api/followups/followup-123/snooze')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ duration_minutes: 'invalid' })
+        .expect(400)
+
+      expect(response.body.error).toContain('duration_minutes')
+    })
+
+    it('should validate duration_minutes is greater than 0', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Test',
+        dismissed: false,
+        transactions: [],
+      })
+
+      const response = await request(app)
+        .post('/api/followups/followup-123/snooze')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ duration_minutes: 0 })
+        .expect(400)
+
+      expect(response.body.error).toContain('must be greater than 0')
+    })
+
+    it('should return 400 if followup is dismissed', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Test',
+        dismissed: true,
+        dismissed_at: new Date(),
+        transactions: [],
+      })
+      vi.mocked(FollowupService.snooze).mockRejectedValue(
+        new Error('Cannot snooze dismissed followup')
+      )
+
+      const response = await request(app)
+        .post('/api/followups/followup-123/snooze')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ duration_minutes: 60 })
+        .expect(400)
+
+      expect(response.body.error).toBe('Cannot snooze dismissed followup')
     })
   })
 
@@ -656,6 +890,28 @@ describe('Followups Routes', () => {
 
       expect(response.body.error).toContain('type')
     })
+
+    it('should validate type is required', async () => {
+      const token = generateTestToken()
+
+      vi.mocked(FollowupService.getById).mockResolvedValue({
+        id: 'followup-123',
+        seed_id: 'seed-123',
+        created_at: new Date(),
+        due_time: new Date('2024-01-02T10:00:00Z'),
+        message: 'Test',
+        dismissed: false,
+        transactions: [],
+      })
+
+      const response = await request(app)
+        .post('/api/followups/followup-123/dismiss')
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(400)
+
+      expect(response.body.error).toContain('type')
+    })
   })
 
   describe('GET /api/followups/due', () => {
@@ -692,6 +948,35 @@ describe('Followups Routes', () => {
       expect(Array.isArray(response.body)).toBe(true)
       expect(response.body).toHaveLength(1)
       expect(FollowupService.getDueFollowups).toHaveBeenCalledWith('user-123')
+    })
+
+    it('should return empty array when no due followups', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+      })
+
+      vi.mocked(FollowupService.getDueFollowups).mockResolvedValue([])
+
+      const response = await request(app)
+        .get('/api/followups/due')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(Array.isArray(response.body)).toBe(true)
+      expect(response.body).toHaveLength(0)
+    })
+
+    it('should handle service errors gracefully', async () => {
+      const token = generateTestToken({
+        id: 'user-123',
+      })
+
+      vi.mocked(FollowupService.getDueFollowups).mockRejectedValue(new Error('Database error'))
+
+      await request(app)
+        .get('/api/followups/due')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(500)
     })
   })
 })

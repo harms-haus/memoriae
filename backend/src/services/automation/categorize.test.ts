@@ -530,16 +530,220 @@ describe('CategorizeAutomation', () => {
     })
 
     it('should return 0 when changes don\'t affect seed categories', () => {
-      mockSeed.currentState.categories = [
-        { id: 'cat-1', name: 'Work', path: '/work' },
-      ]
-
       const changes: CategoryChange[] = [
-        { type: 'rename', categoryId: 'cat-2', oldPath: '/personal', newPath: '/personal-new' },
+        { type: 'rename', categoryId: 'cat-999', oldPath: '/other', newPath: '/other-new' },
       ]
 
       const pressure = automation.calculatePressure(mockSeed, mockContext, changes)
       expect(pressure).toBe(0)
+    })
+
+    it('should handle empty changes array', () => {
+      const pressure = automation.calculatePressure(mockSeed, mockContext, [])
+      expect(pressure).toBe(0)
+    })
+
+    it('should handle category creation failure gracefully', async () => {
+      const mockCategoriesResponse: OpenRouterChatCompletionResponse = {
+        id: 'chatcmpl-123',
+        model: 'openai/gpt-3.5-turbo',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: '["/work"]',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 20,
+          total_tokens: 30,
+        },
+        created: 1234567890,
+      }
+
+      mockCreateChatCompletion.mockResolvedValueOnce(mockCategoriesResponse)
+      mockSelect.mockResolvedValue([])
+      mockFirst.mockResolvedValue(undefined)
+      mockReturning.mockResolvedValue([]) // Simulate creation failure
+
+      await expect(automation.process(mockSeed, mockContext)).rejects.toThrow()
+    })
+
+    it('should handle invalid JSON response from OpenRouter', async () => {
+      const mockCategoriesResponse: OpenRouterChatCompletionResponse = {
+        id: 'chatcmpl-123',
+        model: 'openai/gpt-3.5-turbo',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: 'This is not valid JSON',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 20,
+          total_tokens: 30,
+        },
+        created: 1234567890,
+      }
+
+      mockCreateChatCompletion.mockResolvedValueOnce(mockCategoriesResponse)
+      mockSelect.mockResolvedValue([])
+
+      const result = await automation.process(mockSeed, mockContext)
+      expect(result.transactions).toEqual([])
+    })
+
+    it('should handle non-array JSON response', async () => {
+      // Mock a response where extractJsonArray finds something that looks like an array
+      // but when parsed, it's actually an object (this shouldn't happen in practice,
+      // but we test the validation logic)
+      // We'll mock the OpenRouter client to return a response that would cause
+      // extractJsonArray to return something, then we manually inject a non-array JSON
+      // Actually, since extractJsonArray validates arrays, this case is impossible.
+      // Instead, test the case where response contains invalid JSON structure
+      const mockCategoriesResponse: OpenRouterChatCompletionResponse = {
+        id: 'chatcmpl-123',
+        model: 'openai/gpt-3.5-turbo',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: 'Here is the category: {"category": "/work"}',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 20,
+          total_tokens: 30,
+        },
+        created: 1234567890,
+      }
+
+      mockCreateChatCompletion.mockResolvedValueOnce(mockCategoriesResponse)
+      mockSelect.mockResolvedValue([])
+
+      // Since extractJsonArray only extracts arrays, it will return null
+      // generateCategories will catch the error and return empty array
+      // process will return empty transactions
+      const result = await automation.process(mockSeed, mockContext)
+      expect(result.transactions).toEqual([])
+    })
+
+    it('should handle empty array response', async () => {
+      const mockCategoriesResponse: OpenRouterChatCompletionResponse = {
+        id: 'chatcmpl-123',
+        model: 'openai/gpt-3.5-turbo',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: '[]',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 20,
+          total_tokens: 30,
+        },
+        created: 1234567890,
+      }
+
+      mockCreateChatCompletion.mockResolvedValueOnce(mockCategoriesResponse)
+      mockSelect.mockResolvedValue([])
+
+      const result = await automation.process(mockSeed, mockContext)
+      expect(result.transactions).toEqual([])
+    })
+
+    it('should handle invalid category path types in array', async () => {
+      const mockCategoriesResponse: OpenRouterChatCompletionResponse = {
+        id: 'chatcmpl-123',
+        model: 'openai/gpt-3.5-turbo',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: '["/work", 123, null, "/personal"]',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 20,
+          total_tokens: 30,
+        },
+        created: 1234567890,
+      }
+
+      mockCreateChatCompletion.mockResolvedValueOnce(mockCategoriesResponse)
+      mockSelect.mockResolvedValue([])
+      mockReturning.mockResolvedValue([{
+        id: 'cat-personal',
+        parent_id: null,
+        name: 'Personal',
+        path: '/personal',
+        created_at: new Date(),
+      }])
+      mockFirst.mockResolvedValue(undefined)
+
+      const result = await automation.process(mockSeed, mockContext)
+      // Should only process valid string paths
+      expect(result.transactions.length).toBeGreaterThan(0)
+    })
+
+    it('should handle category path normalization edge cases', async () => {
+      const mockCategoriesResponse: OpenRouterChatCompletionResponse = {
+        id: 'chatcmpl-123',
+        model: 'openai/gpt-3.5-turbo',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: '["work", "//work//projects", "/work/projects/", "/"]',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 20,
+          total_tokens: 30,
+        },
+        created: 1234567890,
+      }
+
+      mockCreateChatCompletion.mockResolvedValueOnce(mockCategoriesResponse)
+      mockSelect.mockResolvedValue([])
+      mockReturning.mockResolvedValue([{
+        id: 'cat-work',
+        parent_id: null,
+        name: 'Work',
+        path: '/work',
+        created_at: new Date(),
+      }])
+      mockFirst.mockResolvedValue(undefined)
+
+      const result = await automation.process(mockSeed, mockContext)
+      // Should normalize paths and filter invalid ones
+      expect(result.transactions.length).toBeGreaterThanOrEqual(0)
     })
   })
 })

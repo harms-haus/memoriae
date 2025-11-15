@@ -757,5 +757,226 @@ describe('Idea Musings Routes', () => {
       expect(response.body.error).toContain('prompt is required')
     })
   })
+
+  describe('POST /api/idea-musings/:id/regenerate', () => {
+    it('should regenerate musing successfully', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const mockMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'numbered_ideas',
+        content: { ideas: ['Idea 1'] },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+      }
+
+      const mockSeed = {
+        id: mockSeedId,
+        user_id: mockUserId,
+        created_at: new Date(),
+        currentState: {
+          seed: 'Original content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      const regeneratedMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'numbered_ideas',
+        content: { ideas: ['New Idea 1', 'New Idea 2'] },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+      }
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: 'test-key',
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const mockAutomation = {
+        generateMusing: vi.fn().mockResolvedValue({
+          templateType: 'numbered_ideas',
+          content: { ideas: ['New Idea 1', 'New Idea 2'] },
+        }),
+      }
+      vi.mocked(IdeaMusingAutomation).mockImplementation(() => mockAutomation as any)
+
+      const mockWhere = vi.fn().mockReturnThis()
+      const mockDelete = vi.fn().mockResolvedValue(1)
+      vi.mocked(db).mockReturnValue({
+        where: mockWhere,
+        delete: mockDelete,
+      } as any)
+
+      vi.mocked(IdeaMusingsService.create).mockResolvedValue(regeneratedMusing as any)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/regenerate`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+
+      expect(response.body).toMatchObject({
+        id: mockMusingId,
+        template_type: 'numbered_ideas',
+      })
+      expect(IdeaMusingsService.getById).toHaveBeenCalledWith(mockMusingId)
+      expect(SeedsService.getById).toHaveBeenCalledWith(mockSeedId, mockUserId)
+      expect(mockAutomation.generateMusing).toHaveBeenCalled()
+      expect(IdeaMusingsService.create).toHaveBeenCalled()
+    })
+
+    it('should return 400 when musing ID is missing', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const response = await request(app)
+        .post('/api/idea-musings//regenerate')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404) // Express routing returns 404 for empty segment
+    })
+
+    it('should return 404 when musing not found', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(null)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/regenerate`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body.error).toBe('Musing not found')
+    })
+
+    it('should return 404 when seed not found', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const mockMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'numbered_ideas',
+        content: { ideas: ['Idea 1'] },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+      }
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(null)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/regenerate`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404)
+
+      expect(response.body.error).toBe('Seed not found')
+    })
+
+    it('should return 400 when API key not configured', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const mockMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'numbered_ideas',
+        content: { ideas: ['Idea 1'] },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+      }
+
+      const mockSeed = {
+        id: mockSeedId,
+        user_id: mockUserId,
+        created_at: new Date(),
+        currentState: {
+          seed: 'Original content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: null,
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/regenerate`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400)
+
+      expect(response.body.error).toBe('OpenRouter API key not configured')
+    })
+
+    it('should return 500 when musing generation fails', async () => {
+      const token = generateTestToken({ id: mockUserId })
+
+      const mockMusing = {
+        id: mockMusingId,
+        seed_id: mockSeedId,
+        user_id: mockUserId,
+        template_type: 'numbered_ideas',
+        content: { ideas: ['Idea 1'] },
+        created_at: new Date(),
+        dismissed: false,
+        dismissed_at: null,
+      }
+
+      const mockSeed = {
+        id: mockSeedId,
+        user_id: mockUserId,
+        created_at: new Date(),
+        currentState: {
+          seed: 'Original content',
+          timestamp: new Date().toISOString(),
+          metadata: {},
+        },
+      }
+
+      vi.mocked(IdeaMusingsService.getById).mockResolvedValue(mockMusing as any)
+      vi.mocked(SeedsService.getById).mockResolvedValue(mockSeed as any)
+      vi.mocked(SettingsService.getByUserId).mockResolvedValue({
+        id: 'settings-1',
+        user_id: mockUserId,
+        openrouter_api_key: 'test-key',
+        openrouter_model: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any)
+
+      const mockAutomation = {
+        generateMusing: vi.fn().mockResolvedValue(null),
+      }
+      vi.mocked(IdeaMusingAutomation).mockImplementation(() => mockAutomation as any)
+
+      const response = await request(app)
+        .post(`/api/idea-musings/${mockMusingId}/regenerate`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(500)
+
+      expect(response.body.error).toBe('Failed to generate musing')
+    })
+  })
 })
 
