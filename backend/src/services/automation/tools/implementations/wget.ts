@@ -58,11 +58,15 @@ export const wgetTool: ToolDefinition = {
 
     try {
       // Make GET request with timeout
+      // Include User-Agent header (required by many APIs like Wikipedia)
       const response = await axios.get(uri, {
         timeout: timeoutMs,
         maxRedirects: 5,
         validateStatus: (status) => status >= 200 && status < 400, // Accept 2xx and 3xx
         responseType: 'text', // Get response as text
+        headers: {
+          'User-Agent': 'Memoriae/1.0 (https://memoriae.app; automation@memoriae.app)',
+        },
       })
 
       return response.data

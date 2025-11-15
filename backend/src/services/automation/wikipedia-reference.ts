@@ -97,7 +97,9 @@ export class WikipediaReferenceAutomation extends Automation {
       logAutomation.warn(`Could not extract article title from URL: ${articleUrl}`)
       return { transactions: [] }
     }
-    const articleApiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=${encodeURIComponent(articleTitle)}&format=json`
+    // Include redirects=1 to explicitly request redirect information
+    // The API will automatically follow redirects, but this gives us redirect info for logging
+    const articleApiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&redirects=1&titles=${encodeURIComponent(articleTitle)}&format=json`
     const articleResult = await context.toolExecutor.execute({
       toolName: 'wget',
       arguments: [articleApiUrl, 30000],
@@ -117,23 +119,54 @@ export class WikipediaReferenceAutomation extends Automation {
     }
 
     // Parse article content
+    // Wikipedia API automatically follows redirects, but we need to handle the response structure
     let articleText: string | null = null
     try {
       const articleData = JSON.parse(articleResultString) as {
         query?: {
-          pages?: Record<string, { extract?: string }>
+          pages?: Record<string, { 
+            extract?: string
+            title?: string
+            missing?: boolean
+            invalid?: boolean
+          }>
+          redirects?: Array<{ from: string; to: string }>
         }
       }
+      
+      // Check for redirects (for logging/debugging)
+      const redirects = articleData.query?.redirects
+      if (redirects && redirects.length > 0) {
+        logAutomation.debug(`Wikipedia redirect: ${redirects.map(r => `${r.from} → ${r.to}`).join(', ')}`)
+      }
+      
       const pages = articleData.query?.pages
       if (pages && typeof pages === 'object') {
+        // Iterate through all pages (there should typically be one, but handle multiple)
+        for (const pageId of Object.keys(pages)) {
+          const page = pages[pageId]
+          if (page && typeof page === 'object') {
+            // Skip missing or invalid pages
+            if (page.missing || page.invalid) {
+              continue
+            }
+            
+            // Check if page has extract content
+            if ('extract' in page && typeof page.extract === 'string' && page.extract.trim().length > 0) {
+              articleText = page.extract
+              break // Use first page with valid extract
+            }
+          }
+        }
+      }
+      
+      // If no extract found, log the page structure for debugging
+      if (!articleText && pages) {
         const pageIds = Object.keys(pages)
         if (pageIds.length > 0) {
-          const pageId = pageIds[0]
-          if (pageId) {
-            const page = pages[pageId]
-            if (page && typeof page === 'object' && 'extract' in page && typeof page.extract === 'string') {
-              articleText = page.extract
-            }
+          const firstPage = pages[pageIds[0]]
+          if (firstPage) {
+            logAutomation.debug(`Wikipedia page found but no extract: title=${firstPage.title}, missing=${firstPage.missing}, invalid=${firstPage.invalid}, hasExtract=${!!firstPage.extract}`)
           }
         }
       }

@@ -31,6 +31,9 @@ describe('wgetTool', () => {
       maxRedirects: 5,
       validateStatus: expect.any(Function),
       responseType: 'text',
+      headers: {
+        'User-Agent': 'Memoriae/1.0 (https://memoriae.app; automation@memoriae.app)',
+      },
     })
   })
 
