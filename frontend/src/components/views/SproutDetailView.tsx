@@ -6,6 +6,7 @@ import { Panel } from '@mother/components/Panel'
 import type { Sprout } from '../../types'
 import { FollowupSproutDetail } from '../SproutDetail/FollowupSproutDetail'
 import { MusingSproutDetail } from '../SproutDetail/MusingSproutDetail'
+import { WikipediaSproutDetail } from '../SproutDetail/WikipediaSproutDetail'
 import log from 'loglevel'
 import './Views.css'
 import './SproutDetailView.css'
@@ -106,6 +107,9 @@ export function SproutDetailView({ sproutId, onBack }: SproutDetailViewProps) {
         )}
         {sprout.sprout_type === 'musing' && (
           <MusingSproutDetail sprout={sprout} onUpdate={loadSprout} />
+        )}
+        {sprout.sprout_type === 'wikipedia_reference' && (
+          <WikipediaSproutDetail sprout={sprout} onUpdate={loadSprout} />
         )}
         {(sprout.sprout_type === 'extra_context' || sprout.sprout_type === 'fact_check') && (
           <Panel variant="elevated">

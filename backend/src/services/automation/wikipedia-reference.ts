@@ -1,10 +1,12 @@
 // Wikipedia reference automation - finds and summarizes Wikipedia articles for interesting references in seeds
 
-import { v4 as uuidv4 } from 'uuid'
 import { Automation, type AutomationContext, type AutomationProcessResult, type CategoryChange } from './base'
 import type { Seed } from '../seeds'
-import type { SeedTransaction } from '../../types/seed-transactions'
 import { useToolsWithAI, wgetTool } from './tools'
+import { SproutsService } from '../sprouts'
+import { SeedTransactionsService } from '../seed-transactions'
+import { createWikipediaSprout } from '../sprouts/wikipedia-sprout'
+import type { WikipediaReferenceSproutData } from '../../types/sprouts'
 import log from 'loglevel'
 
 const logAutomation = log.getLogger('Automation:WikipediaReference')
@@ -28,15 +30,16 @@ export class WikipediaReferenceAutomation extends Automation {
    * 
    * 1. Uses AI to identify interesting references in the seed
    * 2. Picks 0 or 1 reference to research
-  3. Uses wget to fetch Wikipedia search results and article
+   * 3. Uses wget to fetch Wikipedia search results and article
    * 4. Summarizes the relationship between the article and seed
-   * 5. Appends summary to seed content
+   * 5. Creates a Wikipedia reference sprout
    */
   async process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult> {
-    // Check if seed already has Wikipedia references (avoid duplicates)
-    const existingContent = seed.currentState.seed
-    if (existingContent.includes('## Wikipedia Reference')) {
-      logAutomation.debug(`Seed ${seed.id} already has Wikipedia references, skipping`)
+    // Check if seed already has Wikipedia reference sprouts (avoid duplicates)
+    const existingSprouts = await SproutsService.getBySeedId(seed.id)
+    const hasWikipediaSprout = existingSprouts.some(s => s.sprout_type === 'wikipedia_reference')
+    if (hasWikipediaSprout) {
+      logAutomation.debug(`Seed ${seed.id} already has Wikipedia reference sprouts, skipping`)
       return { transactions: [] }
     }
 
@@ -92,14 +95,14 @@ export class WikipediaReferenceAutomation extends Automation {
 
     // Step 3: Fetch the Wikipedia article content
     // Extract article title from URL (e.g., "Human_chimerism" from "/wiki/Human_chimerism")
-    const articleTitle = articleUrl.split('/wiki/')[1]
-    if (!articleTitle) {
+    const extractedTitle = articleUrl.split('/wiki/')[1]
+    if (!extractedTitle) {
       logAutomation.warn(`Could not extract article title from URL: ${articleUrl}`)
       return { transactions: [] }
     }
     // Include redirects=1 to explicitly request redirect information
     // The API will automatically follow redirects, but this gives us redirect info for logging
-    const articleApiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&redirects=1&titles=${encodeURIComponent(articleTitle)}&format=json`
+    const articleApiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&redirects=1&titles=${encodeURIComponent(extractedTitle)}&format=json`
     const articleResult = await context.toolExecutor.execute({
       toolName: 'wget',
       arguments: [articleApiUrl, 30000],
@@ -121,6 +124,7 @@ export class WikipediaReferenceAutomation extends Automation {
     // Parse article content
     // Wikipedia API automatically follows redirects, but we need to handle the response structure
     let articleText: string | null = null
+    let articleTitle: string | null = null
     try {
       const articleData = JSON.parse(articleResultString) as {
         query?: {
@@ -151,9 +155,18 @@ export class WikipediaReferenceAutomation extends Automation {
               continue
             }
             
+            // Get article title
+            if (page.title && !articleTitle) {
+              articleTitle = page.title
+            }
+            
             // Check if page has extract content
             if ('extract' in page && typeof page.extract === 'string' && page.extract.trim().length > 0) {
               articleText = page.extract
+              // Use title from this page if we haven't set it yet
+              if (page.title && !articleTitle) {
+                articleTitle = page.title
+              }
               break // Use first page with valid extract
             }
           }
@@ -164,9 +177,12 @@ export class WikipediaReferenceAutomation extends Automation {
       if (!articleText && pages) {
         const pageIds = Object.keys(pages)
         if (pageIds.length > 0) {
-          const firstPage = pages[pageIds[0]]
-          if (firstPage) {
-            logAutomation.debug(`Wikipedia page found but no extract: title=${firstPage.title}, missing=${firstPage.missing}, invalid=${firstPage.invalid}, hasExtract=${!!firstPage.extract}`)
+          const firstPageId = pageIds[0]
+          if (firstPageId) {
+            const firstPage = pages[firstPageId]
+            if (firstPage) {
+              logAutomation.debug(`Wikipedia page found but no extract: title=${firstPage.title}, missing=${firstPage.missing}, invalid=${firstPage.invalid}, hasExtract=${!!firstPage.extract}`)
+            }
           }
         }
       }
@@ -180,6 +196,9 @@ export class WikipediaReferenceAutomation extends Automation {
       return { transactions: [] }
     }
 
+    // Use article title from API if available, otherwise use reference name
+    const finalArticleTitle = articleTitle || reference
+
     // Step 4: Use AI to summarize the relationship
     const summary = await this.summarizeReference(seed, reference, articleText, articleUrl, context)
 
@@ -188,24 +207,31 @@ export class WikipediaReferenceAutomation extends Automation {
       return { transactions: [] }
     }
 
-    // Step 5: Append summary to seed content
-    const newContent = `${existingContent}\n\n## Wikipedia Reference\n\n**${reference}**\n\n${summary}`
-
-    const transaction: SeedTransaction = {
-      id: uuidv4(),
-      seed_id: seed.id,
-      transaction_type: 'edit_content',
-      transaction_data: {
-        content: newContent,
-      },
-      created_at: new Date(),
-      automation_id: this.id || null,
+    // Step 5: Create Wikipedia sprout
+    const sproutData: WikipediaReferenceSproutData = {
+      reference,
+      article_url: articleUrl,
+      article_title: finalArticleTitle,
+      summary,
     }
 
-    logAutomation.info(`Added Wikipedia reference for "${reference}" to seed ${seed.id}`)
+    const sprout = await createWikipediaSprout(seed.id, sproutData, this.id || null)
 
+    // Create add_sprout transaction on the seed
+    await SeedTransactionsService.create({
+      seed_id: seed.id,
+      transaction_type: 'add_sprout',
+      transaction_data: {
+        sprout_id: sprout.id,
+      },
+      automation_id: this.id || null,
+    })
+
+    logAutomation.info(`Created Wikipedia reference sprout for "${reference}" on seed ${seed.id}`)
+
+    // Return empty transactions (sprouts are tracked separately, not as timeline events)
     return {
-      transactions: [transaction],
+      transactions: [],
       metadata: {
         reference,
         articleUrl,
@@ -303,6 +329,14 @@ Your task is to:
 3. Explain how this information might change or reinforce the seed's idea
 4. Write a concise summary (2-4 paragraphs)
 
+Write in a casual, direct style. Get straight to the point. Avoid filler words and phrases like "according to", "provides a", "which technically applies to", "exhibits characteristics", "this reinforces", "this distinction adds important context", etc. 
+
+Instead of: "According to the article, a human chimera is defined as..."
+Write: "A human chimera is defined as..."
+
+Instead of: "This reinforces the seed's premise by establishing..."
+Write: "The woman is a great example of a human chimera because..."
+
 Be specific and insightful. Focus on connections between the Wikipedia content and the seed's idea.`
 
     const userPrompt = `Seed content:
@@ -329,7 +363,8 @@ Summarize how this Wikipedia article relates to the seed's idea. Explain how it 
         return null
       }
 
-      return result.trim() + `\n\n[Read more on Wikipedia](${articleUrl})`
+      // Remove the "Read more on Wikipedia" link since we'll have the URL in the sprout
+      return result.trim()
     } catch (error) {
       logAutomation.error(`Error summarizing reference: ${error}`)
       return null
@@ -371,4 +406,5 @@ Summarize how this Wikipedia article relates to the seed's idea. Explain how it 
    * Default implementation is fine - will re-process seed
    */
 }
+
 

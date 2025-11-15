@@ -32,3 +32,13 @@
   font-size: var(--text-sm);
 }
 
+/* Limit sprout content (especially Wikipedia) to 3 lines with ellipsis */
+.transaction-history-item.sprout-item .transaction-history-content {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+

@@ -299,7 +299,7 @@ export interface IdeaMusing {
 }
 
 // Sprout system types
-export type SproutType = 'followup' | 'musing' | 'extra_context' | 'fact_check'
+export type SproutType = 'followup' | 'musing' | 'extra_context' | 'fact_check' | 'wikipedia_reference'
 
 export interface FollowupSproutData {
   trigger: 'manual' | 'automatic'
@@ -324,11 +324,19 @@ export interface FactCheckSproutData {
   [key: string]: unknown
 }
 
+export interface WikipediaReferenceSproutData {
+  reference: string  // The reference name (e.g., "Human chimerism")
+  article_url: string  // Full Wikipedia article URL
+  article_title: string  // Article title for display
+  summary: string  // The AI-generated summary
+}
+
 export type SproutData =
   | FollowupSproutData
   | MusingSproutData
   | ExtraContextSproutData
   | FactCheckSproutData
+  | WikipediaReferenceSproutData
 
 export interface Sprout {
   id: string
@@ -356,6 +364,41 @@ export interface FollowupSproutState {
   dismissed: boolean
   dismissed_at?: string // ISO string
   transactions: SproutFollowupTransaction[]
+}
+
+// Wikipedia sprout transaction types
+export type WikipediaTransactionType = 'creation' | 'edit'
+
+export interface WikipediaCreationTransactionData {
+  reference: string
+  article_url: string
+  article_title: string
+  summary: string
+}
+
+export interface WikipediaEditTransactionData {
+  old_summary: string
+  new_summary: string
+}
+
+export type WikipediaTransactionData =
+  | WikipediaCreationTransactionData
+  | WikipediaEditTransactionData
+
+export interface WikipediaTransaction {
+  id: string
+  sprout_id: string
+  transaction_type: WikipediaTransactionType
+  transaction_data: WikipediaTransactionData
+  created_at: string
+}
+
+export interface WikipediaSproutState {
+  reference: string
+  article_url: string
+  article_title: string
+  summary: string
+  transactions: WikipediaTransaction[]
 }
 
 // DTOs for sprout API requests

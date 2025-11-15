@@ -43,7 +43,6 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   }
 
   const token = authHeader.replace('Bearer ', '')
-  log.debug('Token received, length:', token.length, 'first 20 chars:', token.substring(0, 20))
 
   try {
     const payload = jwt.verify(token, config.jwt.secret) as JWTPayload

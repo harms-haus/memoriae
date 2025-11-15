@@ -5,6 +5,7 @@ import { SeedsService } from '../services/seeds'
 import { authenticate } from '../middleware/auth'
 import * as followupHandler from '../services/sprouts/followup-sprout'
 import * as musingHandler from '../services/sprouts/musing-sprout'
+import * as wikipediaHandler from '../services/sprouts/wikipedia-sprout'
 import { SeedTransactionsService } from '../services/seed-transactions'
 import type {
   EditFollowupSproutDto,
@@ -505,6 +506,141 @@ router.post('/sprouts/:sproutId/musing/complete', async (req: Request, res: Resp
       return
     }
     logRoutes.error(`POST /sprouts/:sproutId/musing/complete - Error:`, error)
+    next(error)
+  }
+})
+
+// ===== Wikipedia sprout type-specific routes =====
+
+/**
+ * GET /api/sprouts/:sproutId/wikipedia
+ * Get computed Wikipedia sprout state
+ */
+router.get('/sprouts/:sproutId/wikipedia', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { sproutId } = req.params
+
+    logRoutes.debug(`GET /sprouts/:sproutId/wikipedia - sproutId: ${sproutId}`)
+
+    if (!sproutId) {
+      res.status(400).json({ error: 'Sprout ID is required' })
+      return
+    }
+
+    // Verify sprout belongs to user
+    const ownsSprout = await SproutsService.verifySproutOwnership(sproutId, userId)
+    if (!ownsSprout) {
+      logRoutes.warn(`GET /sprouts/:sproutId/wikipedia - Sprout ${sproutId} not found or not owned by user`)
+      res.status(404).json({ error: 'Sprout not found' })
+      return
+    }
+
+    const sprout = await SproutsService.getById(sproutId)
+    if (!sprout) {
+      res.status(404).json({ error: 'Sprout not found' })
+      return
+    }
+
+    if (sprout.sprout_type !== 'wikipedia_reference') {
+      res.status(400).json({ error: 'Sprout is not a Wikipedia reference type' })
+      return
+    }
+
+    const state = await wikipediaHandler.getWikipediaState(sprout)
+    logRoutes.info(`GET /sprouts/:sproutId/wikipedia - Retrieved state for sprout ${sproutId}`)
+    res.json(state)
+  } catch (error: any) {
+    if (error.message === 'Sprout not found' || error.message === 'Sprout is not a Wikipedia reference type' || error.message === 'Wikipedia sprout must have a creation transaction') {
+      res.status(404).json({ error: error.message })
+      return
+    }
+    logRoutes.error(`GET /sprouts/:sproutId/wikipedia - Error:`, error)
+    next(error)
+  }
+})
+
+/**
+ * PUT /api/sprouts/:sproutId/wikipedia
+ * Edit a Wikipedia sprout summary
+ */
+router.put('/sprouts/:sproutId/wikipedia', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { sproutId } = req.params
+    const { summary } = req.body
+
+    logRoutes.debug(`PUT /sprouts/:sproutId/wikipedia - sproutId: ${sproutId}`)
+
+    if (!sproutId) {
+      res.status(400).json({ error: 'Sprout ID is required' })
+      return
+    }
+
+    if (!summary || typeof summary !== 'string') {
+      res.status(400).json({ error: 'Summary is required and must be a string' })
+      return
+    }
+
+    // Verify sprout belongs to user
+    const ownsSprout = await SproutsService.verifySproutOwnership(sproutId, userId)
+    if (!ownsSprout) {
+      logRoutes.warn(`PUT /sprouts/:sproutId/wikipedia - Sprout ${sproutId} not found or not owned by user`)
+      res.status(404).json({ error: 'Sprout not found' })
+      return
+    }
+
+    const state = await wikipediaHandler.editWikipediaSummary(sproutId, summary)
+    logRoutes.info(`PUT /sprouts/:sproutId/wikipedia - Edited sprout ${sproutId}`)
+    res.json(state)
+  } catch (error: any) {
+    if (error.message === 'Sprout not found' || error.message === 'Sprout is not a Wikipedia reference type') {
+      res.status(404).json({ error: error.message })
+      return
+    }
+    logRoutes.error(`PUT /sprouts/:sproutId/wikipedia - Error:`, error)
+    next(error)
+  }
+})
+
+/**
+ * POST /api/sprouts/:sproutId/wikipedia/regenerate
+ * Regenerate a Wikipedia sprout by re-fetching the article and regenerating the summary
+ */
+router.post('/sprouts/:sproutId/wikipedia/regenerate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id
+    const { sproutId } = req.params
+
+    logRoutes.debug(`POST /sprouts/:sproutId/wikipedia/regenerate - sproutId: ${sproutId}`)
+
+    if (!sproutId) {
+      res.status(400).json({ error: 'Sprout ID is required' })
+      return
+    }
+
+    // Verify sprout belongs to user
+    const ownsSprout = await SproutsService.verifySproutOwnership(sproutId, userId)
+    if (!ownsSprout) {
+      logRoutes.warn(`POST /sprouts/:sproutId/wikipedia/regenerate - Sprout ${sproutId} not found or not owned by user`)
+      res.status(404).json({ error: 'Sprout not found' })
+      return
+    }
+
+    const state = await wikipediaHandler.regenerateWikipediaSprout(sproutId, userId)
+    logRoutes.info(`POST /sprouts/:sproutId/wikipedia/regenerate - Regenerated sprout ${sproutId}`)
+    res.json(state)
+  } catch (error: any) {
+    if (error.message === 'Sprout not found' || 
+        error.message === 'Sprout is not a Wikipedia reference type' ||
+        error.message === 'Seed not found or access denied' ||
+        error.message === 'OpenRouter API key not configured' ||
+        error.message === 'Failed to fetch Wikipedia article' ||
+        error.message === 'Failed to generate summary') {
+      res.status(400).json({ error: error.message })
+      return
+    }
+    logRoutes.error(`POST /sprouts/:sproutId/wikipedia/regenerate - Error:`, error)
     next(error)
   }
 })

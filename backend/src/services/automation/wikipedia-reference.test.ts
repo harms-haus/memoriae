@@ -6,6 +6,10 @@ import type { OpenRouterClient } from '../openrouter/client'
 import type { AutomationContext, CategoryChange } from './base'
 import type { ToolExecutor, ToolResult } from './tools/executor'
 import { useToolsWithAI } from './tools/injector'
+import { SproutsService } from '../sprouts'
+import { createWikipediaSprout } from '../sprouts/wikipedia-sprout'
+import { SeedTransactionsService } from '../seed-transactions'
+import type { Sprout } from '../../types/sprouts'
 
 // Suppress logs during testing
 vi.mock('loglevel', () => ({
@@ -22,6 +26,25 @@ vi.mock('loglevel', () => ({
 // Mock useToolsWithAI
 vi.mock('./tools/injector', () => ({
   useToolsWithAI: vi.fn(),
+}))
+
+// Mock SproutsService
+vi.mock('../sprouts', () => ({
+  SproutsService: {
+    getBySeedId: vi.fn(),
+  },
+}))
+
+// Mock wikipedia-sprout service
+vi.mock('../sprouts/wikipedia-sprout', () => ({
+  createWikipediaSprout: vi.fn(),
+}))
+
+// Mock SeedTransactionsService
+vi.mock('../seed-transactions', () => ({
+  SeedTransactionsService: {
+    create: vi.fn(),
+  },
 }))
 
 describe('WikipediaReferenceAutomation', () => {
@@ -74,6 +97,9 @@ describe('WikipediaReferenceAutomation', () => {
 
   describe('process', () => {
     it('should successfully add Wikipedia reference to seed', async () => {
+      // Mock no existing Wikipedia sprouts
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
+
       // Mock identifyReference
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
@@ -100,6 +126,7 @@ describe('WikipediaReferenceAutomation', () => {
           pages: {
             '12345': {
               extract: 'Human chimerism is a condition where an individual has two sets of DNA...',
+              title: 'Human chimerism',
             },
           },
         },
@@ -113,13 +140,47 @@ describe('WikipediaReferenceAutomation', () => {
       // Mock summary generation
       mockGenerateText.mockResolvedValue('This article explains human chimerism in detail...')
 
+      // Mock sprout creation
+      const mockSprout: Sprout = {
+        id: 'sprout-123',
+        seed_id: mockSeed.id,
+        sprout_type: 'wikipedia_reference',
+        sprout_data: {
+          reference: 'Human chimerism',
+          article_url: 'https://en.wikipedia.org/wiki/Human_chimerism',
+          article_title: 'Human chimerism',
+          summary: 'This article explains human chimerism in detail...',
+        },
+        created_at: new Date(),
+        automation_id: 'automation-123',
+      }
+      vi.mocked(createWikipediaSprout).mockResolvedValue(mockSprout)
+
+      // Mock transaction creation
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined)
+
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.transactions).toHaveLength(1)
-      expect(result.transactions[0]?.transaction_type).toBe('edit_content')
-      expect(result.transactions[0]?.transaction_data).toHaveProperty('content')
-      expect((result.transactions[0]?.transaction_data as { content: string }).content).toContain('## Wikipedia Reference')
-      expect((result.transactions[0]?.transaction_data as { content: string }).content).toContain('Human chimerism')
+      expect(result.transactions).toHaveLength(0) // Sprouts are tracked separately
+      expect(createWikipediaSprout).toHaveBeenCalledWith(
+        mockSeed.id,
+        expect.objectContaining({
+          reference: 'Human chimerism',
+          article_url: 'https://en.wikipedia.org/wiki/Human_chimerism',
+          article_title: 'Human chimerism',
+          summary: 'This article explains human chimerism in detail...',
+        }),
+        'automation-123'
+      )
+      expect(SeedTransactionsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          seed_id: mockSeed.id,
+          transaction_type: 'add_sprout',
+          transaction_data: {
+            sprout_id: 'sprout-123',
+          },
+        })
+      )
       expect(result.metadata).toEqual({
         reference: 'Human chimerism',
         articleUrl: 'https://en.wikipedia.org/wiki/Human_chimerism',
@@ -127,15 +188,26 @@ describe('WikipediaReferenceAutomation', () => {
     }, 10000)
 
     it('should skip if seed already has Wikipedia reference', async () => {
-      mockSeed.currentState.seed = 'Content\n\n## Wikipedia Reference\n\nAlready has reference'
+      // Mock existing Wikipedia sprout
+      const existingSprout: Sprout = {
+        id: 'existing-sprout',
+        seed_id: mockSeed.id,
+        sprout_type: 'wikipedia_reference',
+        sprout_data: {},
+        created_at: new Date(),
+        automation_id: null,
+      }
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([existingSprout])
 
       const result = await automation.process(mockSeed, mockContext)
 
       expect(result.transactions).toHaveLength(0)
       expect(useToolsWithAI).not.toHaveBeenCalled()
+      expect(createWikipediaSprout).not.toHaveBeenCalled()
     })
 
     it('should return empty transactions if no reference found', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue(null)
 
       const result = await automation.process(mockSeed, mockContext)
@@ -145,6 +217,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if reference identification returns null reference', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: null,
         searchQuery: 'test',
@@ -156,6 +229,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if Wikipedia search fails', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -174,6 +248,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if search result is not a string', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -191,6 +266,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if search results JSON is invalid', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -208,6 +284,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if search results have no URLs', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -231,6 +308,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if article URL extraction fails', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -254,6 +332,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if article fetch fails', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -284,6 +363,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if article content parsing fails', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -313,6 +393,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if article has no extract text', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -351,6 +432,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should return empty transactions if summary generation fails', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Human chimerism',
         searchQuery: 'Human chimerism',
@@ -391,6 +473,7 @@ describe('WikipediaReferenceAutomation', () => {
     })
 
     it('should handle article URL with special characters', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'C++',
         searchQuery: 'C++',
@@ -425,13 +508,26 @@ describe('WikipediaReferenceAutomation', () => {
 
       mockGenerateText.mockResolvedValue('Summary text')
 
+      // Mock sprout creation
+      const mockSprout: Sprout = {
+        id: 'sprout-123',
+        seed_id: mockSeed.id,
+        sprout_type: 'wikipedia_reference',
+        sprout_data: {},
+        created_at: new Date(),
+        automation_id: 'automation-123',
+      }
+      vi.mocked(createWikipediaSprout).mockResolvedValue(mockSprout)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined)
+
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.transactions).toHaveLength(1)
+      expect(result.transactions).toHaveLength(0) // Sprouts are tracked separately
       expect(result.metadata?.articleUrl).toBe('https://en.wikipedia.org/wiki/C%2B%2B')
     }, 10000)
 
     it('should truncate very long article text', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Test',
         searchQuery: 'Test',
@@ -466,6 +562,18 @@ describe('WikipediaReferenceAutomation', () => {
       } as ToolResult)
 
       mockGenerateText.mockResolvedValue('Summary')
+
+      // Mock sprout creation
+      const mockSprout: Sprout = {
+        id: 'sprout-123',
+        seed_id: mockSeed.id,
+        sprout_type: 'wikipedia_reference',
+        sprout_data: {},
+        created_at: new Date(),
+        automation_id: 'automation-123',
+      }
+      vi.mocked(createWikipediaSprout).mockResolvedValue(mockSprout)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined)
 
       await automation.process(mockSeed, mockContext)
 
@@ -594,8 +702,8 @@ describe('WikipediaReferenceAutomation', () => {
       )
 
       expect(result).toContain('This article explains human chimerism...')
-      expect(result).toContain('[Read more on Wikipedia]')
-      expect(result).toContain(articleUrl)
+      // Note: The summary no longer includes "[Read more on Wikipedia]" link
+      // as the URL is stored in the sprout data instead
     })
 
     it('should return null if summary is empty', async () => {
@@ -761,7 +869,8 @@ describe('WikipediaReferenceAutomation', () => {
   })
 
   describe('integration', () => {
-    it('should create transaction with correct structure', async () => {
+    it('should create sprout with correct structure', async () => {
+      vi.mocked(SproutsService.getBySeedId).mockResolvedValue([])
       vi.mocked(useToolsWithAI).mockResolvedValue({
         reference: 'Test Reference',
         searchQuery: 'Test Reference',
@@ -778,6 +887,7 @@ describe('WikipediaReferenceAutomation', () => {
           pages: {
             '12345': {
               extract: 'Test article content',
+              title: 'Test Reference',
             },
           },
         },
@@ -796,22 +906,45 @@ describe('WikipediaReferenceAutomation', () => {
 
       mockGenerateText.mockResolvedValue('Test summary')
 
+      // Mock sprout creation
+      const mockSprout: Sprout = {
+        id: 'sprout-123',
+        seed_id: mockSeed.id,
+        sprout_type: 'wikipedia_reference',
+        sprout_data: {
+          reference: 'Test Reference',
+          article_url: 'https://en.wikipedia.org/wiki/Test_Reference',
+          article_title: 'Test Reference',
+          summary: 'Test summary',
+        },
+        created_at: new Date(),
+        automation_id: 'automation-123',
+      }
+      vi.mocked(createWikipediaSprout).mockResolvedValue(mockSprout)
+      vi.mocked(SeedTransactionsService.create).mockResolvedValue(undefined)
+
       const result = await automation.process(mockSeed, mockContext)
 
-      expect(result.transactions).toHaveLength(1)
-      const transaction = result.transactions[0]
-      expect(transaction?.seed_id).toBe('seed-123')
-      expect(transaction?.transaction_type).toBe('edit_content')
-      expect(transaction?.automation_id).toBe('automation-123')
-      expect(transaction?.created_at).toBeInstanceOf(Date)
-      expect((transaction?.transaction_data as { content: string }).content).toContain(
-        '## Wikipedia Reference'
+      expect(result.transactions).toHaveLength(0) // Sprouts are tracked separately
+      expect(createWikipediaSprout).toHaveBeenCalledWith(
+        'seed-123',
+        expect.objectContaining({
+          reference: 'Test Reference',
+          article_url: 'https://en.wikipedia.org/wiki/Test_Reference',
+          article_title: 'Test Reference',
+          summary: 'Test summary',
+        }),
+        'automation-123'
       )
-      expect((transaction?.transaction_data as { content: string }).content).toContain(
-        '**Test Reference**'
-      )
-      expect((transaction?.transaction_data as { content: string }).content).toContain(
-        'Test summary'
+      expect(SeedTransactionsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          seed_id: 'seed-123',
+          transaction_type: 'add_sprout',
+          transaction_data: {
+            sprout_id: 'sprout-123',
+          },
+          automation_id: 'automation-123',
+        })
       )
     }, 10000)
   })

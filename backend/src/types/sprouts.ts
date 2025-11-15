@@ -1,6 +1,6 @@
 // Sprout system types and interfaces
 
-export type SproutType = 'followup' | 'musing' | 'extra_context' | 'fact_check'
+export type SproutType = 'followup' | 'musing' | 'extra_context' | 'fact_check' | 'wikipedia_reference'
 
 /**
  * Database row for sprouts table
@@ -34,6 +34,7 @@ export type SproutData =
   | MusingSproutData
   | ExtraContextSproutData
   | FactCheckSproutData
+  | WikipediaReferenceSproutData
 
 /**
  * Followup sprout data (stored in sprout_data JSONB)
@@ -91,6 +92,17 @@ export interface ExtraContextSproutData {
 export interface FactCheckSproutData {
   // Placeholder - to be implemented
   [key: string]: unknown
+}
+
+/**
+ * Wikipedia reference sprout data (stored in sprout_data JSONB)
+ * State is computed from sprout_wikipedia_transactions
+ */
+export interface WikipediaReferenceSproutData {
+  reference: string  // The reference name (e.g., "Human chimerism")
+  article_url: string  // Full Wikipedia article URL
+  article_title: string  // Article title for display
+  summary: string  // The AI-generated summary
 }
 
 /**
@@ -199,5 +211,59 @@ export interface DismissFollowupSproutDto {
 export interface CreateMusingSproutDto {
   template_type: 'numbered_ideas' | 'wikipedia_links' | 'markdown'
   content: MusingContent
+}
+
+/**
+ * Wikipedia sprout transaction types
+ */
+export type WikipediaTransactionType = 'creation' | 'edit'
+
+export interface WikipediaCreationTransactionData {
+  reference: string
+  article_url: string
+  article_title: string
+  summary: string
+}
+
+export interface WikipediaEditTransactionData {
+  old_summary: string
+  new_summary: string
+}
+
+export type WikipediaTransactionData =
+  | WikipediaCreationTransactionData
+  | WikipediaEditTransactionData
+
+/**
+ * Database row for sprout_wikipedia_transactions table
+ */
+export interface SproutWikipediaTransactionRow {
+  id: string
+  sprout_id: string
+  transaction_type: WikipediaTransactionType
+  transaction_data: WikipediaTransactionData
+  created_at: Date
+}
+
+/**
+ * Wikipedia sprout transaction with computed state
+ */
+export interface WikipediaTransaction {
+  id: string
+  sprout_id: string
+  transaction_type: WikipediaTransactionType
+  transaction_data: WikipediaTransactionData
+  created_at: Date
+}
+
+/**
+ * Computed Wikipedia sprout state (rebuilt from transactions)
+ */
+export interface WikipediaSproutState {
+  reference: string
+  article_url: string
+  article_title: string
+  summary: string
+  transactions: WikipediaTransaction[]
 }
 

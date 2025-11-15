@@ -229,7 +229,7 @@ describe('SeedTimeline Component', () => {
       expect(screen.getByText('Category removed')).toBeInTheDocument()
     })
 
-    it('should render add_sprout transaction', () => {
+    it('should not render add_sprout transaction (sprouts are displayed separately)', () => {
       const transactions: SeedTransaction[] = [
         {
           id: 'txn-1',
@@ -247,8 +247,49 @@ describe('SeedTimeline Component', () => {
         </MemoryRouter>
       )
 
-      expect(screen.getByText('Sprout Added')).toBeInTheDocument()
-      expect(screen.getByText('Sprout added')).toBeInTheDocument()
+      // add_sprout transactions should be filtered out - only the sprout itself should appear
+      expect(screen.queryByText('Sprout Added')).not.toBeInTheDocument()
+      expect(screen.queryByText('Sprout added')).not.toBeInTheDocument()
+    })
+
+    it('should only show sprout when both add_sprout transaction and sprout exist', () => {
+      const transactions: SeedTransaction[] = [
+        {
+          id: 'txn-1',
+          seed_id: 'seed-1',
+          transaction_type: 'add_sprout',
+          transaction_data: { sprout_id: 'sprout-1' },
+          created_at: '2024-01-01T12:00:00.000Z',
+          automation_id: null,
+        },
+      ]
+
+      const sprouts: Sprout[] = [
+        {
+          id: 'sprout-1',
+          seed_id: 'seed-1',
+          sprout_type: 'wikipedia_reference',
+          sprout_data: {
+            reference: 'Human chimerism',
+            article_url: 'https://en.wikipedia.org/wiki/Human_chimerism',
+            article_title: 'Human chimerism',
+            summary: 'Summary text',
+          },
+          created_at: '2024-01-01T12:00:00.000Z',
+          automation_id: null,
+        },
+      ]
+
+      render(
+        <MemoryRouter>
+          <SeedTimeline transactions={transactions} sprouts={sprouts} getColor={getColor} />
+        </MemoryRouter>
+      )
+
+      // Should show the sprout, not the "Sprout Added" transaction
+      expect(screen.getByText('Human chimerism')).toBeInTheDocument()
+      expect(screen.queryByText('Sprout Added')).not.toBeInTheDocument()
+      expect(screen.queryByText('Sprout added')).not.toBeInTheDocument()
     })
 
     it('should render automated transaction with indicator', () => {
@@ -940,6 +981,71 @@ describe('SeedTimeline Component', () => {
 
       const transactionItem = screen.getByText('Seed Created').closest('.transaction-history-item')
       expect(transactionItem).toHaveStyle({ cursor: 'default' })
+    })
+
+    it('should render Wikipedia sprout with reference header and first 3 lines', () => {
+      const sprouts: Sprout[] = [
+        {
+          id: 'sprout-1',
+          seed_id: 'seed-1',
+          sprout_type: 'wikipedia_reference',
+          sprout_data: {
+            reference: 'Human chimerism',
+            article_url: 'https://en.wikipedia.org/wiki/Human_chimerism',
+            article_title: 'Human chimerism',
+            summary: 'First line of summary.\n\nSecond line of summary.\n\nThird line of summary.\n\nFourth line that should not appear.',
+          },
+          created_at: '2024-01-01T12:00:00.000Z',
+          automation_id: null,
+        },
+      ]
+
+      render(
+        <MemoryRouter>
+          <SeedTimeline transactions={[]} sprouts={sprouts} getColor={getColor} />
+        </MemoryRouter>
+      )
+
+      // Check that reference name is displayed as title
+      expect(screen.getByText('Human chimerism')).toBeInTheDocument()
+      
+      // Check that first 3 lines are displayed
+      expect(screen.getByText(/First line of summary/)).toBeInTheDocument()
+      expect(screen.getByText(/Second line of summary/)).toBeInTheDocument()
+      expect(screen.getByText(/Third line of summary/)).toBeInTheDocument()
+      
+      // Check that fourth line is not displayed
+      expect(screen.queryByText(/Fourth line that should not appear/)).not.toBeInTheDocument()
+    })
+
+    it('should make Wikipedia sprout title a clickable link', () => {
+      const sprouts: Sprout[] = [
+        {
+          id: 'sprout-1',
+          seed_id: 'seed-1',
+          sprout_type: 'wikipedia_reference',
+          sprout_data: {
+            reference: 'Human chimerism',
+            article_url: 'https://en.wikipedia.org/wiki/Human_chimerism',
+            article_title: 'Human chimerism',
+            summary: 'Summary text',
+          },
+          created_at: '2024-01-01T12:00:00.000Z',
+          automation_id: null,
+        },
+      ]
+
+      render(
+        <MemoryRouter>
+          <SeedTimeline transactions={[]} sprouts={sprouts} getColor={getColor} />
+        </MemoryRouter>
+      )
+
+      const link = screen.getByText('Human chimerism').closest('a')
+      expect(link).toBeInTheDocument()
+      expect(link).toHaveAttribute('href', 'https://en.wikipedia.org/wiki/Human_chimerism')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 

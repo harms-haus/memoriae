@@ -10,6 +10,7 @@ interface ExtendedMessage extends TransactionHistoryMessage {
   transactionType?: string
   transactionData?: any
   automationId?: string | null
+  articleUrl?: string // For Wikipedia sprouts
 }
 
 const formatRelativeTime = (date: string | Date): string => {
@@ -71,8 +72,12 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
       sprout?: Sprout
     }> = []
 
-    // Add transactions
+    // Add transactions (exclude add_sprout since sprouts are displayed separately)
     transactions.forEach((transaction) => {
+      // Skip add_sprout transactions - the sprout itself will be displayed
+      if (transaction.transaction_type === 'add_sprout') {
+        return
+      }
       items.push({
         id: transaction.id,
         type: 'transaction',
@@ -181,6 +186,29 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
             const musingData = sprout.sprout_data as { template_type: string }
             content = `Musing (${musingData.template_type})`
             break
+          case 'wikipedia_reference':
+            const wikipediaData = sprout.sprout_data as { reference: string; summary: string; article_url: string }
+            title = wikipediaData.reference || 'Wikipedia Reference'
+            // Truncate summary to approximately 3 lines (around 250 characters)
+            const fullSummary = wikipediaData.summary || ''
+            const maxLength = 250
+            if (fullSummary.length > maxLength) {
+              // Find the last space before maxLength to avoid cutting words
+              const truncated = fullSummary.substring(0, maxLength)
+              const lastSpace = truncated.lastIndexOf(' ')
+              content = lastSpace > 0 ? truncated.substring(0, lastSpace) + '...' : truncated + '...'
+            } else {
+              content = fullSummary
+            }
+            // Store article URL for link rendering
+            return {
+              id: sprout.id,
+              title,
+              content,
+              time: sprout.created_at,
+              groupKey: `sprout-${sprout.sprout_type}`,
+              articleUrl: wikipediaData.article_url,
+            }
           case 'extra_context':
             title = 'Extra Context Sprout'
             content = 'Extra context sprout'
@@ -218,11 +246,11 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
   }, [timelineItems])
 
   // Group consecutive tag additions that are within time threshold and not interrupted
-  const messages: TransactionHistoryMessage[] = useMemo(() => {
+  const messages: ExtendedMessage[] = useMemo(() => {
     if (rawMessages.length === 0) return []
 
     const GROUP_THRESHOLD_MS = 60000 // 1 minute - tags added within this time are grouped
-    const grouped: TransactionHistoryMessage[] = []
+    const grouped: ExtendedMessage[] = []
     let currentTagGroup: ExtendedMessage[] = []
 
     for (let i = 0; i < rawMessages.length; i++) {
@@ -412,14 +440,33 @@ export function SeedTimeline({ transactions, sprouts, getColor }: SeedTimelinePr
               }}
             >
               <div className="transaction-history-header">
-                <span
-                  className="transaction-history-title"
-                  style={{
-                    color: color,
-                  }}
-                >
-                  {message.title}
-                </span>
+                {message.articleUrl ? (
+                  <a
+                    href={message.articleUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="transaction-history-title"
+                    style={{
+                      color: color,
+                      textDecoration: 'underline',
+                    }}
+                    onClick={(e) => {
+                      // Prevent navigation to sprout detail when clicking the link
+                      e.stopPropagation()
+                    }}
+                  >
+                    {message.title}
+                  </a>
+                ) : (
+                  <span
+                    className="transaction-history-title"
+                    style={{
+                      color: color,
+                    }}
+                  >
+                    {message.title}
+                  </span>
+                )}
                 <span className="transaction-history-time">
                   {formatRelativeTime(message.time)}
                 </span>

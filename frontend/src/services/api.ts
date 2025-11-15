@@ -15,6 +15,7 @@ import type {
   SnoozeFollowupSproutDto,
   DismissFollowupSproutDto,
   FollowupSproutState,
+  WikipediaSproutState,
 } from '../types'
 import log from 'loglevel'
 
@@ -264,6 +265,19 @@ class ApiClient {
 
   async dismissFollowupSprout(sproutId: string, data: DismissFollowupSproutDto): Promise<FollowupSproutState> {
     return this.post<FollowupSproutState>(`/sprouts/${sproutId}/followup/dismiss`, data)
+  }
+
+  // Wikipedia sprout type-specific endpoints
+  async getWikipediaSproutState(sproutId: string): Promise<WikipediaSproutState> {
+    return this.get<WikipediaSproutState>(`/sprouts/${sproutId}/wikipedia`)
+  }
+
+  async editWikipediaSprout(sproutId: string, summary: string): Promise<WikipediaSproutState> {
+    return this.put<WikipediaSproutState>(`/sprouts/${sproutId}/wikipedia`, { summary })
+  }
+
+  async regenerateWikipediaSprout(sproutId: string): Promise<WikipediaSproutState> {
+    return this.post<WikipediaSproutState>(`/sprouts/${sproutId}/wikipedia/regenerate`)
   }
 
   // Musing sprout type-specific endpoints
