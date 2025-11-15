@@ -397,6 +397,112 @@ describe('TimelineView Component', () => {
         expect(screen.getByTestId('timeline-item-seed-2')).toBeInTheDocument()
       })
     })
+
+    it('should handle single seed', async () => {
+      const singleSeed: Seed[] = [
+        {
+          id: 'seed-1',
+          user_id: 'user-1',
+          created_at: '2024-01-01T00:00:00Z',
+          currentState: {
+            seed: 'Seed 1',
+            timestamp: '2024-01-01T00:00:00Z',
+            metadata: {},
+          },
+        },
+      ]
+      
+      vi.mocked(api.get).mockResolvedValue(singleSeed)
+      
+      render(
+        <MemoryRouter>
+          <TimelineView />
+        </MemoryRouter>
+      )
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('timeline')).toBeInTheDocument()
+        expect(screen.getByTestId('timeline-item-seed-1')).toBeInTheDocument()
+      })
+    })
+
+    it('should handle tags API error gracefully', async () => {
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === '/seeds') {
+          return Promise.resolve(mockSeeds)
+        }
+        if (url === '/tags') {
+          return Promise.reject(new Error('Tags API error'))
+        }
+        return Promise.resolve([])
+      })
+      
+      render(
+        <MemoryRouter>
+          <TimelineView />
+        </MemoryRouter>
+      )
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('timeline')).toBeInTheDocument()
+      })
+    })
+
+    it('should handle seed with slug in onSeedSelect', async () => {
+      const user = userEvent.setup()
+      const onSeedSelect = vi.fn()
+      const seedWithSlug: Seed[] = [
+        {
+          id: 'seed-1',
+          user_id: 'user-1',
+          slug: 'test-slug',
+          created_at: '2024-01-01T00:00:00Z',
+          currentState: {
+            seed: 'First seed',
+            timestamp: '2024-01-01T00:00:00Z',
+            metadata: {},
+            tags: [],
+          },
+        },
+      ]
+      
+      vi.mocked(api.get).mockResolvedValue(seedWithSlug)
+      
+      render(
+        <MemoryRouter>
+          <TimelineView onSeedSelect={onSeedSelect} />
+        </MemoryRouter>
+      )
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('seed-view-seed-1')).toBeInTheDocument()
+      })
+      
+      const seedContent = screen.getByTestId('seed-view-seed-1').closest('.timeline-seed-content')
+      if (seedContent) {
+        await user.click(seedContent)
+      }
+      
+      expect(onSeedSelect).toHaveBeenCalledWith({ id: 'seed-1', slug: 'test-slug' })
+    })
+
+    it('should handle refreshRef cleanup', async () => {
+      const refreshRef = { current: null as (() => void) | null }
+      
+      const { unmount } = render(
+        <MemoryRouter>
+          <TimelineView refreshRef={refreshRef} />
+        </MemoryRouter>
+      )
+      
+      await waitFor(() => {
+        expect(refreshRef.current).toBeTruthy()
+      })
+      
+      unmount()
+      
+      expect(refreshRef.current).toBeNull()
+    })
   })
 })
 

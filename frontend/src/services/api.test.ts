@@ -212,5 +212,293 @@ describe('ApiClient', () => {
     })
   })
 
+  describe('Followup Methods', () => {
+    it('should call getFollowups with correct endpoint', async () => {
+      const client = (api as any).client
+      const seedId = 'seed-123'
+      const mockFollowups = [
+        {
+          id: 'followup-1',
+          seed_id: seedId,
+          message: 'Follow up message',
+          due_at: new Date().toISOString(),
+        },
+      ]
+
+      client.get.mockResolvedValue({ data: mockFollowups })
+
+      const result = await api.getFollowups(seedId)
+
+      expect(client.get).toHaveBeenCalledWith(`/seeds/${seedId}/followups`, undefined)
+      expect(result).toEqual(mockFollowups)
+    })
+
+    it('should call createFollowup with correct endpoint', async () => {
+      const client = (api as any).client
+      const seedId = 'seed-123'
+      const followupData = {
+        message: 'New followup',
+        due_time: new Date().toISOString(),
+      }
+
+      client.post.mockResolvedValue({ data: { id: 'followup-1', ...followupData } })
+
+      await api.createFollowup(seedId, followupData)
+
+      expect(client.post).toHaveBeenCalledWith(`/seeds/${seedId}/followups`, followupData, undefined)
+    })
+
+    it('should call editFollowup with correct endpoint', async () => {
+      const client = (api as any).client
+      const followupId = 'followup-123'
+      const editData = { message: 'Updated message' }
+
+      client.put.mockResolvedValue({ data: { id: followupId, ...editData } })
+
+      await api.editFollowup(followupId, editData)
+
+      expect(client.put).toHaveBeenCalledWith(`/followups/${followupId}`, editData, undefined)
+    })
+
+    it('should call snoozeFollowup with correct endpoint', async () => {
+      const client = (api as any).client
+      const followupId = 'followup-123'
+      const durationMinutes = 60
+
+      client.post.mockResolvedValue({ data: { id: followupId } })
+
+      await api.snoozeFollowup(followupId, durationMinutes)
+
+      expect(client.post).toHaveBeenCalledWith(
+        `/followups/${followupId}/snooze`,
+        { duration_minutes: durationMinutes },
+        undefined
+      )
+    })
+
+    it('should call dismissFollowup with correct endpoint', async () => {
+      const client = (api as any).client
+      const followupId = 'followup-123'
+      const type = 'followup' as const
+
+      client.post.mockResolvedValue({ data: { id: followupId } })
+
+      await api.dismissFollowup(followupId, type)
+
+      expect(client.post).toHaveBeenCalledWith(
+        `/followups/${followupId}/dismiss`,
+        { type },
+        undefined
+      )
+    })
+
+    it('should call getDueFollowups with correct endpoint', async () => {
+      const client = (api as any).client
+      const mockDueFollowups = [
+        {
+          followup_id: 'followup-1',
+          seed_id: 'seed-1',
+          message: 'Due followup',
+        },
+      ]
+
+      client.get.mockResolvedValue({ data: mockDueFollowups })
+
+      const result = await api.getDueFollowups()
+
+      expect(client.get).toHaveBeenCalledWith('/followups/due', undefined)
+      expect(result).toEqual(mockDueFollowups)
+    })
+  })
+
+  describe('Transaction Methods', () => {
+    it('should call getSeedTransactions with correct endpoint', async () => {
+      const client = (api as any).client
+      const seedId = 'seed-123'
+      const mockTransactions = [
+        {
+          id: 'txn-1',
+          seed_id: seedId,
+          transaction_type: 'create_seed',
+          transaction_data: {},
+          created_at: new Date().toISOString(),
+        },
+      ]
+
+      client.get.mockResolvedValue({ data: mockTransactions })
+
+      const result = await api.getSeedTransactions(seedId)
+
+      expect(client.get).toHaveBeenCalledWith(`/seeds/${seedId}/transactions`, undefined)
+      expect(result).toEqual(mockTransactions)
+    })
+
+    it('should call createSeedTransaction with correct endpoint', async () => {
+      const client = (api as any).client
+      const seedId = 'seed-123'
+      const transactionData = {
+        transaction_type: 'edit_content' as const,
+        transaction_data: { content: 'New content' },
+      }
+
+      client.post.mockResolvedValue({ data: { id: 'txn-1', ...transactionData } })
+
+      await api.createSeedTransaction(seedId, transactionData)
+
+      expect(client.post).toHaveBeenCalledWith(
+        `/seeds/${seedId}/transactions`,
+        transactionData,
+        undefined
+      )
+    })
+
+    it('should call getSeedTransaction with correct endpoint', async () => {
+      const client = (api as any).client
+      const transactionId = 'txn-123'
+
+      client.get.mockResolvedValue({ data: { id: transactionId } })
+
+      await api.getSeedTransaction(transactionId)
+
+      expect(client.get).toHaveBeenCalledWith(`/transactions/${transactionId}`, undefined)
+    })
+  })
+
+  describe('Tag Methods', () => {
+    it('should call getTagDetail with correct endpoint', async () => {
+      const client = (api as any).client
+      const tagId = 'tag-123'
+
+      client.get.mockResolvedValue({ data: { id: tagId } })
+
+      await api.getTagDetail(tagId)
+
+      expect(client.get).toHaveBeenCalledWith(`/tags/${tagId}`, undefined)
+    })
+
+    it('should call updateTag with correct endpoint', async () => {
+      const client = (api as any).client
+      const tagId = 'tag-123'
+      const updateData = { name: 'Updated tag', color: '#ff0000' }
+
+      client.put.mockResolvedValue({ data: { id: tagId, ...updateData } })
+
+      await api.updateTag(tagId, updateData)
+
+      expect(client.put).toHaveBeenCalledWith(`/tags/${tagId}`, updateData, undefined)
+    })
+
+    it('should call getTagSeeds with correct endpoint', async () => {
+      const client = (api as any).client
+      const tagId = 'tag-123'
+
+      client.get.mockResolvedValue({ data: [] })
+
+      await api.getTagSeeds(tagId)
+
+      expect(client.get).toHaveBeenCalledWith(`/tags/${tagId}/seeds`, undefined)
+    })
+  })
+
+  describe('Auth Methods', () => {
+    it('should call getAuthStatus with correct endpoint', async () => {
+      const client = (api as any).client
+      const mockStatus = {
+        authenticated: true,
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+          name: 'Test User',
+          provider: 'google',
+        },
+      }
+
+      client.get.mockResolvedValue({ data: mockStatus })
+
+      const result = await api.getAuthStatus()
+
+      expect(client.get).toHaveBeenCalledWith('/auth/status')
+      expect(result).toEqual(mockStatus)
+    })
+
+    it('should handle 401 error in getAuthStatus', async () => {
+      const client = (api as any).client
+      const axios = await import('axios')
+      
+      // Mock isAxiosError to return true
+      vi.mocked(axios.default.isAxiosError).mockReturnValue(true)
+      
+      const axiosError = {
+        response: { status: 401 },
+        isAxiosError: true,
+      }
+
+      client.get.mockRejectedValue(axiosError)
+
+      const result = await api.getAuthStatus()
+
+      expect(result).toEqual({
+        authenticated: false,
+        user: null,
+      })
+    })
+
+    it('should call logout with correct endpoint', async () => {
+      const client = (api as any).client
+
+      client.post.mockResolvedValue({ data: {} })
+
+      await api.logout()
+
+      expect(client.post).toHaveBeenCalledWith('/auth/logout')
+    })
+
+    it('should clear token on logout even if request fails', async () => {
+      const client = (api as any).client
+      api.setToken('test-token')
+
+      client.post.mockRejectedValue(new Error('Logout failed'))
+
+      await api.logout()
+
+      expect(api.getToken()).toBeNull()
+    })
+  })
+
+  describe('Seed Path Formatting', () => {
+    it('should format hashId-only seedId correctly', async () => {
+      const client = (api as any).client
+      const seedId = 'abc1234'
+
+      client.get.mockResolvedValue({ data: {} })
+
+      await api.getFollowups(seedId)
+
+      expect(client.get).toHaveBeenCalledWith(`/seeds/${seedId}/followups`, undefined)
+    })
+
+    it('should format hashId/slug seedId correctly', async () => {
+      const client = (api as any).client
+      const seedId = 'abc1234/test-slug'
+
+      client.get.mockResolvedValue({ data: {} })
+
+      await api.getFollowups(seedId)
+
+      expect(client.get).toHaveBeenCalledWith(`/seeds/${seedId}/followups`, undefined)
+    })
+
+    it('should format full UUID seedId correctly', async () => {
+      const client = (api as any).client
+      const seedId = '12345678-1234-1234-1234-123456789012'
+
+      client.get.mockResolvedValue({ data: {} })
+
+      await api.getFollowups(seedId)
+
+      expect(client.get).toHaveBeenCalledWith(`/seeds/${seedId}/followups`, undefined)
+    })
+  })
+
 })
 

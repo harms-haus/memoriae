@@ -67,11 +67,12 @@ vi.mock('@mother/components/Panel', () => ({
 }))
 
 vi.mock('@mother/components/Button', () => ({
-  Button: ({ children, onClick, variant, 'aria-label': ariaLabel }: any) => (
+  Button: ({ children, onClick, variant, disabled, 'aria-label': ariaLabel }: any) => (
     <button
       data-testid="button"
       data-variant={variant}
       onClick={onClick}
+      disabled={disabled}
       aria-label={ariaLabel}
     >
       {children}
@@ -1103,6 +1104,166 @@ describe('SeedDetailView Component', () => {
 
       // Verify all transactions are loaded
       expect(api.getSeedTransactions).toHaveBeenCalled()
+    })
+  })
+
+  describe('Automations', () => {
+    it('should load automations on mount', async () => {
+      const automations = [
+        {
+          id: 'auto-1',
+          name: 'Tag Automation',
+          description: 'Auto-tag seeds',
+          enabled: true,
+        },
+        {
+          id: 'auto-2',
+          name: 'Categorize Automation',
+          description: 'Auto-categorize seeds',
+          enabled: false,
+        },
+      ]
+
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === '/seeds/seed-1') {
+          return Promise.resolve(mockSeed)
+        }
+        if (url === '/seeds/seed-1/state') {
+          return Promise.resolve({
+            seed_id: 'seed-1',
+            current_state: mockState,
+            transactions_applied: 1,
+          })
+        }
+        if (url === '/tags') {
+          return Promise.resolve(mockTags)
+        }
+        if (url === '/seeds/seed-1/automations') {
+          return Promise.resolve(automations)
+        }
+        return Promise.resolve([])
+      })
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="seed-1" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Tag Automation')).toBeInTheDocument()
+        expect(screen.getByText('Categorize Automation')).toBeInTheDocument()
+      })
+    })
+
+    it('should show disabled badge for disabled automations', async () => {
+      const automations = [
+        {
+          id: 'auto-1',
+          name: 'Disabled Automation',
+          description: 'This is disabled',
+          enabled: false,
+        },
+      ]
+
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === '/seeds/seed-1') {
+          return Promise.resolve(mockSeed)
+        }
+        if (url === '/seeds/seed-1/state') {
+          return Promise.resolve({
+            seed_id: 'seed-1',
+            current_state: mockState,
+            transactions_applied: 1,
+          })
+        }
+        if (url === '/tags') {
+          return Promise.resolve(mockTags)
+        }
+        if (url === '/seeds/seed-1/automations') {
+          return Promise.resolve(automations)
+        }
+        return Promise.resolve([])
+      })
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="seed-1" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        const badge = screen.getByText('Disabled')
+        expect(badge).toBeInTheDocument()
+      })
+    })
+
+    it('should disable run button for disabled automations', async () => {
+      const automations = [
+        {
+          id: 'auto-1',
+          name: 'Disabled Automation',
+          description: 'This is disabled',
+          enabled: false,
+        },
+      ]
+
+      vi.mocked(api.get).mockImplementation((url: string) => {
+        if (url === '/seeds/seed-1') {
+          return Promise.resolve(mockSeed)
+        }
+        if (url === '/seeds/seed-1/state') {
+          return Promise.resolve({
+            seed_id: 'seed-1',
+            current_state: mockState,
+            transactions_applied: 1,
+          })
+        }
+        if (url === '/tags') {
+          return Promise.resolve(mockTags)
+        }
+        if (url === '/seeds/seed-1/automations') {
+          return Promise.resolve(automations)
+        }
+        return Promise.resolve([])
+      })
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="seed-1" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        const runButton = screen.getByRole('button', { name: /Run.*Disabled Automation/i })
+        expect(runButton).toBeDisabled()
+      })
+    })
+  })
+
+  describe('Error Handling', () => {
+    it('should show error when seedId is missing', () => {
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      expect(screen.getByText(/Seed ID is required/i)).toBeInTheDocument()
+    })
+
+    it('should show error state when seed not found', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Seed not found'))
+
+      render(
+        <MemoryRouter>
+          <SeedDetailView seedId="seed-1" onBack={vi.fn()} />
+        </MemoryRouter>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText(/Seed not found/i)).toBeInTheDocument()
+      })
     })
   })
 })

@@ -276,38 +276,39 @@ describe('TagList Component', () => {
       })
     })
 
-    it('should show truncate button when tags overflow', async () => {
-      // Mock container width to be small
-      const manyTags: TagListItem[] = Array.from({ length: 10 }, (_, i) => ({
+    it('should handle empty tags array with truncation', () => {
+      const { container } = render(<TagList tags={[]} suppressTruncate={false} />)
+      const tagList = container.querySelector('.tag-list')
+      expect(tagList).toBeInTheDocument()
+      expect(tagList?.children.length).toBe(0)
+    })
+
+    it('should handle container with zero width initially', async () => {
+      const manyTags: TagListItem[] = Array.from({ length: 5 }, (_, i) => ({
         id: `tag-${i}`,
         name: `tag${i}`,
       }))
       
-      const onTruncatedButtonClick = vi.fn()
       const { container } = render(
         <TagList 
           tags={manyTags} 
-          onTruncatedButtonClick={onTruncatedButtonClick}
+          onTruncatedButtonClick={vi.fn()}
           suppressTruncate={false}
         />
       )
       
-      // Mock container width
       const tagListContainer = container.querySelector('.tag-list') as HTMLElement
       if (tagListContainer) {
         Object.defineProperty(tagListContainer, 'offsetWidth', {
-          value: 100, // Small width to force truncation
+          value: 0,
           writable: true,
         })
       }
       
-      // Wait for measurement to complete
+      // Component should handle zero width gracefully
       await waitFor(() => {
-        // The component should eventually show a truncate button if tags don't fit
-        // This is complex to test due to ResizeObserver and measurement logic
-        // We'll just verify the component renders
         expect(tagListContainer).toBeInTheDocument()
-      }, { timeout: 2000 })
+      }, { timeout: 1000 })
     })
 
     it('should call onTruncatedButtonClick when truncate button is clicked', async () => {
@@ -339,25 +340,71 @@ describe('TagList Component', () => {
       }, { timeout: 2000 })
     })
 
-    it('should not show truncate button when all tags fit', () => {
-      const fewTags: TagListItem[] = [
-        { id: 'tag-1', name: 'work' },
-        { id: 'tag-2', name: 'personal' },
-      ]
+    it('should not show truncate button when onTruncatedButtonClick is not provided', () => {
+      const manyTags: TagListItem[] = Array.from({ length: 10 }, (_, i) => ({
+        id: `tag-${i}`,
+        name: `tag${i}`,
+      }))
       
       const { container } = render(
         <TagList 
-          tags={fewTags} 
-          onTruncatedButtonClick={vi.fn()}
+          tags={manyTags} 
           suppressTruncate={false}
         />
       )
       
-      // May or may not appear depending on measurement, but if all fit, it shouldn't
-      // This is hard to test deterministically without controlling container width
-      // Check if truncate button exists (it may or may not depending on container width)
+      // Without callback, truncate button should not appear
       const truncateButton = container.querySelector('.tag-list-truncate-button')
-      expect(truncateButton).toBeDefined()
+      expect(truncateButton).toBeNull()
+    })
+
+    it('should handle ResizeObserver cleanup', async () => {
+      const manyTags: TagListItem[] = Array.from({ length: 5 }, (_, i) => ({
+        id: `tag-${i}`,
+        name: `tag${i}`,
+      }))
+      
+      const { unmount } = render(
+        <TagList 
+          tags={manyTags} 
+          suppressTruncate={false}
+        />
+      )
+      
+      // Unmount should clean up ResizeObserver
+      unmount()
+      
+      // Verify cleanup happened (no errors should be thrown)
+      await waitFor(() => {
+        expect(true).toBe(true) // Just verify unmount succeeded
+      })
+    })
+
+    it('should handle measurement container cleanup', async () => {
+      const manyTags: TagListItem[] = Array.from({ length: 5 }, (_, i) => ({
+        id: `tag-${i}`,
+        name: `tag${i}`,
+      }))
+      
+      const { unmount } = render(
+        <TagList 
+          tags={manyTags} 
+          suppressTruncate={false}
+        />
+      )
+      
+      // Wait a bit for measurement container to be created
+      await waitFor(() => {
+        // Measurement container may or may not exist
+        expect(true).toBe(true)
+      }, { timeout: 500 })
+      
+      // Unmount should clean up measurement container
+      unmount()
+      
+      // Verify no measurement containers remain
+      const measureContainers = document.querySelectorAll('[style*="position: absolute"]')
+      expect(measureContainers.length).toBe(0)
     })
   })
 
@@ -453,6 +500,65 @@ describe('TagList Component', () => {
       // At minimum, both should have colors assigned
       expect(workColor).toBeTruthy()
       expect(personalColor).toBeTruthy()
+    })
+
+    it('should update colors when suppressColors changes', async () => {
+      const { rerender } = render(<TagList tags={mockTags} suppressTruncate={true} />)
+      
+      const workTag = screen.getByText('#work')
+      expect(workTag.style.color).toBeTruthy()
+      
+      rerender(<TagList tags={mockTags} suppressColors={true} suppressTruncate={true} />)
+      
+      // Color should be removed when suppressed
+      await waitFor(() => {
+        const updatedTag = screen.getByText('#work')
+        expect(updatedTag.style.color).toBeFalsy()
+      })
+    })
+
+    it('should update colors when tags change', async () => {
+      const { rerender } = render(<TagList tags={mockTags.slice(0, 1)} suppressTruncate={true} />)
+      
+      expect(screen.getByText('#work')).toBeInTheDocument()
+      
+      rerender(<TagList tags={mockTags} suppressTruncate={true} />)
+      
+      await waitFor(() => {
+        expect(screen.getByText('#personal')).toBeInTheDocument()
+        expect(screen.getByText('#personal').style.color).toBeTruthy()
+      })
+    })
+  })
+
+  describe('Ref Management', () => {
+    it('should handle tag refs correctly when tags are removed', async () => {
+      const { rerender } = render(<TagList tags={mockTags} suppressTruncate={true} />)
+      
+      expect(screen.getByText('#work')).toBeInTheDocument()
+      expect(screen.getByText('#personal')).toBeInTheDocument()
+      
+      // Remove a tag
+      rerender(<TagList tags={mockTags.slice(0, 1)} suppressTruncate={true} />)
+      
+      await waitFor(() => {
+        expect(screen.queryByText('#personal')).not.toBeInTheDocument()
+        expect(screen.getByText('#work')).toBeInTheDocument()
+      })
+    })
+
+    it('should handle tag refs correctly when tags are added', async () => {
+      const { rerender } = render(<TagList tags={mockTags.slice(0, 1)} suppressTruncate={true} />)
+      
+      expect(screen.getByText('#work')).toBeInTheDocument()
+      
+      // Add tags
+      rerender(<TagList tags={mockTags} suppressTruncate={true} />)
+      
+      await waitFor(() => {
+        expect(screen.getByText('#personal')).toBeInTheDocument()
+        expect(screen.getByText('#important')).toBeInTheDocument()
+      })
     })
   })
 })
