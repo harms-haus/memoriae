@@ -218,10 +218,15 @@ export class IdeaMusingScheduler {
             settings.openrouter_model || undefined
           )
 
+          // Create tool executor
+          const { ToolExecutor } = await import('../automation/tools/executor')
+          const toolExecutor = new ToolExecutor()
+
           // Create automation context
           const context = {
             openrouter: openrouterClient,
             userId: user.id,
+            toolExecutor,
           }
 
           // Identify idea seeds

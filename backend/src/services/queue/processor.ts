@@ -112,23 +112,28 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
       settings.openrouter_model || undefined
     )
 
-    // 5. Create automation context
+    // 5. Create tool executor
+    const { ToolExecutor } = await import('../automation/tools/executor')
+    const toolExecutor = new ToolExecutor()
+
+    // 6. Create automation context
     const context = {
       openrouter: openrouterClient,
       userId,
+      toolExecutor,
     }
 
-    // 6. Validate seed (optional validation hook)
+    // 7. Validate seed (optional validation hook)
     const isValid = await automation.validateSeed(seed, context)
     if (!isValid) {
       logWorker.debug(`Seed ${seedId} failed validation for automation ${automationId}`)
       return
     }
 
-    // 7. Run the automation
+    // 8. Run the automation
     const result = await automation.process(seed, context)
 
-    // 8. Save transactions created by the automation
+    // 9. Save transactions created by the automation
     if (result.transactions.length > 0) {
       await SeedTransactionsService.createMany(
         result.transactions.map(transaction => ({

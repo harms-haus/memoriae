@@ -218,10 +218,15 @@ export class PressureEvaluationScheduler {
           const { createOpenRouterClient } = await import('../openrouter/client')
           const openrouterClient = createOpenRouterClient('', '') // Empty - won't be used
 
+          // Create tool executor
+          const { ToolExecutor } = await import('../automation/tools/executor')
+          const toolExecutor = new ToolExecutor()
+
           // Create automation context
           const context = {
             openrouter: openrouterClient,
             userId,
+            toolExecutor,
           }
 
           // Call automation's handlePressure method

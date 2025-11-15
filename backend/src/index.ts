@@ -105,6 +105,13 @@ async function initializeServices() {
       throw dbError
     }
     
+    logServer.info('Initializing tools...')
+    
+    // Initialize tool registry with built-in tools
+    const { initializeTools } = await import('./services/automation/tools/implementations')
+    initializeTools()
+    logServer.info('Tools initialized')
+    
     logServer.info('Initializing automations...')
     
     // Create automation instances
@@ -112,6 +119,8 @@ async function initializeServices() {
     const categorizeAutomation = new CategorizeAutomation()
     const followupAutomation = new FollowupAutomation()
     const ideaMusingAutomation = new IdeaMusingAutomation()
+    const { WikipediaReferenceAutomation } = await import('./services/automation/wikipedia-reference')
+    const wikipediaReferenceAutomation = new WikipediaReferenceAutomation()
     
     // Register automations - retry if table doesn't exist yet (migrations may still be running)
     const registry = AutomationRegistry.getInstance()
@@ -121,7 +130,7 @@ async function initializeServices() {
     
     while (retries < maxRetries) {
       try {
-        await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation, ideaMusingAutomation])
+        await registry.loadFromDatabase([tagAutomation, categorizeAutomation, followupAutomation, ideaMusingAutomation, wikipediaReferenceAutomation])
         logServer.info('Automations initialized')
         logServer.info(`Registered ${registry.getAll().length} automations`)
         break

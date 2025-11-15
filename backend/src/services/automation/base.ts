@@ -4,6 +4,7 @@
 import type { SeedTransaction } from '../../types/seed-transactions'
 import type { Seed } from '../seeds'
 import type { OpenRouterClient } from '../openrouter/client'
+import type { ToolExecutor } from './tools/executor'
 
 /**
  * Type representing a category change that triggers pressure calculation
@@ -33,6 +34,11 @@ export interface AutomationContext {
    * User ID for which the automation is running
    */
   userId: string
+  
+  /**
+   * Tool executor for executing tool calls in AI prompts
+   */
+  toolExecutor: ToolExecutor
   
   /**
    * Optional metadata for passing additional context

@@ -96,10 +96,15 @@ router.post('/generate', async (req: Request, res: Response, next: NextFunction)
       settings.openrouter_model || undefined
     )
 
+    // Create tool executor
+    const { ToolExecutor } = await import('../services/automation/tools/executor')
+    const toolExecutor = new ToolExecutor()
+
     // Create automation context
     const context = {
       openrouter: openrouterClient,
       userId,
+      toolExecutor,
     }
 
     // Get automation
@@ -296,10 +301,15 @@ router.post('/:id/regenerate', async (req: Request, res: Response, next: NextFun
       settings.openrouter_model || undefined
     )
 
+    // Create tool executor
+    const { ToolExecutor } = await import('../services/automation/tools/executor')
+    const toolExecutor = new ToolExecutor()
+
     // Create automation context
     const context = {
       openrouter: openrouterClient,
       userId,
+      toolExecutor,
     }
 
     // Get automation

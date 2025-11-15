@@ -175,10 +175,15 @@ export class CategoryChangeService {
         continue // Skip if seed not found
       }
 
+      // Create tool executor
+      const { ToolExecutor } = await import('./automation/tools/executor')
+      const toolExecutor = new ToolExecutor()
+
       // Create automation context
       const context = {
         openrouter: openrouterClient,
         userId: seed.user_id,
+        toolExecutor,
       }
 
       // Calculate pressure for each automation
