@@ -471,16 +471,9 @@ if [ "$DO_BUILD" = true ]; then
 fi
 
 # Unit-test phase
-# mother-theme and backend can unit-test in parallel
-# frontend depends on both, so it must wait
+# All packages can unit-test in parallel (frontend uses @mother alias to source, not built package)
 if [ "$DO_UNIT_TEST" = true ]; then
-  # Run mother-theme and backend in parallel
-  if ! run_parallel "unit-test" "npm test" "mother-theme" "backend"; then
-    exit 1
-  fi
-  
-  # Then run frontend (depends on both mother-theme and backend)
-  if ! run_with_progress "frontend" "unit-test" "npm test"; then
+  if ! run_parallel "unit-test" "npm test" "mother-theme" "backend" "frontend"; then
     exit 1
   fi
 fi
