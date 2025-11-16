@@ -411,12 +411,21 @@ describe('SeedEditor Component', () => {
         expect(screen.getByTestId('bold-icon')).toBeInTheDocument()
       })
       
-      // Select just "test" (characters 96-100)
+      // Focus textarea and select just "test" (characters 96-100)
+      textarea.focus()
       textarea.setSelectionRange(96, 100)
+      
+      // Wait a tick to ensure selection is set
+      await new Promise(resolve => setTimeout(resolve, 0))
+      
+      // Verify selection is set
+      expect(textarea.selectionStart).toBe(96)
+      expect(textarea.selectionEnd).toBe(100)
       
       const boldButton = screen.getByTestId('bold-icon').closest('button')
       if (boldButton) {
-        await user.click(boldButton)
+        // Use fireEvent.mouseDown to trigger onMouseDown directly, preserving selection
+        fireEvent.mouseDown(boldButton)
       }
       
       await waitFor(() => {
