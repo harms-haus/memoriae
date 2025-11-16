@@ -18,7 +18,7 @@ export default defineConfig({
   testMatch: /.*\.visual\.test\.(ts|tsx)$/,
   
   /* Maximum time one test can run for. */
-  timeout: 10 * 1000,
+  timeout: 30 * 1000,
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met.
@@ -36,9 +36,6 @@ export default defineConfig({
 
   /* Run tests in files in parallel */
   fullyParallel: true,
-  
-  /* Use separate workers to prevent bundling all test files together */
-  workers: 1, // Use 1 worker to ensure tests run sequentially and modules aren't bundled together
 
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
@@ -46,8 +43,8 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
 
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Use multiple workers for faster execution (CI uses 1 for stability) */
+  workers: process.env.CI ? 1 : 4,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',

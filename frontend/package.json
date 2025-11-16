@@ -26,6 +26,18 @@
     "access": "public"
   },
   "scripts": {
+    "my": "./scripts/for-me.sh",
+    "my:tc": "./scripts/for-me.sh --tc",
+    "my:b": "./scripts/for-me.sh --b",
+    "my:u": "./scripts/for-me.sh --u",
+    "my:v": "./scripts/for-me.sh --v",
+    "my:bu": "./scripts/for-me.sh --bu",
+    "my:bv": "./scripts/for-me.sh --bv",
+    "my:buv": "./scripts/for-me.sh --buv",
+    "my:tc:u": "./scripts/for-me.sh --tc --u",
+    "my:tc:v": "./scripts/for-me.sh --tc --v",
+    "my:tc:u:v": "./scripts/for-me.sh --tc --u --v",
+    "type-check": "tsc --noEmit",
     "build": "tsc && vite build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

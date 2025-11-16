@@ -26,6 +26,13 @@
     "access": "public"
   },
   "scripts": {
+    "my": "./scripts/for-me.sh",
+    "my:tc": "./scripts/for-me.sh --tc",
+    "my:b": "./scripts/for-me.sh --b",
+    "my:u": "./scripts/for-me.sh --u",
+    "my:bu": "./scripts/for-me.sh --bu",
+    "my:tc:u": "./scripts/for-me.sh --tc --u",
+    "type-check": "tsc --noEmit",
     "build": "tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

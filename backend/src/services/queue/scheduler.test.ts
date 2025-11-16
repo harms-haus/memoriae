@@ -320,14 +320,26 @@ describe('PressureEvaluationScheduler', () => {
       ;(PressurePointsService.getExceededThresholds as any).mockResolvedValue([mockPressurePoint])
 
       scheduler.start()
-      // Wait for immediate evaluation only
+      // Wait for the immediate evaluation to start
       await vi.runOnlyPendingTimersAsync()
       
-      // Wait for async operations to complete
-      vi.advanceTimersByTime(50)
-      await vi.runOnlyPendingTimersAsync()
-      // Ensure processing completes
-      scheduler['isProcessing'] = false
+      // Switch to real timers temporarily to let promises resolve
+      vi.useRealTimers()
+      
+      // Wait for processing to complete (with real timers, this should be fast)
+      let attempts = 0
+      while (scheduler['isProcessing'] && attempts < 100) {
+        await new Promise(resolve => setTimeout(resolve, 10))
+        attempts++
+      }
+      
+      // Switch back to fake timers
+      vi.useFakeTimers()
+      
+      // Manually reset isProcessing if it's still true (in case of timeout)
+      if (scheduler['isProcessing']) {
+        scheduler['isProcessing'] = false
+      }
 
       expect(PressurePointsService.getExceededThresholds).toHaveBeenCalled()
       expect(SeedsService.getById).toHaveBeenCalledWith(testSeedId, testUserId)
