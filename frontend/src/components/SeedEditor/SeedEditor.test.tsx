@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { fireEvent } from '@testing-library/react'
 import { SeedEditor } from './SeedEditor'
 import { api } from '../../services/api'
 import type { Seed } from '../../types'
@@ -435,12 +436,21 @@ describe('SeedEditor Component', () => {
         expect(screen.getByTestId('italic-icon')).toBeInTheDocument()
       })
       
-      // Select just "test" (characters 96-100)
+      // Focus textarea and select just "test" (characters 96-100)
+      textarea.focus()
       textarea.setSelectionRange(96, 100)
+      
+      // Wait a tick to ensure selection is set
+      await new Promise(resolve => setTimeout(resolve, 0))
+      
+      // Verify selection is set
+      expect(textarea.selectionStart).toBe(96)
+      expect(textarea.selectionEnd).toBe(100)
       
       const italicButton = screen.getByTestId('italic-icon').closest('button')
       if (italicButton) {
-        await user.click(italicButton)
+        // Use fireEvent.mouseDown to trigger onMouseDown directly, preserving selection
+        fireEvent.mouseDown(italicButton)
       }
       
       await waitFor(() => {
