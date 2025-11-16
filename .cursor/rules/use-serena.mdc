@@ -1,0 +1,20 @@
+---
+alwaysApply: true
+---
+# use the serena mcp
+
+## save memories
+
+## read files and directories
+
+DO NOT use cursor's find_file, search_for_pattern, and list_dir, use serena's version
+
+## find and replace symbolically
+
+use serena's symbols tools to find and edit symbolically instead of find-and-replace
+
+## think structuredly
+
+- think about the gathered information
+- think about adherance to the spec
+- think about if we are done
