@@ -8,6 +8,11 @@ coverage/
 *.lcov
 .nyc_output
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
 # Production builds
 dist/
 build/

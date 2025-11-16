@@ -15,14 +15,19 @@ const THEME_COLORS = [
  * If the tag already has a color, returns that color
  * Otherwise, generates a consistent color from the theme palette
  * 
- * @param tagName - The name of the tag
+ * @param tagName - The name of the tag (may be undefined/null)
  * @param existingColor - Optional existing color for the tag
  * @returns A color value (hex code or CSS variable)
  */
-export function getTagColor(tagName: string, existingColor?: string | null): string {
+export function getTagColor(tagName: string | undefined | null, existingColor?: string | null): string {
   // If tag already has a color, use it
   if (existingColor) {
     return existingColor
+  }
+
+  // Handle undefined/null tag names
+  if (!tagName) {
+    return THEME_COLORS[0] as string // Default to first color
   }
 
   // Generate a consistent color based on tag name

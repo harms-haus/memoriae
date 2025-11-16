@@ -346,16 +346,19 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
                 groupedContent += ' • (automated)'
               }
 
-              grouped.push({
+              const groupedMessage: ExtendedMessage = {
                 id: `group-${currentTagGroup[0]!.id}`,
                 title: 'Tags Added',
                 content: groupedContent,
                 time: currentTagGroup[0]!.time, // Use newest (first) message time since sorted newest-first
                 groupKey: 'add_tag', // Use same groupKey as individual tag additions for color matching
                 tagInfo, // Store tag info for rendering links
-                remainingTagCount: remainingCount > 0 ? remainingCount : undefined,
                 isAutomated: hasAutomated,
-              })
+              }
+              if (remainingCount > 0) {
+                groupedMessage.remainingTagCount = remainingCount
+              }
+              grouped.push(groupedMessage)
             } else {
               // Single message, add as-is
               grouped.push(currentTagGroup[0]!)
@@ -405,16 +408,19 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
               groupedContent += ' • (automated)'
             }
 
-            grouped.push({
+            const groupedMessage: ExtendedMessage = {
               id: `group-${currentTagGroup[0]!.id}`,
               title: 'Tags Added',
               content: groupedContent,
               time: currentTagGroup[currentTagGroup.length - 1]!.time, // Use newest (last) message time
               groupKey: 'add_tag', // Use same groupKey as individual tag additions for color matching
               tagInfo, // Store tag info for rendering links
-              remainingTagCount: remainingCount > 0 ? remainingCount : undefined,
               isAutomated: hasAutomated,
-            })
+            }
+            if (remainingCount > 0) {
+              groupedMessage.remainingTagCount = remainingCount
+            }
+            grouped.push(groupedMessage)
           } else {
             // Single message, add as-is
             grouped.push(currentTagGroup[0]!)
@@ -465,16 +471,19 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
           groupedContent += ' • (automated)'
         }
 
-        grouped.push({
+        const groupedMessage: ExtendedMessage = {
           id: `group-${currentTagGroup[0]!.id}`,
           title: 'Tags Added',
           content: groupedContent,
           time: currentTagGroup[currentTagGroup.length - 1]!.time, // Use newest (last) message time
           groupKey: 'add_tag', // Use same groupKey as individual tag additions for color matching
           tagInfo, // Store tag info for rendering links
-          remainingTagCount: remainingCount > 0 ? remainingCount : undefined,
           isAutomated: hasAutomated,
-        })
+        }
+        if (remainingCount > 0) {
+          groupedMessage.remainingTagCount = remainingCount
+        }
+        grouped.push(groupedMessage)
       } else {
         // Single message, add as-is
         grouped.push(currentTagGroup[0]!)

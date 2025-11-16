@@ -645,7 +645,10 @@ describe('SeedTimeline Component', () => {
 
       // Should show grouped message
       expect(screen.getByText('Tags Added')).toBeInTheDocument()
-      expect(screen.getByText(/Tags:.*work.*important.*urgent/)).toBeInTheDocument()
+      // Check for tags individually since they're rendered as separate Link elements
+      expect(screen.getByText('work')).toBeInTheDocument()
+      expect(screen.getByText('important')).toBeInTheDocument()
+      expect(screen.getByText('urgent')).toBeInTheDocument()
     })
 
     it('should not group tag additions separated by more than 1 minute', () => {
@@ -769,9 +772,14 @@ describe('SeedTimeline Component', () => {
         </MemoryRouter>
       )
 
-      const content = screen.getByText(/Tags:/)
+      // Find the container with "Tags:" text (there might be multiple, get the first one)
+      const tagsContainers = screen.getAllByText((content, element) => {
+        return element?.textContent?.includes('Tags:') ?? false
+      })
+      expect(tagsContainers.length).toBeGreaterThan(0)
+      const tagsContainer = tagsContainers[0]!
       // Should only show 'work' once
-      const matches = content.textContent?.match(/work/g) || []
+      const matches = tagsContainer.textContent?.match(/work/g) || []
       expect(matches.length).toBe(1)
     })
 
@@ -802,7 +810,11 @@ describe('SeedTimeline Component', () => {
         </MemoryRouter>
       )
 
-      expect(screen.getByText(/Tags:.*automated/)).toBeInTheDocument()
+      // Check for tags and automated indicator separately since they're in different elements
+      expect(screen.getByText('work')).toBeInTheDocument()
+      expect(screen.getByText('important')).toBeInTheDocument()
+      // The automated indicator includes " • " before "(automated)"
+      expect(screen.getByText(/\(automated\)/)).toBeInTheDocument()
     })
   })
 

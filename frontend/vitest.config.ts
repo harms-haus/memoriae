@@ -46,7 +46,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/*.integration.test.{ts,tsx}'],
-    exclude: ['node_modules/**', 'dist/**'],
+    exclude: ['node_modules/**', 'dist/**', '**/*.visual.test.{ts,tsx}'],
     logLevel: 'warn',
     coverage: {
       provider: 'v8',

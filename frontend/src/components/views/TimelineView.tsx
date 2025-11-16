@@ -133,6 +133,8 @@ export function TimelineView({ onSeedSelect, refreshRef }: TimelineViewProps) {
     // Include ALL tags, generating colors for tags without colors
     const tagColorMap = new Map<string, string>()
     allTags.forEach(tag => {
+      // Skip tags without names
+      if (!tag.name) return
       // Use existing color if available, otherwise generate one
       const color = tag.color || getTagColor(tag.name, null)
       tagColorMap.set(tag.name.toLowerCase(), color)
