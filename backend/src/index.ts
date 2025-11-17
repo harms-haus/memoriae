@@ -66,6 +66,7 @@ async function initializeServices() {
     }
     
     // Retry database connection with exponential backoff
+    logServer.info('Starting database connection retry loop...')
     let dbRetries = 0
     const maxDbRetries = 30
     const dbRetryDelay = 2000 // 2 seconds
@@ -76,26 +77,40 @@ async function initializeServices() {
         logServer.info(`Attempting database connection (attempt ${dbRetries + 1}/${maxDbRetries})...`)
         
         // Create a timeout promise that will reject after the timeout
+        let timeoutId: NodeJS.Timeout | null = null
         const timeoutPromise = new Promise<never>((_, reject) => {
-          const timeoutId = setTimeout(() => {
+          timeoutId = setTimeout(() => {
             reject(new Error(`Database connection test timed out after ${dbConnectionTimeout}ms`))
           }, dbConnectionTimeout)
+        })
+        
+        // Test connection with timeout - wrap in try/finally to ensure timeout is cleared
+        let connectionTest: Promise<any>
+        try {
+          connectionTest = db.raw('SELECT 1').then((result) => {
+            // Clear timeout if connection succeeds
+            if (timeoutId) {
+              clearTimeout(timeoutId)
+            }
+            logServer.debug('Database query completed successfully')
+            return result
+          }).catch((error) => {
+            // Clear timeout on error
+            if (timeoutId) {
+              clearTimeout(timeoutId)
+            }
+            logServer.debug('Database query failed:', error.message)
+            throw error
+          })
           
-          // Clear timeout if connection succeeds (though this won't execute if timeout fires first)
-          // We'll handle cleanup in the finally block
-        })
-        
-        // Test connection with timeout
-        const connectionTest = db.raw('SELECT 1').then((result) => {
-          logServer.debug('Database query completed successfully')
-          return result
-        }).catch((error) => {
-          logServer.debug('Database query failed:', error.message)
-          throw error
-        })
-        
-        // Race the connection test against the timeout
-        await Promise.race([connectionTest, timeoutPromise])
+          // Race the connection test against the timeout
+          await Promise.race([connectionTest, timeoutPromise])
+        } finally {
+          // Ensure timeout is cleared even if something goes wrong
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+          }
+        }
         logServer.info('✓ Database connection successful')
         break
       } catch (dbError: any) {

@@ -118,7 +118,7 @@ const config: { [key: string]: Knex.Config } = {
         : false,
     },
     pool: {
-      min: 2,
+      min: 0, // Start with 0 connections (lazy initialization) - prevents pool exhaustion on failed connections
       max: 10,
       acquireTimeoutMillis: 10000, // 10 seconds to acquire connection
       createTimeoutMillis: 10000, // 10 seconds to create connection
