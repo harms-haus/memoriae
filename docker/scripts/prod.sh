@@ -107,7 +107,7 @@ else
     fi
 fi
 
-COMPOSE_FILES="-f docker/docker-compose.yml -f docker/docker-compose.prod.yml"
+COMPOSE_FILES="-f ${PROJECT_DIR}/docker/docker-compose.yml -f ${PROJECT_DIR}/docker/docker-compose.prod.yml"
 
 # Check for .env file
 ENV_FILE="${PROJECT_DIR}/.env"
@@ -138,7 +138,7 @@ if [ -z "$REDIS_URL" ]; then
     exit 1
 fi
 
-ENV_FILE_FLAG="--env-file .env"
+ENV_FILE_FLAG="--env-file ${PROJECT_DIR}/.env"
 
 # Handle --down (stop containers without deleting volumes)
 if [ "$DOWN" = true ]; then
@@ -178,7 +178,7 @@ if [ "$DOWN" = true ]; then
         fi
     fi
     
-    COMPOSE_FILES="-f docker/docker-compose.yml -f docker/docker-compose.prod.yml"
+    COMPOSE_FILES="-f ${PROJECT_DIR}/docker/docker-compose.yml -f ${PROJECT_DIR}/docker/docker-compose.prod.yml"
     
     # Stop containers (no -v flag, so volumes are preserved)
     set +e
