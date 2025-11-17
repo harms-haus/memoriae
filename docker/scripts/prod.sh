@@ -433,21 +433,42 @@ echo -e "${YELLOW}Note: Existing containers will be restarted (not stopped/delet
 # Temporarily disable exit on error for this command so we can handle interrupts
 set +e
 
-# Restart postgres and redis (just restart, don't recreate)
-echo -e "${YELLOW}Restarting postgres and redis...${NC}"
-# Suppress stderr for restart (podman-compose prints tracebacks on interrupt)
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG restart postgres redis 2>/dev/null || \
- (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>/dev/null))
-RESTART_EXIT=$?
+# Check if containers exist first
+CONTAINERS_EXIST=false
+for container in memoriae-postgres memoriae-redis memoriae-app; do
+    if $DOCKER_CMD ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+        CONTAINERS_EXIST=true
+        break
+    fi
+done
+
+if [ "$CONTAINERS_EXIST" = true ]; then
+    # Restart postgres and redis if they exist
+    echo -e "${YELLOW}Restarting postgres and redis...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG restart postgres redis 2>&1)
+    RESTART_EXIT=$?
+    
+    # If restart failed, try starting them
+    if [ $RESTART_EXIT -ne 0 ]; then
+        echo -e "${YELLOW}Restart failed, starting postgres and redis...${NC}"
+        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>&1)
+        RESTART_EXIT=$?
+    fi
+else
+    # Containers don't exist, start them
+    echo -e "${YELLOW}Starting postgres and redis...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>&1)
+    RESTART_EXIT=$?
+fi
 
 # Rebuild/recreate memoriae app (force recreate to use new image if built)
-echo -e "${YELLOW}Rebuilding/restarting memoriae app...${NC}"
-# Suppress stderr to hide KeyboardInterrupt tracebacks from podman-compose
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d --force-recreate --no-deps memoriae 2>/dev/null)
+echo -e "${YELLOW}Starting/restarting memoriae app...${NC}"
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d --force-recreate --no-deps memoriae 2>&1)
 MEMORIAE_EXIT=$?
 
-# Make sure all services are up
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>/dev/null)
+# Make sure all services are up (this will start any that aren't running)
+echo -e "${YELLOW}Ensuring all services are up...${NC}"
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>&1)
 UP_EXIT=$?
 
 set -e
@@ -469,17 +490,15 @@ for container in memoriae-postgres memoriae-redis memoriae-app; do
     fi
 done
 
-# If containers are running, we're good (ignore compose exit codes)
-if [ "$ALL_RUNNING" = true ]; then
-    echo -e "${GREEN}✓ All containers are running${NC}"
-else
-    # Only fail if containers aren't running AND we got error exit codes
-    if [ $RESTART_EXIT -ne 0 ] || [ $MEMORIAE_EXIT -ne 0 ] || [ $UP_EXIT -ne 0 ]; then
-        echo -e "${RED}Error: Some containers failed to start${NC}"
-        echo -e "${YELLOW}Check logs with: $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG logs${NC}"
-        exit 1
-    fi
+# If containers aren't running, show error and exit
+if [ "$ALL_RUNNING" != true ]; then
+    echo -e "${RED}Error: Some containers failed to start${NC}"
+    echo -e "${YELLOW}Check logs with: $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG logs${NC}"
+    echo -e "${YELLOW}Last compose command exit codes: RESTART=$RESTART_EXIT MEMORIAE=$MEMORIAE_EXIT UP=$UP_EXIT${NC}"
+    exit 1
 fi
+
+echo -e "${GREEN}✓ All containers are running${NC}"
 
 # Step 5: Wait for services to be healthy
 echo -e "${BLUE}Step 5: Waiting for services to be healthy...${NC}"
