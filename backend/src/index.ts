@@ -105,6 +105,20 @@ async function initializeServices() {
       logServer.info(`  DATABASE_URL: ${safeUrl}`)
     }
     
+    // Test DNS resolution first (helps diagnose podman-compose DNS issues)
+    if (dbConfig.host && dbConfig.host !== 'localhost') {
+      try {
+        const dns = require('dns').promises
+        logServer.info(`Testing DNS resolution for '${dbConfig.host}'...`)
+        const addresses = await dns.resolve4(dbConfig.host)
+        logServer.info(`✓ DNS resolution successful: ${dbConfig.host} -> ${addresses.join(', ')}`)
+      } catch (dnsError: any) {
+        logServer.warn(`⚠ DNS resolution failed for '${dbConfig.host}': ${dnsError.message}`)
+        logServer.warn(`  This might indicate a podman-compose networking issue`)
+        logServer.warn(`  Container may not be able to resolve service names`)
+      }
+    }
+    
     // Retry database connection with exponential backoff
     logServer.info('Starting database connection retry loop...')
     let dbRetries = 0
@@ -156,18 +170,37 @@ async function initializeServices() {
       } catch (dbError: any) {
         dbRetries++
         
-        // Log the error for debugging
-        const errorMessage = dbError.message || String(dbError)
-        const errorCode = dbError.code || 'UNKNOWN'
-        logServer.error(`Database connection attempt ${dbRetries} failed: ${errorMessage} (code: ${errorCode})`)
+        // Log the error for debugging - extract all possible error information
+        const errorMessage = dbError.message || dbError.toString() || String(dbError) || 'Unknown error'
+        const errorCode = dbError.code || dbError.errno || 'UNKNOWN'
+        const errorName = dbError.name || 'Error'
+        
+        // Always log error details at ERROR level (should be visible in production)
+        logServer.error(`Database connection attempt ${dbRetries}/${maxDbRetries} failed:`)
+        logServer.error(`  Error: ${errorName}: ${errorMessage}`)
+        logServer.error(`  Code: ${errorCode}`)
+        
         // Log additional error details if available
         if (dbError.stack) {
-          logServer.debug('Error stack:', dbError.stack)
+          logServer.error(`  Stack: ${dbError.stack.split('\n').slice(0, 3).join('\n')}`) // First 3 lines of stack
         }
         
+        // Log connection details for debugging
+        logServer.error(`  Attempting to connect to: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`)
+        
         // If it's a timeout, log more details
-        if (errorMessage.includes('timed out')) {
+        if (errorMessage.includes('timed out') || errorCode === 'ETIMEDOUT') {
           logServer.warn(`Connection attempt ${dbRetries} timed out - database may not be ready or network issue`)
+        }
+        
+        // If it's a connection refused, log network issue
+        if (errorCode === 'ECONNREFUSED' || errorMessage.includes('ECONNREFUSED')) {
+          logServer.error(`Connection refused - check if postgres is running and accessible at ${dbConfig.host}:${dbConfig.port}`)
+        }
+        
+        // If it's a DNS/hostname resolution issue
+        if (errorCode === 'ENOTFOUND' || errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
+          logServer.error(`Hostname resolution failed - cannot resolve '${dbConfig.host}'. Check network configuration.`)
         }
         
         if (dbRetries >= maxDbRetries) {
