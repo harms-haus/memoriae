@@ -69,14 +69,28 @@ async function initializeServices() {
     let dbRetries = 0
     const maxDbRetries = 30
     const dbRetryDelay = 2000 // 2 seconds
+    const dbConnectionTimeout = 10000 // 10 seconds timeout for connection test
     
     while (dbRetries < maxDbRetries) {
       try {
-        await db.raw('SELECT 1')
+        logServer.debug(`Attempting database connection (attempt ${dbRetries + 1}/${maxDbRetries})...`)
+        
+        // Add timeout to prevent hanging
+        const connectionTest = db.raw('SELECT 1')
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error(`Database connection test timed out after ${dbConnectionTimeout}ms`)), dbConnectionTimeout)
+        })
+        
+        await Promise.race([connectionTest, timeoutPromise])
         logServer.info('✓ Database connection successful')
         break
       } catch (dbError: any) {
         dbRetries++
+        
+        // Log the error for debugging
+        const errorMessage = dbError.message || String(dbError)
+        const errorCode = dbError.code || 'UNKNOWN'
+        logServer.warn(`Database connection attempt ${dbRetries} failed: ${errorMessage} (code: ${errorCode})`)
         
         if (dbRetries >= maxDbRetries) {
           // Final attempt failed - log error and throw
