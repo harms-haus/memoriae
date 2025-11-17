@@ -53,12 +53,47 @@ async function initializeServices() {
     logServer.info('Testing database connection...')
     // Extract connection details from DATABASE_URL if available
     const databaseUrl = process.env.DATABASE_URL || ''
-    const dbConfig = {
-      host: process.env.DB_HOST || databaseUrl.match(/@([^:]+):/)?.[1] || 'localhost',
-      port: process.env.DB_PORT || databaseUrl.match(/:(\d+)\//)?.[1] || '5432',
-      database: process.env.DB_NAME || databaseUrl.match(/\/([^?]+)/)?.[1] || 'memoriae',
-      user: process.env.DB_USER || databaseUrl.match(/:\/\/([^:]+):/)?.[1] || 'postgres',
+    let dbConfig = {
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || '5432',
+      database: process.env.DB_NAME || 'memoriae',
+      user: process.env.DB_USER || 'postgres',
     }
+    
+    // Parse DATABASE_URL if provided (format: postgresql://user:password@host:port/database)
+    if (databaseUrl && !process.env.DB_HOST) {
+      try {
+        // Use URL parsing for more reliable extraction
+        // Replace postgresql:// with http:// temporarily for URL parsing
+        const httpUrl = databaseUrl.replace(/^postgresql:/, 'http:')
+        const url = new URL(httpUrl)
+        dbConfig.host = url.hostname || dbConfig.host
+        dbConfig.port = url.port || dbConfig.port
+        dbConfig.database = url.pathname?.replace(/^\//, '').split('?')[0] || dbConfig.database
+        dbConfig.user = url.username || dbConfig.user
+      } catch (error) {
+        // Fallback to regex if URL parsing fails (e.g., special characters in password)
+        // Match host and optional port: @host:port or @host
+        const hostMatch = databaseUrl.match(/@([^:/]+)(?::(\d+))?/)
+        if (hostMatch) {
+          dbConfig.host = hostMatch[1] || dbConfig.host
+          if (hostMatch[2]) {
+            dbConfig.port = hostMatch[2]
+          }
+        }
+        // Match database name: /database or /database?params
+        const dbMatch = databaseUrl.match(/\/([^?/]+)(?:\?|$)/)
+        if (dbMatch) {
+          dbConfig.database = dbMatch[1] || dbConfig.database
+        }
+        // Match username: postgresql://username:password@
+        const userMatch = databaseUrl.match(/:\/\/([^:@]+)(?::|@)/)
+        if (userMatch) {
+          dbConfig.user = userMatch[1] || dbConfig.user
+        }
+      }
+    }
+    
     logServer.info(`  Connecting to: ${dbConfig.user}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`)
     if (databaseUrl) {
       const safeUrl = databaseUrl.replace(/:[^:@]+@/, ':****@')

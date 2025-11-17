@@ -442,15 +442,35 @@ for container in memoriae-postgres memoriae-redis memoriae-app; do
     fi
 done
 
+# For Podman, we need to handle container replacement differently
+if [ "$DOCKER_CMD" = "podman" ]; then
+    # Podman requires containers to be removed before recreating with same name
+    # Stop and remove existing containers if they exist
+    for container in memoriae-postgres memoriae-redis memoriae-app; do
+        if $DOCKER_CMD ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            echo -e "${YELLOW}Stopping and removing existing container: ${container}...${NC}"
+            $DOCKER_CMD stop "$container" 2>/dev/null || true
+            $DOCKER_CMD rm "$container" 2>/dev/null || true
+        fi
+    done
+fi
+
 if [ "$CONTAINERS_EXIST" = true ]; then
-    # Restart postgres and redis if they exist
-    echo -e "${YELLOW}Restarting postgres and redis...${NC}"
-    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG restart postgres redis 2>&1)
-    RESTART_EXIT=$?
-    
-    # If restart failed, try starting them
-    if [ $RESTART_EXIT -ne 0 ]; then
-        echo -e "${YELLOW}Restart failed, starting postgres and redis...${NC}"
+    # Restart postgres and redis if they exist (for Docker, this works)
+    if [ "$DOCKER_CMD" != "podman" ]; then
+        echo -e "${YELLOW}Restarting postgres and redis...${NC}"
+        (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG restart postgres redis 2>&1)
+        RESTART_EXIT=$?
+        
+        # If restart failed, try starting them
+        if [ $RESTART_EXIT -ne 0 ]; then
+            echo -e "${YELLOW}Restart failed, starting postgres and redis...${NC}"
+            (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>&1)
+            RESTART_EXIT=$?
+        fi
+    else
+        # For Podman, containers were already removed, so just start them
+        echo -e "${YELLOW}Starting postgres and redis...${NC}"
         (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>&1)
         RESTART_EXIT=$?
     fi
