@@ -65,44 +65,63 @@ async function initializeServices() {
       logServer.info(`  DATABASE_URL: ${safeUrl}`)
     }
     
-    try {
-      await db.raw('SELECT 1')
-      logServer.info('✓ Database connection successful')
-    } catch (dbError: any) {
-      logServer.error('✗ Database connection failed:', dbError.message)
-      logServer.error('  Connection details:', dbConfig)
-      
-      if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ETIMEDOUT') {
-        logServer.error('  → Database server is not accessible. Check:')
-        logServer.error('    1. Database server is running and accessible')
-        logServer.error('    2. Network connectivity (firewall, VPN, AWS Security Group)')
-        logServer.error('    3. Correct host/port in .env')
-        logServer.error('    4. For AWS RDS: Security group allows your IP on port 5432')
-      } else if (dbError.code === '3D000') {
-        logServer.error('  → Database does not exist. Options:')
-        logServer.error('    1. Create the database: CREATE DATABASE memoriae;')
-        logServer.error('    2. Or update DB_NAME in .env to an existing database')
-        logServer.error('    3. Then run migrations: npm run migrate')
-      } else if (dbError.code === '28P01') {
-        logServer.error('  → Authentication failed. Check:')
-        logServer.error('    1. DB_USER and DB_PASSWORD in .env are correct')
-        logServer.error('    2. Database user has proper permissions')
-      } else if (dbError.message?.includes('timeout') || dbError.message?.includes('Timeout')) {
-        logServer.error('  → Connection timeout. Check:')
-        logServer.error('    1. Database server is running')
-        logServer.error('    2. Network connectivity (ping/telnet the host)')
-        logServer.error('    3. Firewall/security groups allow connections')
-        logServer.error('    4. Database credentials are correct')
-        logServer.error('    5. For AWS RDS: Database is publicly accessible')
+    // Retry database connection with exponential backoff
+    let dbRetries = 0
+    const maxDbRetries = 30
+    const dbRetryDelay = 2000 // 2 seconds
+    
+    while (dbRetries < maxDbRetries) {
+      try {
+        await db.raw('SELECT 1')
+        logServer.info('✓ Database connection successful')
+        break
+      } catch (dbError: any) {
+        dbRetries++
+        
+        if (dbRetries >= maxDbRetries) {
+          // Final attempt failed - log error and throw
+          logServer.error('✗ Database connection failed after', maxDbRetries, 'retries:', dbError.message)
+          logServer.error('  Connection details:', dbConfig)
+          
+          if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ETIMEDOUT') {
+            logServer.error('  → Database server is not accessible. Check:')
+            logServer.error('    1. Database server is running and accessible')
+            logServer.error('    2. Network connectivity (firewall, VPN, AWS Security Group)')
+            logServer.error('    3. Correct host/port in .env')
+            logServer.error('    4. For AWS RDS: Security group allows your IP on port 5432')
+          } else if (dbError.code === '3D000') {
+            logServer.error('  → Database does not exist. Options:')
+            logServer.error('    1. Create the database: CREATE DATABASE memoriae;')
+            logServer.error('    2. Or update DB_NAME in .env to an existing database')
+            logServer.error('    3. Then run migrations: npm run migrate')
+          } else if (dbError.code === '28P01') {
+            logServer.error('  → Authentication failed. Check:')
+            logServer.error('    1. DB_USER and DB_PASSWORD in .env are correct')
+            logServer.error('    2. Database user has proper permissions')
+          } else if (dbError.message?.includes('timeout') || dbError.message?.includes('Timeout')) {
+            logServer.error('  → Connection timeout. Check:')
+            logServer.error('    1. Database server is running')
+            logServer.error('    2. Network connectivity (ping/telnet the host)')
+            logServer.error('    3. Firewall/security groups allow connections')
+            logServer.error('    4. Database credentials are correct')
+            logServer.error('    5. For AWS RDS: Database is publicly accessible')
+          }
+          
+          // Show actual connection config (without password)
+          if (process.env.DATABASE_URL) {
+            const safeUrl = process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@')
+            logServer.error('  DATABASE_URL:', safeUrl)
+          }
+          
+          throw dbError
+        }
+        
+        // Retry with exponential backoff
+        const delay = dbRetryDelay * Math.min(dbRetries, 5) // Cap at 5x delay
+        logServer.info(`Database connection failed (attempt ${dbRetries}/${maxDbRetries}), retrying in ${delay}ms...`)
+        logServer.debug(`Error: ${dbError.message}`)
+        await new Promise(resolve => setTimeout(resolve, delay))
       }
-      
-      // Show actual connection config (without password)
-      if (process.env.DATABASE_URL) {
-        const safeUrl = process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@')
-        logServer.error('  DATABASE_URL:', safeUrl)
-      }
-      
-      throw dbError
     }
     
     logServer.info('Initializing tools...')
@@ -221,6 +240,22 @@ async function shutdown() {
 // Handle shutdown signals
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logServer.error('Unhandled Promise Rejection:', reason)
+  logServer.error('Promise:', promise)
+  // Don't exit immediately - let the error handler deal with it
+  // But log it so we can see what's happening
+})
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logServer.error('Uncaught Exception:', error)
+  logServer.error('Stack:', error.stack)
+  // Exit after logging - uncaught exceptions are serious
+  process.exit(1)
+})
 
 // Initialize services and start server
 initializeServices()
