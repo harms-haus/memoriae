@@ -34,14 +34,7 @@ function update_script() {
     exit
 }
 
-function install_script() {
-    # Only run if we're actually inside a container
-    # Check if we're on Proxmox host (has /etc/pve) - if so, exit early
-    if [[ -d /etc/pve ]]; then
-        # We're on the Proxmox host, not in container - this function should only run inside container
-        return 0
-    fi
-    
+function memoriae_install() {
     msg_info "Installing PostgreSQL"
     DEBIAN_FRONTEND=noninteractive apt-get install -y wget curl ca-certificates gnupg lsb-release
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
@@ -145,6 +138,10 @@ SERVICEEOF
 start
 build_container
 description
+
+# Run installation inside the container
+msg_info "Running installation inside container"
+$STD bash -c "$(declare -f memoriae_install); memoriae_install"
 
 msg_ok "Completed Successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
