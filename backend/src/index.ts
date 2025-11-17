@@ -159,7 +159,11 @@ async function initializeServices() {
         // Log the error for debugging
         const errorMessage = dbError.message || String(dbError)
         const errorCode = dbError.code || 'UNKNOWN'
-        logServer.warn(`Database connection attempt ${dbRetries} failed: ${errorMessage} (code: ${errorCode})`)
+        logServer.error(`Database connection attempt ${dbRetries} failed: ${errorMessage} (code: ${errorCode})`)
+        // Log additional error details if available
+        if (dbError.stack) {
+          logServer.debug('Error stack:', dbError.stack)
+        }
         
         // If it's a timeout, log more details
         if (errorMessage.includes('timed out')) {

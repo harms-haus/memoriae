@@ -456,11 +456,18 @@ if [ "$DOCKER_CMD" = "podman" ]; then
             $DOCKER_CMD rm "$container" 2>/dev/null || true
         fi
     done
-fi
-
-if [ "$CONTAINERS_EXIST" = true ]; then
-    # Restart postgres and redis if they exist (for Docker, this works)
-    if [ "$DOCKER_CMD" != "podman" ]; then
+    # Wait a moment for containers to be fully removed
+    sleep 1
+    # For Podman, start all services in one go to avoid conflicts
+    echo -e "${YELLOW}Starting all services...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>&1)
+    UP_EXIT=$?
+    RESTART_EXIT=$UP_EXIT
+    MEMORIAE_EXIT=$UP_EXIT
+else
+    # For Docker, use the normal restart/up flow
+    if [ "$CONTAINERS_EXIST" = true ]; then
+        # Restart postgres and redis if they exist
         echo -e "${YELLOW}Restarting postgres and redis...${NC}"
         (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG restart postgres redis 2>&1)
         RESTART_EXIT=$?
@@ -472,27 +479,22 @@ if [ "$CONTAINERS_EXIST" = true ]; then
             RESTART_EXIT=$?
         fi
     else
-        # For Podman, containers were already removed, so just start them
+        # Containers don't exist, start them
         echo -e "${YELLOW}Starting postgres and redis...${NC}"
         (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>&1)
         RESTART_EXIT=$?
     fi
-else
-    # Containers don't exist, start them
-    echo -e "${YELLOW}Starting postgres and redis...${NC}"
-    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d postgres redis 2>&1)
-    RESTART_EXIT=$?
+    
+    # Rebuild/recreate memoriae app (force recreate to use new image if built)
+    echo -e "${YELLOW}Starting/restarting memoriae app...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d --force-recreate --no-deps memoriae 2>&1)
+    MEMORIAE_EXIT=$?
+    
+    # Make sure all services are up (this will start any that aren't running)
+    echo -e "${YELLOW}Ensuring all services are up...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>&1)
+    UP_EXIT=$?
 fi
-
-# Rebuild/recreate memoriae app (force recreate to use new image if built)
-echo -e "${YELLOW}Starting/restarting memoriae app...${NC}"
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d --force-recreate --no-deps memoriae 2>&1)
-MEMORIAE_EXIT=$?
-
-# Make sure all services are up (this will start any that aren't running)
-echo -e "${YELLOW}Ensuring all services are up...${NC}"
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>&1)
-UP_EXIT=$?
 
 set -e
 
