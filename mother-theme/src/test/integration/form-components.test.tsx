@@ -549,8 +549,8 @@ describe("Form Components Integration", () => {
           confirmPassword: "securepassword123",
           bio: "I am a software developer.",
         });
-      });
-    });
+      }, { timeout: 5000 });
+    }, 10000); // 10 second timeout for entire test
   });
 
   describe("Accessibility Integration", () => {

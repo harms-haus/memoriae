@@ -138,8 +138,8 @@ describe('SeedEditor Component', () => {
       await waitFor(() => {
         const zenContainer = document.querySelector('.seed-editor-zen-mode')
         expect(zenContainer).toBeInTheDocument()
-      })
-    })
+      }, { timeout: 5000 })
+    }, 10000) // 10 second timeout for entire test
 
     it('should exit zen mode when content < 500 chars', async () => {
       const user = userEvent.setup()

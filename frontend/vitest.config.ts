@@ -48,6 +48,13 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/*.integration.test.{ts,tsx}'],
     exclude: ['node_modules/**', 'dist/**', '**/*.visual.test.{ts,tsx}'],
     logLevel: 'warn',
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: false,
+        isolate: true,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -7,6 +7,13 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'src/**/*.integration.test.ts'],
     exclude: ['node_modules/**', 'dist/**'],
     setupFiles: ['src/test-setup.ts'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: false,
+        isolate: true,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

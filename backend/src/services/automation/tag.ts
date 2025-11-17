@@ -573,6 +573,38 @@ Do not include any reasoning or explanation - only the JSON array.`
         created_at: createdTag.currentState.timestamp,
       }
     } catch (error) {
+      // Handle race condition: if tag was created by another concurrent call,
+      // catch duplicate key error and fetch existing tag
+      const pgError = error as { code?: string; constraint?: string; message?: string; cause?: { code?: string; constraint?: string; message?: string } }
+      const errorCode = pgError.code || pgError.cause?.code
+      const errorConstraint = pgError.constraint || pgError.cause?.constraint
+      const errorMessage = pgError.message || pgError.cause?.message || String(error)
+      
+      // Check for duplicate key error (code 23505) on tags_name_unique constraint
+      const isDuplicateKeyError = errorCode === '23505' && 
+        (errorConstraint === 'tags_name_unique' || errorMessage.includes('tags_name_unique'))
+      
+      if (isDuplicateKeyError) {
+        // Tag was created concurrently, fetch it now
+        const existing = await db<TagRow>('tags')
+          .where({ name: normalizedName })
+          .first()
+        
+        if (existing) {
+          // If tag exists but has no color and color is provided, update it via transaction
+          if (!existing.color && color) {
+            try {
+              await setColor(existing.id, color)
+            } catch (setColorError) {
+              logAutomation.warn(`Failed to set color for tag ${existing.id}:`, setColorError)
+            }
+            return { ...existing, color }
+          }
+          return existing
+        }
+      }
+      
+      // Re-throw if it's not a duplicate key error or if we couldn't find the tag
       throw new Error(`Failed to create tag: ${tagName}`, { cause: error })
     }
   }

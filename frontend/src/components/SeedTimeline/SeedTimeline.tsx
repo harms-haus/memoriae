@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import type { SeedTransaction, Sprout, WikipediaSproutState, Tag } from '../../types'
 import type { TransactionHistoryMessage } from '../TransactionHistoryList'
+import { computeSeedStateAtTime } from '../../utils/seed-state'
 import './SeedTimeline.css'
 import '../TransactionHistoryList/TransactionHistoryList.css'
 
@@ -137,6 +138,7 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
     return timelineItems.map((item) => {
       if (item.type === 'transaction' && item.transaction) {
         const transaction = item.transaction
+        
         let title = ''
         let content = ''
 
@@ -154,24 +156,71 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
             break
           case 'add_tag':
             title = 'Tag Added'
-            const tagData = transaction.transaction_data as { tag_name: string }
+            // Use tag name from transaction data (historical value at that moment)
+            const tagData = transaction.transaction_data as { tag_id: string; tag_name: string }
             content = `Tag: ${tagData.tag_name}`
             break
           case 'remove_tag':
             title = 'Tag Removed'
-            const removeTagData = transaction.transaction_data as { tag_name?: string }
-            content = removeTagData.tag_name ? `Tag: ${removeTagData.tag_name}` : 'Tag removed'
+            // Use tag name from transaction data if available, otherwise from state before removal
+            const removeTagData = transaction.transaction_data as { tag_id: string; tag_name?: string }
+            if (removeTagData.tag_name) {
+              // Historical tag name from transaction data
+              content = `Tag: ${removeTagData.tag_name}`
+            } else {
+              // Try to find tag name from state before removal
+              const creationTransaction = transactions.find(t => t.transaction_type === 'create_seed')
+              const transactionsBefore = transactions.filter(
+                t => new Date(t.created_at).getTime() < new Date(transaction.created_at).getTime()
+              )
+              // Ensure creation transaction is included (required by computeSeedStateAtTime)
+              if (creationTransaction && !transactionsBefore.find(t => t.id === creationTransaction.id)) {
+                transactionsBefore.push(creationTransaction)
+              }
+              // Only compute state if we have a creation transaction
+              if (creationTransaction) {
+                const stateBefore = computeSeedStateAtTime(transactionsBefore)
+                const removedTag = stateBefore.tags?.find(t => t.id === removeTagData.tag_id)
+                content = removedTag ? `Tag: ${removedTag.name}` : 'Tag removed'
+              } else {
+                content = 'Tag removed'
+              }
+            }
             break
           case 'set_category':
             title = 'Category Set'
-            const categoryData = transaction.transaction_data as { category_name: string; category_path?: string }
+            // Use category name/path from transaction data (historical value at that moment)
+            const categoryData = transaction.transaction_data as { 
+              category_id: string
+              category_name: string
+              category_path: string
+            }
             content = categoryData.category_path
               ? `Category: ${categoryData.category_name} (${categoryData.category_path})`
               : `Category: ${categoryData.category_name}`
             break
           case 'remove_category':
             title = 'Category Removed'
-            content = 'Category removed'
+            // Get category name from state before removal (historical value)
+            const removeCategoryData = transaction.transaction_data as { category_id: string }
+            const creationTransactionForCategory = transactions.find(t => t.transaction_type === 'create_seed')
+            const transactionsBeforeCategory = transactions.filter(
+              t => new Date(t.created_at).getTime() < new Date(transaction.created_at).getTime()
+            )
+            // Ensure creation transaction is included (required by computeSeedStateAtTime)
+            if (creationTransactionForCategory && !transactionsBeforeCategory.find(t => t.id === creationTransactionForCategory.id)) {
+              transactionsBeforeCategory.push(creationTransactionForCategory)
+            }
+            // Only compute state if we have a creation transaction
+            if (creationTransactionForCategory) {
+              const stateBeforeCategory = computeSeedStateAtTime(transactionsBeforeCategory)
+              const removedCategory = stateBeforeCategory.categories?.find(c => c.id === removeCategoryData.category_id)
+              content = removedCategory 
+                ? `Category: ${removedCategory.name} (${removedCategory.path})`
+                : 'Category removed'
+            } else {
+              content = 'Category removed'
+            }
             break
           case 'add_followup':
             title = 'Follow-up Added'
@@ -207,17 +256,22 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
 
         switch (sprout.sprout_type) {
           case 'followup':
+            // Followup sprouts show HISTORICAL data (from sprout_data at creation time)
+            // This shows what the sprout was when it was created, not current state
             title = 'Follow-up Sprout'
             const followupData = sprout.sprout_data as { initial_message: string }
             content = followupData.initial_message || 'Follow-up sprout'
             break
           case 'musing':
+            // Musing sprouts show HISTORICAL data (from sprout_data at creation time)
             title = 'Musing Sprout'
             const musingData = sprout.sprout_data as { template_type: string }
             content = `Musing (${musingData.template_type})`
             break
           case 'wikipedia_reference':
-            // Use computed state if available, otherwise fall back to sprout_data
+            // Wikipedia sprouts show CURRENT state (computed from all transactions)
+            // This is because Wikipedia sprouts can have edit transactions that modify the summary
+            // and we want to show the latest value, not the historical value at creation
             const computedState = wikipediaStates.get(sprout.id)
             const wikipediaData = computedState 
               ? {
@@ -278,7 +332,7 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
         time: item.time.toISOString(),
       }
     })
-  }, [timelineItems, wikipediaStates])
+  }, [timelineItems, wikipediaStates, transactions])
 
   // Group consecutive tag additions that are within time threshold and not interrupted
   const messages: ExtendedMessage[] = useMemo(() => {
@@ -330,11 +384,13 @@ export function SeedTimeline({ transactions, sprouts, tags = [], getColor }: See
               const remainingCount = uniqueTagNames.length - displayTags.length
 
               // Get tag info (name and color) for each tag
+              // Use tag names from transaction data (historical values) but current colors
+              // (we don't store historical tag colors, so use current as best approximation)
               const tagInfo: Array<{ name: string; color: string | null }> = displayTags.map(tagName => {
                 const tag = tags.find(t => t.name === tagName)
                 return {
-                  name: tagName,
-                  color: tag?.color || null,
+                  name: tagName, // Historical name from transaction data
+                  color: tag?.color || null, // Current color (best approximation)
                 }
               })
 

@@ -54,11 +54,12 @@ This document provides comprehensive guidance for AI agents working on the Memor
 
 ### Workspace Structure
 
-This is a **monorepo** using npm workspaces with three packages:
+This is a **monorepo** using npm workspaces with three main packages (plus a shared utilities package):
 
 1. **`mother-theme`** - Theme library and React components (`@harms-haus/mother`)
 2. **`backend`** - Backend API server (`@harms-haus/memoriae-server`)
 3. **`frontend`** - Frontend web application (`@harms-haus/memoriae`)
+4. **`shared`** - Shared utilities package (`@harms-haus/shared`) - Logger and other cross-package utilities
 
 ### Key Dependencies
 
@@ -70,12 +71,12 @@ This is a **monorepo** using npm workspaces with three packages:
 - `pg` - PostgreSQL client
 - `bullmq` - Job queue with Redis
 - `jsonwebtoken` - JWT authentication
-- `fast-json-patch` - JSON Patch (RFC 6902) operations
 - `axios` - HTTP client for OpenRouter API
 - `cors` - CORS middleware
 - `dotenv` - Environment variable management
 - `luxon` - Date/time handling
 - `uuid` - UUID generation
+- `@harms-haus/shared` - Shared logger and utilities
 
 **Development Dependencies:**
 - `typescript` - TypeScript compiler
@@ -126,6 +127,23 @@ This is a **monorepo** using npm workspaces with three packages:
 - `@playwright/experimental-ct-react` - Component testing
 - `playwright` - E2E testing
 - `@testing-library/react` - React testing utilities
+
+#### Shared Package (`shared/package.json`)
+
+**Runtime Dependencies:**
+- None (pure TypeScript utilities)
+
+**Development Dependencies:**
+- `typescript` - TypeScript compiler
+- `vitest` - Test framework
+- `@vitest/coverage-v8` - Coverage reporting
+
+**Key Features:**
+- **Logger**: Structured logging system that works in both browser and Node.js
+  - Log levels: DEBUG, INFO, WARN, ERROR, FATAL
+  - Environment-based configuration (VITE_LOG_LEVEL for frontend, LOG_LEVEL for backend)
+  - Scoped logging support
+  - Browser localStorage persistence
 
 ### TypeScript Configuration
 
@@ -297,6 +315,7 @@ npm run install-docker
 **Building:**
 - `npm run build` - Build all packages (mother-theme → backend → frontend)
   - Runs `npm run build` in each workspace sequentially
+  - Note: `shared` package is built automatically when needed by other packages
 
 **Testing:**
 - `npm test` - Run tests for all packages
@@ -409,12 +428,13 @@ GitHub Actions workflows (`.github/workflows/`):
 
 ### General Principles
 
-1. **Immutability First**: All changes are events; never mutate seed base data directly
-2. **Timeline-Based State**: Current seed state = base + all enabled events applied chronologically
-3. **Event Sourcing**: Every change creates an event; toggling events reconstructs history
+1. **Immutability First**: All changes are transactions; never mutate seed data directly
+2. **Transaction-Based State**: Current seed state = replay all transactions chronologically
+3. **Event Sourcing**: Every change creates a transaction; state is always computed, never stored
 4. **Async Processing**: Automations run in background queue, not blocking user requests
 5. **Type Safety**: TypeScript strict mode throughout; avoid `any`, use proper types
 6. **Component Composition**: React components should be small, focused, reusable
+7. **Structured Logging**: Use `@harms-haus/shared` Logger instead of console.log
 
 ### Code Style
 
@@ -456,9 +476,11 @@ frontend/src/
 │   ├── SeedContext.tsx     # Seed data & operations
 │   └── ThemeContext.tsx    # Style guide CSS variables
 ├── hooks/
-│   ├── useSeedTimeline.ts  # Compute seed state from events
+│   ├── useSeedTimeline.ts  # Compute seed state from transactions
 │   ├── useCategoryPressure.ts # Monitor category changes
 │   └── useApi.ts           # API call wrapper
+├── utils/
+│   └── seed-state.ts       # Frontend state computation utilities
 ├── services/
 │   └── api.ts              # REST API client (axios/fetch)
 ├── styles/
@@ -476,8 +498,9 @@ backend/src/
 ├── config.ts               # Environment config
 ├── routes/
 │   ├── auth.ts            # OAuth endpoints
-│   ├── seeds.ts           # Seed CRUD
-│   ├── events.ts          # Event operations
+│   ├── seeds.ts            # Seed CRUD
+│   ├── transactions.ts    # Transaction operations
+│   ├── sprouts.ts         # Sprout operations
 │   ├── categories.ts      # Category management
 │   ├── tags.ts            # Tag operations
 │   └── search.ts          # Search endpoint
@@ -497,8 +520,8 @@ backend/src/
 │   ├── errorHandler.ts   # Error handling
 │   └── validator.ts      # Request validation
 ├── utils/
-│   ├── jsonpatch.ts      # JSON Patch application
-│   └── pressure.ts       # Pressure calculations
+│   ├── seed-state.ts    # State computation from transactions
+│   └── pressure.ts      # Pressure calculations
 └── db/
     ├── migrations/        # Knex/Prisma migrations
     ├── models/           # Database models
@@ -661,29 +684,29 @@ export const SeedContext = createContext<SeedContextValue | null>(null);
 Custom hooks encapsulate logic:
 
 ```typescript
-// useSeedTimeline.ts - Compute state from events
+// useSeedTimeline.ts - Compute state from transactions
 export function useSeedTimeline(seedId: string) {
   const { seeds } = useSeedContext();
-  const [timeline, setTimeline] = useState<Event[]>([]);
+  const [transactions, setTransactions] = useState<SeedTransaction[]>([]);
   const [currentState, setCurrentState] = useState<SeedState | null>(null);
 
   useEffect(() => {
     const seed = seeds.find(s => s.id === seedId);
     if (!seed) return;
 
-    // Fetch timeline events
-    fetchTimeline(seedId).then(setTimeline);
+    // Fetch timeline transactions
+    fetchTransactions(seedId).then(setTransactions);
   }, [seedId, seeds]);
 
   useEffect(() => {
-    if (!timeline.length) return;
+    if (!transactions.length) return;
     
-    // Apply enabled events in chronological order
-    const state = computeSeedState(seed.baseState, timeline);
+    // Compute state by replaying transactions
+    const state = computeSeedState(transactions);
     setCurrentState(state);
-  }, [timeline]);
+  }, [transactions]);
 
-  return { timeline, currentState, toggleEvent };
+  return { transactions, currentState };
 }
 ```
 
@@ -851,32 +874,56 @@ const seeds = await db('seeds')
 const seeds = await db.raw(`SELECT * FROM seeds WHERE user_id = '${userId}'`);
 ```
 
-### Event Application Pattern
+### State Computation Pattern
 
-Events use JSON Patch (RFC 6902). Always validate patches:
+State is computed by replaying transactions chronologically:
 
 ```typescript
-// utils/jsonpatch.ts
-import { applyPatch } from 'fast-json-patch';
+// utils/seed-state.ts
+export function computeSeedState(transactions: SeedTransaction[]): SeedState {
+  // Sort transactions by created_at
+  const sorted = [...transactions].sort(
+    (a, b) => a.created_at.getTime() - b.created_at.getTime()
+  );
 
-export function applyEvents(baseState: SeedState, events: Event[]): SeedState {
-  // Filter enabled events, sort by created_at
-  const enabledEvents = events
-    .filter(e => e.enabled)
-    .sort((a, b) => a.created_at.getTime() - b.created_at.getTime());
+  // Start with empty state
+  let state: SeedState = {
+    seed: '',
+    tags: [],
+    categories: [],
+    metadata: {},
+  };
 
-  let state = { ...baseState };
-  
-  for (const event of enabledEvents) {
+  // Replay each transaction
+  for (const transaction of sorted) {
     try {
-      // Validate patch
-      validatePatch(event.patch_json);
+      // Validate transaction
+      validateTransaction(transaction.transaction_type, transaction.transaction_data);
       
-      // Apply patch
-      const result = applyPatch(state, event.patch_json, false, false);
-      state = result.newDocument;
+      // Apply transaction based on type
+      switch (transaction.transaction_type) {
+        case 'create_seed':
+          state.seed = transaction.transaction_data.content;
+          break;
+        case 'edit_content':
+          state.seed = transaction.transaction_data.content;
+          break;
+        case 'add_tag':
+          state.tags.push(transaction.transaction_data.tag);
+          break;
+        case 'remove_tag':
+          state.tags = state.tags.filter(t => t.id !== transaction.transaction_data.tag_id);
+          break;
+        case 'set_category':
+          state.categories = [transaction.transaction_data.category];
+          break;
+        case 'remove_category':
+          state.categories = [];
+          break;
+        // add_sprout doesn't modify state, just references sprout
+      }
     } catch (error) {
-      console.error(`Failed to apply event ${event.id}:`, error);
+      logger.error(`Failed to apply transaction ${transaction.id}`, { error, transactionId: transaction.id });
       // Log but continue (don't fail entire computation)
     }
   }
@@ -887,29 +934,54 @@ export function applyEvents(baseState: SeedState, events: Event[]): SeedState {
 
 ## Key Systems
 
-### Timeline System
+### Timeline System (Transaction-Based)
 
-**Core Principle**: Seeds are immutable; all changes are events.
+**Core Principle**: Seeds are immutable; all changes are transactions.
 
-1. **Base State**: Initial seed content stored in `seeds.seed_content`
-2. **Events**: Stored in `events` table as JSON Patch operations
-3. **Current State**: Computed by applying all enabled events to base state
-4. **Toggling**: Setting `events.enabled = false` removes that change from state
+The system uses a **transaction-based event sourcing** approach instead of JSON Patch events:
+
+1. **Base Transaction**: Initial `create_seed` transaction stores the seed content
+2. **Modification Transactions**: All subsequent changes create new transactions
+3. **Current State**: Computed by replaying all transactions chronologically
+4. **Immutability**: Transactions are never modified or deleted (only new ones are created)
+
+**Transaction Types** (`backend/src/types/seed-transactions.ts`):
+- `create_seed` - Initial seed creation with content
+- `edit_content` - Content modification
+- `add_tag` - Add a tag to the seed
+- `remove_tag` - Remove a tag from the seed
+- `set_category` - Set category (replaces existing)
+- `remove_category` - Remove category
+- `add_sprout` - Add reference to AI-generated sprout
 
 ```typescript
-// Example event JSON Patch:
+// Example transaction structure:
+interface SeedTransaction {
+  id: string
+  seed_id: string
+  transaction_type: SeedTransactionType
+  transaction_data: SeedTransactionData  // Type-specific data
+  created_at: Date
+  automation_id: string | null  // Null if manual, UUID if from automation
+}
+
+// Example: add_tag transaction
 {
-  "op": "add",
-  "path": "/tags/-",
-  "value": { "id": "tag-123", "name": "work" }
+  transaction_type: 'add_tag',
+  transaction_data: { tag: { id: 'tag-123', name: 'work' } }
 }
 ```
 
-**When creating events:**
-- Always compute the patch from the previous state
-- Store patch in `events.patch_json` column
-- Set `events.enabled = true` by default
-- Link to automation if created by automation (`automation_id`)
+**State Computation** (`backend/src/utils/seed-state.ts`):
+- `computeSeedState(transactions: SeedTransaction[]): SeedState` - Replays transactions to compute current state
+- Transactions are applied in chronological order (`created_at`)
+- Each transaction type has specific logic for how it modifies state
+
+**When creating transactions:**
+- Always create new transactions, never modify existing ones
+- Store transaction-specific data in `transaction_data` JSONB column
+- Set `automation_id = null` for manual changes, or automation UUID for automated changes
+- Use `SeedTransactionsService.create()` to create transactions
 
 ### Automation System
 
@@ -935,23 +1007,19 @@ export class TagAutomation extends Automation {
   name = 'tag';
   handlerFnName = 'processTag';
 
-  async process(seed: Seed, context: AutomationContext): Promise<Event[]> {
+  async process(seed: Seed, context: AutomationContext): Promise<void> {
     // 1. Call OpenRouter API with seed content
     const tags = await this.generateTags(seed.currentState.seed);
     
-    // 2. Create ADD_TAG events for each tag
-    const events = tags.map(tag => ({
-      seed_id: seed.id,
-      event_type: 'ADD_TAG',
-      patch_json: [{ op: 'add', path: '/tags/-', value: tag }],
-      enabled: true,
-      automation_id: this.id,
-    }));
-    
-    // 3. Save events
-    await EventsService.createMany(events);
-    
-    return events;
+    // 2. Create add_tag transactions for each tag
+    for (const tag of tags) {
+      await SeedTransactionsService.create({
+        seed_id: seed.id,
+        transaction_type: 'add_tag',
+        transaction_data: { tag },
+        automation_id: this.id,
+      });
+    }
   }
 
   calculatePressure(seed: Seed, context: AutomationContext, changes: CategoryChange[]): number {
@@ -1015,6 +1083,50 @@ export function calculateCategoryPressure(
   }
 }
 ```
+
+### Sprouts System
+
+**Sprouts** are specialized timeline items that appear alongside transactions. They represent AI-generated or user-created follow-ups, musings, extra context, fact checks, and other related content.
+
+**Sprout Types** (`backend/src/types/sprouts.ts`):
+- `followup` - Follow-up reminders or tasks
+- `musing` - AI-generated musings about the seed
+- `extra_context` - Additional context or information
+- `fact_check` - Fact-checking information
+- `wikipedia_reference` - Wikipedia references
+
+**Structure:**
+```typescript
+interface Sprout {
+  id: string
+  seed_id: string
+  sprout_type: SproutType
+  sprout_data: SproutData  // Type-specific data structure
+  created_at: Date
+  automation_id: string | null
+}
+```
+
+**Integration with Timeline:**
+- Sprouts appear in the seed's timeline alongside transactions
+- Creating a sprout also creates an `add_sprout` transaction
+- Each sprout type manages its own state internally
+- Sprouts can be created manually or by automations
+
+**Usage:**
+```typescript
+// Create a sprout
+const sprout = await SproutsService.create({
+  seed_id: seed.id,
+  sprout_type: 'followup',
+  sprout_data: { due_time: new Date(), message: 'Follow up on this' },
+  automation_id: null,
+});
+
+// This automatically creates an add_sprout transaction
+```
+
+**Location**: `backend/src/services/sprouts.ts`, `backend/src/routes/sprouts.ts`
 
 ### Category Hierarchy
 
@@ -1142,7 +1254,12 @@ cd mother-theme && npm test
 **Backend Debugging:**
 - Use Node.js debugger (port 9229 in Docker)
 - Add `debugger;` statements
-- Use `console.log` for quick debugging (remove before commit)
+- Use `@harms-haus/shared` Logger for structured logging (not console.log)
+  ```typescript
+  import { logger } from '@harms-haus/shared';
+  const log = logger.scope('MyService');
+  log.debug('Debug message', { context: 'data' });
+  ```
 - Check logs: `docker logs memoriae-dev` or `npm run dev -- --logs`
 
 **Frontend Debugging:**
@@ -1181,6 +1298,7 @@ cd mother-theme && npm test
 - Trailing commas
 - Semicolons
 - JSDoc for public functions
+- Use `@harms-haus/shared` Logger instead of console.log/error/warn
 
 ## Common Tasks
 
@@ -1208,9 +1326,10 @@ cd mother-theme && npm test
 
 1. **Create automation class** extending `Automation` base
 2. **Implement** `process()`, `calculatePressure()`, `handlePressure()`
-3. **Register** in `services/automation/registry.ts`
-4. **Add to database** `automations` table
-5. **Create queue jobs** when seeds are created/updated
+3. **Create transactions** using `SeedTransactionsService.create()` instead of events
+4. **Register** in `services/automation/registry.ts`
+5. **Add to database** `automations` table
+6. **Create queue jobs** when seeds are created/updated
 
 ### Modifying Database Schema
 
@@ -1236,20 +1355,37 @@ cd mother-theme && npm test
 Test utilities and pure functions:
 
 ```typescript
-// __tests__/utils/jsonpatch.test.ts
-import { applyEvents } from '../utils/jsonpatch';
+// __tests__/utils/seed-state.test.ts
+import { computeSeedState } from '../utils/seed-state';
 
-describe('applyEvents', () => {
-  it('should apply enabled events in order', () => {
-    const baseState = { seed: 'initial', tags: [] };
-    const events = [
-      { id: '1', enabled: true, patch_json: [{ op: 'add', path: '/tags/-', value: 'work' }] },
-      { id: '2', enabled: false, patch_json: [{ op: 'add', path: '/tags/-', value: 'personal' }] },
-      { id: '3', enabled: true, patch_json: [{ op: 'add', path: '/tags/-', value: 'important' }] },
+describe('computeSeedState', () => {
+  it('should compute state from transactions in order', () => {
+    const transactions = [
+      { 
+        id: '1', 
+        transaction_type: 'create_seed', 
+        transaction_data: { content: 'initial' },
+        created_at: new Date('2024-01-01'),
+      },
+      { 
+        id: '2', 
+        transaction_type: 'add_tag', 
+        transaction_data: { tag: { id: 'tag-1', name: 'work' } },
+        created_at: new Date('2024-01-02'),
+      },
+      { 
+        id: '3', 
+        transaction_type: 'add_tag', 
+        transaction_data: { tag: { id: 'tag-2', name: 'important' } },
+        created_at: new Date('2024-01-03'),
+      },
     ];
     
-    const result = applyEvents(baseState, events);
-    expect(result.tags).toEqual(['work', 'important']);
+    const result = computeSeedState(transactions);
+    expect(result.seed).toBe('initial');
+    expect(result.tags).toHaveLength(2);
+    expect(result.tags[0].name).toBe('work');
+    expect(result.tags[1].name).toBe('important');
   });
 });
 ```
@@ -1324,23 +1460,33 @@ const schema = z.object({
 const content = req.body.content; // No validation
 ```
 
-### JSON Patch Validation
+### Transaction Validation
 
-Validate patches before applying:
+Validate transactions before applying:
 
 ```typescript
-function validatePatch(patch: PatchOperation[]): void {
-  // Only allow safe operations
-  const allowedOps = ['add', 'remove', 'replace'];
-  const allowedPaths = ['/tags/-', '/categories/-', '/metadata'];
-  
-  for (const op of patch) {
-    if (!allowedOps.includes(op.op)) {
-      throw new Error(`Invalid operation: ${op.op}`);
-    }
-    if (!allowedPaths.some(path => op.path.startsWith(path))) {
-      throw new Error(`Invalid path: ${op.path}`);
-    }
+// utils/seed-state.ts
+export function validateTransaction(
+  type: SeedTransactionType,
+  data: SeedTransactionData
+): void {
+  switch (type) {
+    case 'create_seed':
+      if (!data.content || typeof data.content !== 'string') {
+        throw new Error('create_seed requires content string');
+      }
+      break;
+    case 'add_tag':
+      if (!data.tag || !data.tag.id || !data.tag.name) {
+        throw new Error('add_tag requires tag with id and name');
+      }
+      break;
+    case 'edit_content':
+      if (!data.content || typeof data.content !== 'string') {
+        throw new Error('edit_content requires content string');
+      }
+      break;
+    // ... validate other transaction types
   }
 }
 ```
@@ -1445,13 +1591,13 @@ const { seeds, loading, error } = useSeedContext();
 const api = useApi();
 const result = await api.get(`/seeds/${id}`);
 
-// Event creation
-const event = {
+// Transaction creation
+await SeedTransactionsService.create({
   seed_id: seedId,
-  event_type: 'ADD_TAG',
-  patch_json: [{ op: 'add', path: '/tags/-', value: tag }],
-  enabled: true,
-};
+  transaction_type: 'add_tag',
+  transaction_data: { tag },
+  automation_id: null,
+});
 
 // Styling
 <div className="panel panel-elevated">
@@ -1580,6 +1726,12 @@ These scripts:
 - Database setup/teardown
 - Test helpers
 
+**`shared/src/logger.ts`** - Structured logger
+- Works in both browser and Node.js
+- Environment-based log levels
+- Scoped logging support
+- Browser localStorage persistence
+
 **`frontend/src/test/setup.ts`** - Frontend test setup
 - jsdom configuration
 - Testing library setup
@@ -1595,6 +1747,11 @@ These scripts:
 - Frontend: `@/*` → `src/*`, `@mother/*` → `../mother-theme/src/*`
 - Mother Theme: `@/*` → `src/*`
 - Use aliases instead of relative paths when possible
+
+**Shared Package:**
+- Import logger: `import { logger } from '@harms-haus/shared'`
+- Use scoped logging: `const log = logger.scope('ServiceName')`
+- Set log level: `Logger.setLevel('DEBUG', true)` (persist in browser)
 
 **Import Organization:**
 ```typescript
@@ -1625,12 +1782,14 @@ const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3123/api';
 
 **Error Handling Pattern:**
 ```typescript
+import { logger } from '@harms-haus/shared';
+
 try {
   const result = await someAsyncOperation();
   return result;
 } catch (error) {
   // Log error (structured logging)
-  console.error('Operation failed', { error, context });
+  logger.error('Operation failed', { error, context });
   
   // Return error or throw
   throw new Error('User-friendly error message');
