@@ -1,7 +1,10 @@
 import type { Knex } from 'knex'
 import dotenv from 'dotenv'
+import path from 'path'
 
-dotenv.config()
+// Load .env from project root (same as config.ts)
+// When compiled, this file is in dist/db/, so we go up 3 levels to get to project root
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 
 // Helper to determine if connection is to AWS RDS
 function isRDSConnection(): boolean {

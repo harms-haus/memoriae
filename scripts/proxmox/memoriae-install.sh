@@ -2,6 +2,21 @@
 # Installation script for Memoriae LXC container
 # This script runs INSIDE the container after it's created
 
+# Define helper functions if not available (from Proxmox scripts)
+if ! command -v msg_info &> /dev/null; then
+  msg_info() {
+    echo "[INFO] $*"
+  }
+  msg_ok() {
+    echo "[OK] $*"
+  }
+  msg_error() {
+    echo "[ERROR] $*" >&2
+  }
+fi
+
+set -e  # Exit on error
+
 msg_info "Installing PostgreSQL"
 DEBIAN_FRONTEND=noninteractive apt-get install -y wget curl ca-certificates gnupg lsb-release
 curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
@@ -18,9 +33,15 @@ until sudo -u postgres psql -c 'SELECT 1' > /dev/null 2>&1; do sleep 1; done
 msg_ok "PostgreSQL is ready"
 
 msg_info "Configuring PostgreSQL"
-sudo -u postgres psql -c "CREATE USER memoriae WITH PASSWORD 'memoriae';" || true
-sudo -u postgres psql -c "CREATE DATABASE memoriae OWNER memoriae;" || true
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE memoriae TO memoriae;"
+# Create user (ignore error if already exists)
+sudo -u postgres psql -c "CREATE USER memoriae WITH PASSWORD 'memoriae';" 2>/dev/null || true
+
+# Create database (ignore error if already exists)
+sudo -u postgres psql -c "CREATE DATABASE memoriae OWNER memoriae;" 2>/dev/null || true
+
+# Ensure user owns the database and has privileges
+sudo -u postgres psql -c "ALTER DATABASE memoriae OWNER TO memoriae;" 2>/dev/null || true
+sudo -u postgres psql -d memoriae -c "GRANT ALL PRIVILEGES ON DATABASE memoriae TO memoriae;" 2>/dev/null || true
 msg_ok "Configured PostgreSQL"
 
 msg_info "Installing Redis"
@@ -66,13 +87,71 @@ ENVEOF
 msg_ok "Configured environment"
 
 msg_info "Waiting for services to be ready"
-until pg_isready -U memoriae -d memoriae > /dev/null 2>&1; do sleep 1; done
-until redis-cli ping > /dev/null 2>&1; do sleep 1; done
+# Wait for PostgreSQL to accept connections
+for i in {1..30}; do
+  if pg_isready -U memoriae -d memoriae > /dev/null 2>&1; then
+    break
+  fi
+  if [ $i -eq 30 ]; then
+    msg_error "PostgreSQL not ready after 30 seconds"
+    exit 1
+  fi
+  sleep 1
+done
+
+# Wait for Redis to accept connections
+for i in {1..30}; do
+  if redis-cli ping > /dev/null 2>&1; then
+    break
+  fi
+  if [ $i -eq 30 ]; then
+    msg_error "Redis not ready after 30 seconds"
+    exit 1
+  fi
+  sleep 1
+done
 msg_ok "Services are ready"
 
 msg_info "Running database migrations"
 cd /opt/memoriae/backend
-npm run migrate
+
+# Ensure .env file exists and is readable
+if [ ! -f /opt/memoriae/.env ]; then
+  msg_error ".env file not found!"
+  exit 1
+fi
+
+# Load environment variables using a safer method
+# This handles values with spaces and special characters better
+set -a  # Automatically export all variables
+source /opt/memoriae/.env
+set +a  # Turn off auto-export
+
+# Verify critical environment variables are set
+if [ -z "$DATABASE_URL" ]; then
+  msg_error "DATABASE_URL not set in .env file!"
+  exit 1
+fi
+
+if [ -z "$JWT_SECRET" ]; then
+  msg_error "JWT_SECRET not set in .env file!"
+  exit 1
+fi
+
+# Verify DATABASE_URL format
+if [[ ! "$DATABASE_URL" =~ ^postgresql:// ]]; then
+  msg_error "DATABASE_URL must start with postgresql://"
+  exit 1
+fi
+
+# Ensure we're in the backend directory
+cd /opt/memoriae/backend
+
+# The knexfile.ts explicitly loads .env from project root (/opt/memoriae/.env)
+# We also set the environment variables above for extra safety
+
+# Run migrations with explicit environment
+NODE_ENV=production npm run migrate
 msg_ok "Ran database migrations"
 
 msg_info "Creating systemd service"
