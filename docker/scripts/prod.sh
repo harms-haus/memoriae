@@ -138,7 +138,32 @@ fi
 
 # Step 2: Start compose
 echo -e "${BLUE}Step 2: Starting services...${NC}"
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d)
+
+# For Podman, we need to remove existing containers first to avoid name conflicts
+if [ "$DOCKER_CMD" = "podman" ]; then
+    echo -e "${YELLOW}Removing existing containers (Podman requires this)...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down 2>/dev/null) || true
+fi
+
+# Start services - start postgres and redis first, then app
+set +e
+echo -e "${YELLOW}Starting postgres and redis...${NC}"
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d postgres redis 2>&1)
+echo -e "${YELLOW}Starting memoriae app...${NC}"
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d memoriae 2>&1)
+UP_EXIT=$?
+set -e
+
+if [ $UP_EXIT -ne 0 ]; then
+    echo -e "${YELLOW}⚠ Some services may have failed to start. Checking container status...${NC}"
+fi
+
+# Give containers a moment to start
+sleep 2
+
+# Check which containers are running
+echo -e "${YELLOW}Container status:${NC}"
+$DOCKER_CMD ps --format "table {{.Names}}\t{{.Status}}" | grep -E "NAMES|memoriae" || true
 
 # Step 3: Wait for services to be healthy
 echo -e "${BLUE}Step 3: Waiting for services to be healthy...${NC}"
@@ -146,12 +171,18 @@ echo -e "${BLUE}Step 3: Waiting for services to be healthy...${NC}"
 # Wait for postgres
 echo -e "${YELLOW}Waiting for postgres...${NC}"
 for i in {1..30}; do
+    # Check if container exists first
+    if ! $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-postgres$"; then
+        echo -e "${RED}✗ Postgres container not found${NC}"
+        exit 1
+    fi
     if $DOCKER_CMD exec memoriae-postgres pg_isready -U memoriae > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Postgres is ready${NC}"
         break
     fi
     if [ $i -eq 30 ]; then
         echo -e "${RED}✗ Postgres failed to become ready${NC}"
+        echo -e "${YELLOW}Check logs: $DOCKER_CMD logs memoriae-postgres${NC}"
         exit 1
     fi
     sleep 1
@@ -160,12 +191,18 @@ done
 # Wait for redis
 echo -e "${YELLOW}Waiting for redis...${NC}"
 for i in {1..30}; do
+    # Check if container exists first
+    if ! $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-redis$"; then
+        echo -e "${RED}✗ Redis container not found${NC}"
+        exit 1
+    fi
     if $DOCKER_CMD exec memoriae-redis redis-cli ping > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Redis is ready${NC}"
         break
     fi
     if [ $i -eq 30 ]; then
         echo -e "${RED}✗ Redis failed to become ready${NC}"
+        echo -e "${YELLOW}Check logs: $DOCKER_CMD logs memoriae-redis${NC}"
         exit 1
     fi
     sleep 1
