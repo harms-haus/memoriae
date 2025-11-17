@@ -445,10 +445,13 @@ done
 # For Podman, we need to handle container replacement differently
 if [ "$DOCKER_CMD" = "podman" ]; then
     # Podman requires containers to be removed before recreating with same name
-    # Stop and remove existing containers if they exist
+    # Use podman-compose down first to cleanly remove all containers
+    echo -e "${YELLOW}Removing existing Podman containers...${NC}"
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down 2>&1) || true
+    # Also manually remove any remaining containers by name (in case compose missed some)
     for container in memoriae-postgres memoriae-redis memoriae-app; do
         if $DOCKER_CMD ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
-            echo -e "${YELLOW}Stopping and removing existing container: ${container}...${NC}"
+            echo -e "${YELLOW}Removing container: ${container}...${NC}"
             $DOCKER_CMD stop "$container" 2>/dev/null || true
             $DOCKER_CMD rm "$container" 2>/dev/null || true
         fi
