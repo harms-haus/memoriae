@@ -85,11 +85,11 @@ else
     fi
 fi
 
-COMPOSE_FILES="-f docker/docker-compose.yml -f docker/docker-compose.prod.yml"
-ENV_FILE="--env-file .env"
+COMPOSE_FILES="-f ${PROJECT_DIR}/docker/docker-compose.yml -f ${PROJECT_DIR}/docker/docker-compose.prod.yml"
+ENV_FILE="--env-file ${PROJECT_DIR}/.env"
 
 # Check for .env file
-if [ ! -f ".env" ]; then
+if [ ! -f "${PROJECT_DIR}/.env" ]; then
     echo -e "${RED}Error: .env file not found${NC}"
     echo "Please create .env file with required environment variables"
     exit 1
@@ -129,7 +129,7 @@ if [ "$CLEAN" = true ]; then
         exit 0
     fi
     echo -e "${YELLOW}Stopping containers and removing volumes...${NC}"
-    $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down -v
+    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down -v)
     echo -e "${GREEN}Cleanup complete${NC}"
     echo -e "${YELLOW}Note: This script does NOT start services after cleanup.${NC}"
     echo -e "${YELLOW}Run '$0' to start services.${NC}"
@@ -138,7 +138,7 @@ fi
 
 # Step 2: Start compose
 echo -e "${BLUE}Step 2: Starting services...${NC}"
-$COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d)
 
 # Step 3: Wait for services to be healthy
 echo -e "${BLUE}Step 3: Waiting for services to be healthy...${NC}"
@@ -197,10 +197,10 @@ echo "  • PostgreSQL: localhost:${POSTGRES_PORT:-5432}"
 echo "  • Redis: localhost:${REDIS_PORT:-6379}"
 echo ""
 echo -e "${BLUE}Useful commands:${NC}"
-echo "  • View logs:    $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE logs -f"
-echo "  • Stop:         $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down"
+echo "  • View logs:    cd $PROJECT_DIR && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE logs -f"
+echo "  • Stop:         cd $PROJECT_DIR && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down"
 echo "  • Clean (⚠):    $0 --clean"
-echo "  • Status:       $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE ps"
+echo "  • Status:       cd $PROJECT_DIR && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE ps"
 echo ""
 echo -e "${GREEN}Memoriae is running in production mode!${NC}"
 echo ""
@@ -208,4 +208,4 @@ echo -e "${YELLOW}Following logs (Ctrl+C to exit)...${NC}"
 echo ""
 
 # Step 5: Follow logs
-$COMPOSE_CMD $COMPOSE_FILES $ENV_FILE logs -f
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE logs -f)
