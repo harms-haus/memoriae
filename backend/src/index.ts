@@ -73,14 +73,28 @@ async function initializeServices() {
     
     while (dbRetries < maxDbRetries) {
       try {
-        logServer.debug(`Attempting database connection (attempt ${dbRetries + 1}/${maxDbRetries})...`)
+        logServer.info(`Attempting database connection (attempt ${dbRetries + 1}/${maxDbRetries})...`)
         
-        // Add timeout to prevent hanging
-        const connectionTest = db.raw('SELECT 1')
+        // Create a timeout promise that will reject after the timeout
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Database connection test timed out after ${dbConnectionTimeout}ms`)), dbConnectionTimeout)
+          const timeoutId = setTimeout(() => {
+            reject(new Error(`Database connection test timed out after ${dbConnectionTimeout}ms`))
+          }, dbConnectionTimeout)
+          
+          // Clear timeout if connection succeeds (though this won't execute if timeout fires first)
+          // We'll handle cleanup in the finally block
         })
         
+        // Test connection with timeout
+        const connectionTest = db.raw('SELECT 1').then((result) => {
+          logServer.debug('Database query completed successfully')
+          return result
+        }).catch((error) => {
+          logServer.debug('Database query failed:', error.message)
+          throw error
+        })
+        
+        // Race the connection test against the timeout
         await Promise.race([connectionTest, timeoutPromise])
         logServer.info('✓ Database connection successful')
         break
@@ -91,6 +105,11 @@ async function initializeServices() {
         const errorMessage = dbError.message || String(dbError)
         const errorCode = dbError.code || 'UNKNOWN'
         logServer.warn(`Database connection attempt ${dbRetries} failed: ${errorMessage} (code: ${errorCode})`)
+        
+        // If it's a timeout, log more details
+        if (errorMessage.includes('timed out')) {
+          logServer.warn(`Connection attempt ${dbRetries} timed out - database may not be ready or network issue`)
+        }
         
         if (dbRetries >= maxDbRetries) {
           // Final attempt failed - log error and throw
