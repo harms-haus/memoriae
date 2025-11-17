@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Simple production environment script for Memoriae
+# Production environment script for Memoriae with improved patterns from dev.sh
 # Usage: ./docker/scripts/prod.sh [--docker] [--clean] [--down]
 
 set -e
@@ -41,7 +41,7 @@ for arg in "$@"; do
     esac
 done
 
-# Step 1: Detect podman/docker
+# Step 1: Detect podman/docker (improved from dev.sh)
 echo -e "${BLUE}Step 1: Detecting container runtime...${NC}"
 if [ "$USE_DOCKER" = true ]; then
     if command -v docker &> /dev/null; then
@@ -100,6 +100,7 @@ if [ "$DOWN" = true ]; then
     echo -e "${BLUE}Stopping production containers...${NC}"
     echo -e "${YELLOW}Note: Containers will be stopped but volumes and data will be preserved${NC}"
     
+    # Improved error handling from dev.sh
     set +e
     (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down 2>/dev/null)
     DOWN_EXIT_CODE=$?
@@ -129,14 +130,14 @@ if [ "$CLEAN" = true ]; then
         exit 0
     fi
     echo -e "${YELLOW}Stopping containers and removing volumes...${NC}"
-    (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down -v)
+    $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down -v
     echo -e "${GREEN}Cleanup complete${NC}"
     echo -e "${YELLOW}Note: This script does NOT start services after cleanup.${NC}"
     echo -e "${YELLOW}Run '$0' to start services.${NC}"
     exit 0
 fi
 
-# Step 2: Start compose
+# Step 2: Start services with improved orchestration
 echo -e "${BLUE}Step 2: Starting services...${NC}"
 
 # For Podman, we need to remove existing containers first to avoid name conflicts
@@ -145,78 +146,84 @@ if [ "$DOCKER_CMD" = "podman" ]; then
     (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE down 2>/dev/null) || true
 fi
 
-# Start services - start postgres and redis first, then app
-set +e
+# Start services with sequential approach from dev.sh
 echo -e "${YELLOW}Starting postgres and redis...${NC}"
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d postgres redis 2>&1)
+set +e
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d postgres redis)
+POSTGRES_REDIS_EXIT=$?
+
 echo -e "${YELLOW}Starting memoriae app...${NC}"
-(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d memoriae 2>&1)
-UP_EXIT=$?
+(cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE up -d memoriae)
+MEMORIAE_EXIT=$?
 set -e
 
-if [ $UP_EXIT -ne 0 ]; then
+if [ $POSTGRES_REDIS_EXIT -ne 0 ] || [ $MEMORIAE_EXIT -ne 0 ]; then
     echo -e "${YELLOW}⚠ Some services may have failed to start. Checking container status...${NC}"
 fi
 
 # Give containers a moment to start
 sleep 2
 
-# Check which containers are running
+# Check which containers are running with improved status checking
 echo -e "${YELLOW}Container status:${NC}"
-$DOCKER_CMD ps --format "table {{.Names}}\t{{.Status}}" | grep -E "NAMES|memoriae" || true
+$DOCKER_CMD ps --format "table {{.Names}}\t{{.Status}}" | grep -E "NAMES|memoriae" || echo -e "${YELLOW}No memoriae containers found${NC}"
 
 # Step 3: Wait for services to be healthy
 echo -e "${BLUE}Step 3: Waiting for services to be healthy...${NC}"
 
-# Wait for postgres
+# Wait for postgres with improved error handling
 echo -e "${YELLOW}Waiting for postgres...${NC}"
 for i in {1..30}; do
     # Check if container exists first
-    if ! $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-postgres$"; then
+    POSTGRES_CONTAINER=$( $DOCKER_CMD ps --format '{{.Names}}' | grep "memoriae-postgres" )
+    if [ -z "$POSTGRES_CONTAINER" ]; then
         echo -e "${RED}✗ Postgres container not found${NC}"
         exit 1
     fi
-    if $DOCKER_CMD exec memoriae-postgres pg_isready -U memoriae > /dev/null 2>&1; then
+    if $DOCKER_CMD exec "$POSTGRES_CONTAINER" pg_isready -U memoriae > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Postgres is ready${NC}"
         break
     fi
     if [ $i -eq 30 ]; then
         echo -e "${RED}✗ Postgres failed to become ready${NC}"
-        echo -e "${YELLOW}Check logs: $DOCKER_CMD logs memoriae-postgres${NC}"
+        echo -e "${YELLOW}Check logs: $DOCKER_CMD logs $POSTGRES_CONTAINER${NC}"
         exit 1
     fi
     sleep 1
 done
 
-# Wait for redis
+# Wait for redis with improved error handling
 echo -e "${YELLOW}Waiting for redis...${NC}"
 for i in {1..30}; do
     # Check if container exists first
-    if ! $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-redis$"; then
+    REDIS_CONTAINER=$( $DOCKER_CMD ps --format '{{.Names}}' | grep "memoriae-redis" )
+    if [ -z "$REDIS_CONTAINER" ]; then
         echo -e "${RED}✗ Redis container not found${NC}"
         exit 1
     fi
-    if $DOCKER_CMD exec memoriae-redis redis-cli ping > /dev/null 2>&1; then
+    if $DOCKER_CMD exec "$REDIS_CONTAINER" redis-cli ping > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Redis is ready${NC}"
         break
     fi
     if [ $i -eq 30 ]; then
         echo -e "${RED}✗ Redis failed to become ready${NC}"
-        echo -e "${YELLOW}Check logs: $DOCKER_CMD logs memoriae-redis${NC}"
+        echo -e "${YELLOW}Check logs: $DOCKER_CMD logs $REDIS_CONTAINER${NC}"
         exit 1
     fi
     sleep 1
 done
 
-# Wait for memoriae app (just check if container is running)
+# Wait for memoriae app with improved container detection
 echo -e "${YELLOW}Waiting for memoriae app...${NC}"
 for i in {1..60}; do
-    if $DOCKER_CMD ps --format '{{.Names}}' | grep -q "^memoriae-app$"; then
+    MEMORIAE_CONTAINER=$( $DOCKER_CMD ps --format '{{.Names}}' | grep "memoriae-app" )
+    if [ -n "$MEMORIAE_CONTAINER" ]; then
         echo -e "${GREEN}✓ Memoriae app container is running${NC}"
         break
     fi
     if [ $i -eq 60 ]; then
         echo -e "${YELLOW}⚠ Memoriae app container may not be running (check logs)${NC}"
+        echo -e "${YELLOW}Check logs: $DOCKER_CMD logs memoriae-app${NC}"
         break
     fi
     sleep 1
