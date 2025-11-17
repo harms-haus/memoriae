@@ -444,20 +444,43 @@ done
 
 # For Podman, we need to handle container replacement differently
 if [ "$DOCKER_CMD" = "podman" ]; then
-    # Podman requires containers to be removed before recreating with same name
+    # Podman requires containers to be fully removed before recreating with same name
     # Use podman-compose down first to cleanly remove all containers
     echo -e "${YELLOW}Removing existing Podman containers...${NC}"
     (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG down 2>&1) || true
+    
     # Also manually remove any remaining containers by name (in case compose missed some)
+    # Podman requires containers to be fully removed from storage before name can be reused
     for container in memoriae-postgres memoriae-redis memoriae-app; do
-        if $DOCKER_CMD ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
-            echo -e "${YELLOW}Removing container: ${container}...${NC}"
+        # Check if container exists (running or stopped)
+        if $DOCKER_CMD ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${container}$"; then
+            echo -e "${YELLOW}Stopping and removing container: ${container}...${NC}"
+            # Force stop and remove
             $DOCKER_CMD stop "$container" 2>/dev/null || true
-            $DOCKER_CMD rm "$container" 2>/dev/null || true
+            $DOCKER_CMD rm -f "$container" 2>/dev/null || true
+            # Also try removing from storage if regular rm didn't work
+            # $DOCKER_CMD rm -f --storage "$container" 2>/dev/null || true
+        fi
+        # Double-check by container ID in case name is stuck
+        CONTAINER_ID=$($DOCKER_CMD ps -a --filter "name=^${container}$" --format '{{.ID}}' 2>/dev/null | head -n1)
+        if [ -n "$CONTAINER_ID" ]; then
+            echo -e "${YELLOW}Removing container by ID: ${CONTAINER_ID}...${NC}"
+            $DOCKER_CMD rm -f "$CONTAINER_ID" 2>/dev/null || true
+            $DOCKER_CMD rm -f --storage "$CONTAINER_ID" 2>/dev/null || true
         fi
     done
-    # Wait a moment for containers to be fully removed
-    sleep 1
+    
+    # Wait a moment for containers to be fully removed from storage
+    sleep 2
+    
+    # Verify containers are actually gone
+    for container in memoriae-postgres memoriae-redis memoriae-app; do
+        if $DOCKER_CMD ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${container}$"; then
+            echo -e "${YELLOW}⚠ Warning: Container ${container} still exists, forcing removal...${NC}"
+            $DOCKER_CMD rm -f --storage "$container" 2>/dev/null || true
+        fi
+    done
+    
     # For Podman, start all services in one go to avoid conflicts
     echo -e "${YELLOW}Starting all services...${NC}"
     (cd "$PROJECT_DIR" && $COMPOSE_CMD $COMPOSE_FILES $ENV_FILE_FLAG up -d 2>&1)
