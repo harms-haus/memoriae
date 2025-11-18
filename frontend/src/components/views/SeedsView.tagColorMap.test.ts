@@ -42,7 +42,7 @@ describe('SeedsView tagColorMap creation', () => {
     expect(workColor).not.toBe('')
     expect(typeof workColor).toBe('string')
     expect(workColor!.length).toBeGreaterThan(0)
-    
+
     // personal should have the provided color
     expect(tagColorMap.get('personal')).toBe('#00ff00')
   })
@@ -68,4 +68,3 @@ describe('SeedsView tagColorMap creation', () => {
     expect(tagColorMap.has('PERSONAL')).toBe(false)
   })
 })
-

@@ -42,7 +42,7 @@ describe('SeedDetailView tagColorMap creation', () => {
     expect(workColor).not.toBe('')
     expect(typeof workColor).toBe('string')
     expect(workColor!.length).toBeGreaterThan(0)
-    
+
     // personal should have the provided color
     expect(tagColorMap.get('personal')).toBe('#00ff00')
   })
@@ -133,15 +133,14 @@ describe('SeedDetailView tagColorMap creation', () => {
     // Tags with colors should use provided colors
     expect(tagColorMap.get('work')).toBe('#ff0000')
     expect(tagColorMap.get('important')).toBe('#00ff00')
-    
+
     // Tags without colors should have generated colors
     const personalColor = tagColorMap.get('personal')
     expect(personalColor).toBeTruthy()
     expect(personalColor).not.toBe('')
-    
+
     const urgentColor = tagColorMap.get('urgent')
     expect(urgentColor).toBeTruthy()
     expect(urgentColor).not.toBe('')
   })
 })
-

@@ -23,18 +23,32 @@ export async function up(knex: Knex): Promise<void> {
   // Delete categories that couldn't be assigned to any user (orphaned categories)
   await knex('categories').whereNull('user_id').delete()
 
-  // Now make user_id NOT NULL and add foreign key constraint
+  // Now make user_id NOT NULL using raw SQL (Knex doesn't support alter() on existing columns)
+  await knex.raw(`
+    ALTER TABLE categories
+    ALTER COLUMN user_id SET NOT NULL
+  `)
+
+  // Add foreign key constraint and index
   await knex.schema.alterTable('categories', (table) => {
-    table.uuid('user_id').notNullable().alter()
     table.foreign('user_id').references('id').inTable('users').onDelete('CASCADE')
     table.index('user_id')
   })
 }
 
 export async function down(knex: Knex): Promise<void> {
+  // Drop index first
+  await knex.schema.alterTable('categories', (table) => {
+    table.dropIndex('user_id')
+  })
+
+  // Drop foreign key constraint (Knex generates name as categories_user_id_foreign)
   await knex.schema.alterTable('categories', (table) => {
     table.dropForeign('user_id')
-    table.dropIndex('user_id')
+  })
+
+  // Drop the column
+  await knex.schema.alterTable('categories', (table) => {
     table.dropColumn('user_id')
   })
 }

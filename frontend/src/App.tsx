@@ -1,5 +1,5 @@
 import React, { useRef, lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Tabs, Tab, TabPanel } from '@mother/components/Tabs'
 import { Button } from '@mother/components/Button'
@@ -7,6 +7,7 @@ import { Panel } from '@mother/components/Panel'
 import { SeedComposer } from './components/SeedComposer'
 import './components/SeedComposer/SeedComposer.css'
 import { useFollowupNotifications } from './hooks/useFollowupNotifications'
+import { LandingPage } from './components/LandingPage'
 import { 
   FileText, 
   FolderTree, 
@@ -481,12 +482,18 @@ function AppContent() {
   }
 
   if (!authenticated) {
-    return <LoginPage />
+    return (
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    )
   }
 
   return (
     <Routes>
-      <Route path="/" element={<TabNavigation />} />
+      <Route path="/" element={<Navigate to="/seeds" replace />} />
       <Route path="/seeds" element={<TabNavigation />} />
       <Route path="/seeds/tag/:tagName" element={<TabNavigation />} />
       <Route path="/seeds/:hashId/:slug" element={<SeedDetailWrapper />} />

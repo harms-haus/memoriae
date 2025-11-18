@@ -14,15 +14,36 @@ const mockFirst = vi.fn()
 const mockSelect = vi.fn()
 
 vi.mock('../../db/connection', () => {
-  const mockDb = vi.fn((table: string) => ({
-    where: mockWhere.mockReturnValue({
+  // Create a chainable query builder mock
+  const createQueryBuilder = () => {
+    let selectCalled = false
+    let whereCalled = false
+    
+    const builder = {
+      select: vi.fn((...args) => {
+        mockSelect(...args)
+        selectCalled = true
+        return builder
+      }),
+      where: vi.fn((...args) => {
+        mockWhere(...args)
+        whereCalled = true
+        // When where() is called after select(), return a promise
+        if (selectCalled) {
+          return Promise.resolve(mockSelect.mock.results[0]?.value || [])
+        }
+        return builder
+      }),
+      insert: mockInsert.mockReturnValue({
+        returning: mockReturning,
+      }),
       first: mockFirst,
-    }),
-    insert: mockInsert.mockReturnValue({
-      returning: mockReturning,
-    }),
-    select: mockSelect,
-  }))
+    }
+    
+    return builder
+  }
+
+  const mockDb = vi.fn((table: string) => createQueryBuilder())
 
   return {
     default: mockDb,

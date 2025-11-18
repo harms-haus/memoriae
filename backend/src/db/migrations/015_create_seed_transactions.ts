@@ -38,8 +38,3 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTable('seed_transactions')
   await knex.raw('DROP TYPE IF EXISTS seed_transaction_type')
 }
-
-
-
-
-

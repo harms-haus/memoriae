@@ -162,6 +162,10 @@ vi.mock('lucide-react', () => ({
   Settings: () => <div data-testid="icon-settings" />,
   Plus: () => <div data-testid="icon-plus" />,
   Lightbulb: () => <div data-testid="icon-lightbulb" />,
+  History: () => <div data-testid="icon-history" />,
+  Edit3: () => <div data-testid="icon-edit3" />,
+  Sparkles: () => <div data-testid="icon-sparkles" />,
+  Layers: () => <div data-testid="icon-layers" />,
 }))
 
 describe('App', () => {
@@ -421,7 +425,7 @@ describe('App', () => {
         checkAuth: mockCheckAuth,
       })
 
-      render(<App />)
+      renderAppWithRoute('/login')
 
       expect(screen.getByText('Memoriae')).toBeInTheDocument()
       expect(screen.getByText('Sign in to continue')).toBeInTheDocument()
@@ -439,13 +443,13 @@ describe('App', () => {
         checkAuth: mockCheckAuth,
       })
 
-      render(<App />)
+      renderAppWithRoute('/login')
 
       const googleButton = screen.getByText('Sign in with Google')
       await user.click(googleButton)
 
-      // The login function passes window.location.pathname if not '/login'
-      // Since we're at '/', it will pass '/'
+      // The login function uses window.location.pathname, which in tests is '/'
+      // So it will pass '/' since window.location.pathname !== '/login'
       expect(mockLogin).toHaveBeenCalledWith('google', '/')
     })
 
@@ -461,13 +465,13 @@ describe('App', () => {
         checkAuth: mockCheckAuth,
       })
 
-      render(<App />)
+      renderAppWithRoute('/login')
 
       const githubButton = screen.getByText('Sign in with GitHub')
       await user.click(githubButton)
 
-      // The login function passes window.location.pathname if not '/login'
-      // Since we're at '/', it will pass '/'
+      // The login function uses window.location.pathname, which in tests is '/'
+      // So it will pass '/' since window.location.pathname !== '/login'
       expect(mockLogin).toHaveBeenCalledWith('github', '/')
     })
 
