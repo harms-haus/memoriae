@@ -12,13 +12,14 @@ router.use(authenticate)
 
 /**
  * GET /api/categories
- * Get all categories (hierarchical)
+ * Get all categories for the authenticated user (hierarchical)
  */
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    logRoutes.debug('GET / - Fetching all categories')
-    const categories = await getAllCategories()
-    logRoutes.info(`GET / - Found ${categories.length} categories`)
+    const userId = req.user!.id
+    logRoutes.debug(`GET / - Fetching categories for user ${userId}`)
+    const categories = await getAllCategories(userId)
+    logRoutes.info(`GET / - Found ${categories.length} categories for user ${userId}`)
     res.json(categories)
   } catch (error) {
     logRoutes.error('GET / - Error fetching categories:', error)

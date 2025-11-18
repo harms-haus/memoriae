@@ -3,6 +3,7 @@ import db from '../db/connection'
 
 export interface CategoryRow {
   id: string
+  user_id: string
   parent_id: string | null
   name: string
   path: string
@@ -14,11 +15,12 @@ export interface Category extends Omit<CategoryRow, 'created_at'> {
 }
 
 /**
- * Get all categories, ordered by path for hierarchical display
+ * Get all categories for a specific user, ordered by path for hierarchical display
  */
-export async function getAllCategories(): Promise<Category[]> {
+export async function getAllCategories(userId: string): Promise<Category[]> {
   const categories = await db<CategoryRow>('categories')
     .select('*')
+    .where({ user_id: userId })
     .orderBy('path', 'asc')
 
   // Convert Date to ISO string for JSON serialization

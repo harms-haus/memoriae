@@ -13,6 +13,7 @@ const logService = log.getLogger('Service:CategoryChange')
  */
 interface CategoryRow {
   id: string
+  user_id: string
   parent_id: string | null
   name: string
   path: string
@@ -155,7 +156,7 @@ export class CategoryChangeService {
 
     // Find all seeds that might be affected by this category change
     // We need to check seeds that have this category or any child categories
-    const affectedSeeds = await this.findAffectedSeeds(change)
+    const affectedSeeds = await this.findAffectedSeeds(change, userId)
 
     if (affectedSeeds.length === 0) {
       // No seeds affected
@@ -223,10 +224,12 @@ export class CategoryChangeService {
    * - It has a child category of the changed category (for hierarchical changes)
    * 
    * @param change - Category change
+   * @param userId - User ID to filter categories by (categories are user-specific)
    * @returns Array of affected seed IDs and user IDs
    */
   private static async findAffectedSeeds(
-    change: CategoryChange
+    change: CategoryChange,
+    userId: string
   ): Promise<Array<{ id: string; user_id: string }>> {
     // Get all seeds that have this category directly
     const directSeeds = await db('seed_categories')
@@ -245,8 +248,10 @@ export class CategoryChangeService {
       if (oldPath) {
         // Find all categories that are children of the changed category
         // (path starts with oldPath + '/')
+        // Filter by user_id since categories are user-specific
         const childCategories = await db<CategoryRow>('categories')
           .where('path', 'like', `${oldPath}/%`)
+          .where({ user_id: userId })
           .select('id')
 
         if (childCategories.length > 0) {

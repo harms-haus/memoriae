@@ -15,6 +15,7 @@ const logAutomation = log.getLogger('Automation:Categorize')
  */
 interface CategoryRow {
   id: string
+  user_id: string
   parent_id: string | null
   name: string
   path: string
@@ -42,9 +43,9 @@ export class CategorizeAutomation extends Automation {
    */
   async process(seed: Seed, context: AutomationContext): Promise<AutomationProcessResult> {
     // Get all existing categories for the user
-    // For now, we'll assume categories are global (not user-specific)
-    // If needed later, add user_id to categories table
-    const existingCategories = await db<CategoryRow>('categories').select('*')
+    const existingCategories = await db<CategoryRow>('categories')
+      .select('*')
+      .where({ user_id: seed.user_id })
     const categoriesByPath = new Map<string, CategoryRow>()
     const categoriesByName = new Map<string, CategoryRow>()
 
@@ -69,7 +70,7 @@ export class CategorizeAutomation extends Automation {
       return { transactions: [] }
     }
     
-    const category = await this.ensureCategoryExists(categoryPath, existingCategories)
+    const category = await this.ensureCategoryExists(categoryPath, existingCategories, seed.user_id)
 
     // Update our maps
     categoriesByPath.set(category.path, category)
@@ -460,7 +461,8 @@ Do not include any reasoning or explanation - only the JSON array.`
    */
   private async ensureCategoryExists(
     categoryPath: string,
-    existingCategories: CategoryRow[]
+    existingCategories: CategoryRow[],
+    userId: string
   ): Promise<CategoryRow> {
     // Normalize path
     const normalizedPath = categoryPath.startsWith('/') ? categoryPath : '/' + categoryPath
@@ -506,6 +508,7 @@ Do not include any reasoning or explanation - only the JSON array.`
       const createdRows: CategoryRow[] = await db<CategoryRow>('categories')
         .insert({
           id: uuidv4(),
+          user_id: userId,
           parent_id: parentId,
           name: normalizedName,
           path: path,

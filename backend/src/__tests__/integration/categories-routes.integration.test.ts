@@ -38,10 +38,11 @@ describe('Categories Routes', () => {
   })
 
   describe('GET /api/categories', () => {
-    it('should return all categories', async () => {
+    it('should return all categories for the user', async () => {
       const mockCategories = [
         {
           id: 'cat-1',
+          user_id: 'user-123',
           name: 'Work',
           path: '/work',
           parent_id: null,
@@ -49,6 +50,7 @@ describe('Categories Routes', () => {
         },
         {
           id: 'cat-2',
+          user_id: 'user-123',
           name: 'Personal',
           path: '/personal',
           parent_id: null,
@@ -72,8 +74,9 @@ describe('Categories Routes', () => {
       expect(response.body[0]).toMatchObject({
         id: 'cat-1',
         name: 'Work',
+        user_id: 'user-123',
       })
-      expect(getAllCategories).toHaveBeenCalled()
+      expect(getAllCategories).toHaveBeenCalledWith('user-123')
     })
 
     it('should return empty array when no categories exist', async () => {

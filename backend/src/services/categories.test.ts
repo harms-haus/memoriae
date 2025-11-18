@@ -36,10 +36,12 @@ describe('Categories Service', () => {
   })
 
   describe('getAllCategories', () => {
-    it('should return all categories ordered by path', async () => {
+    it('should return all categories for a user ordered by path', async () => {
+      const userId = 'user-123'
       const mockCategories = [
         {
           id: 'cat-1',
+          user_id: userId,
           parent_id: null,
           name: 'Work',
           path: '/work',
@@ -47,6 +49,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-2',
+          user_id: userId,
           parent_id: 'cat-1',
           name: 'Projects',
           path: '/work/projects',
@@ -57,28 +60,37 @@ describe('Categories Service', () => {
       // Mock the database query chain
       const dbModule = await import('../db/connection')
       const mockOrderBy = (dbModule as any).__mockOrderBy
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+      const mockSelect = (dbModule as any).__mockSelect
+      mockSelect.mockReturnValue({ where: mockWhere })
       mockOrderBy.mockResolvedValue(mockCategories)
 
-      const result = await getAllCategories()
+      const result = await getAllCategories(userId)
 
       expect(result).toHaveLength(2)
       expect(result[0]).toMatchObject({
         id: 'cat-1',
+        user_id: userId,
         parent_id: null,
         name: 'Work',
         path: '/work',
       })
       expect(result[0].created_at).toBe(mockCategories[0].created_at.toISOString())
       expect(db).toHaveBeenCalledWith('categories')
+      expect(mockWhere).toHaveBeenCalledWith({ user_id: userId })
     })
 
     it('should handle empty categories array', async () => {
+      const userId = 'user-123'
       // Mock the database query chain
       const dbModule = await import('../db/connection')
       const mockOrderBy = (dbModule as any).__mockOrderBy
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy })
+      const mockSelect = (dbModule as any).__mockSelect
+      mockSelect.mockReturnValue({ where: mockWhere })
       mockOrderBy.mockResolvedValue([])
 
-      const result = await getAllCategories()
+      const result = await getAllCategories(userId)
 
       expect(result).toHaveLength(0)
       expect(Array.isArray(result)).toBe(true)
@@ -87,9 +99,11 @@ describe('Categories Service', () => {
 
   describe('buildCategoryTree', () => {
     it('should build correct hierarchical structure', () => {
+      const userId = 'user-123'
       const categories: Category[] = [
         {
           id: 'cat-1',
+          user_id: userId,
           parent_id: null,
           name: 'Work',
           path: '/work',
@@ -97,6 +111,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-2',
+          user_id: userId,
           parent_id: 'cat-1',
           name: 'Projects',
           path: '/work/projects',
@@ -104,6 +119,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-3',
+          user_id: userId,
           parent_id: 'cat-2',
           name: 'Web',
           path: '/work/projects/web',
@@ -122,9 +138,11 @@ describe('Categories Service', () => {
     })
 
     it('should handle root categories (no parent_id)', () => {
+      const userId = 'user-123'
       const categories: Category[] = [
         {
           id: 'cat-1',
+          user_id: userId,
           parent_id: null,
           name: 'Work',
           path: '/work',
@@ -132,6 +150,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-2',
+          user_id: userId,
           parent_id: null,
           name: 'Personal',
           path: '/personal',
@@ -151,9 +170,11 @@ describe('Categories Service', () => {
     })
 
     it('should handle nested categories (with parent_id)', () => {
+      const userId = 'user-123'
       const categories: Category[] = [
         {
           id: 'cat-1',
+          user_id: userId,
           parent_id: null,
           name: 'Work',
           path: '/work',
@@ -161,6 +182,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-2',
+          user_id: userId,
           parent_id: 'cat-1',
           name: 'Projects',
           path: '/work/projects',
@@ -168,6 +190,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-3',
+          user_id: userId,
           parent_id: 'cat-1',
           name: 'Tasks',
           path: '/work/tasks',
@@ -185,9 +208,11 @@ describe('Categories Service', () => {
     })
 
     it('should handle orphaned categories (parent_id that does not exist)', () => {
+      const userId = 'user-123'
       const categories: Category[] = [
         {
           id: 'cat-1',
+          user_id: userId,
           parent_id: 'non-existent',
           name: 'Orphan',
           path: '/orphan',
@@ -204,9 +229,11 @@ describe('Categories Service', () => {
     })
 
     it('should sort categories by path correctly', () => {
+      const userId = 'user-123'
       const categories: Category[] = [
         {
           id: 'cat-2',
+          user_id: userId,
           parent_id: null,
           name: 'Personal',
           path: '/personal',
@@ -214,6 +241,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-1',
+          user_id: userId,
           parent_id: null,
           name: 'Work',
           path: '/work',
@@ -221,6 +249,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-3',
+          user_id: userId,
           parent_id: 'cat-1',
           name: 'Projects',
           path: '/work/projects',
@@ -228,6 +257,7 @@ describe('Categories Service', () => {
         },
         {
           id: 'cat-4',
+          user_id: userId,
           parent_id: 'cat-1',
           name: 'Tasks',
           path: '/work/tasks',
