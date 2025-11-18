@@ -59,8 +59,16 @@ vi.mock('../seed-transactions', () => ({
 
 const mockCreateOpenRouterClient = vi.fn()
 
-vi.mock('../openrouter/client', () => ({
-  createOpenRouterClient: (...args: any[]) => mockCreateOpenRouterClient(...args),
+vi.mock('../openrouter/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../openrouter/client')>()
+  return {
+    ...actual,
+    createOpenRouterClient: (...args: any[]) => mockCreateOpenRouterClient(...args),
+  }
+})
+
+vi.mock('../openrouter/tracked-client', () => ({
+  TrackedOpenRouterClient: vi.fn().mockImplementation((client: any) => client),
 }))
 
 const mockSettingsService = {

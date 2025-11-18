@@ -47,6 +47,9 @@ export const config = {
     maxMusingsPerDay: parseInt(process.env.IDEA_MUSING_MAX_PER_DAY || '10', 10),
     excludeDays: parseInt(process.env.IDEA_MUSING_EXCLUDE_DAYS || '2', 10), // Exclude seeds shown in last 2 days
   },
+  tokenUsage: {
+    debug: process.env.TOKEN_USAGE_DEBUG === 'true',
+  },
 } as const
 
 // Validate required configuration

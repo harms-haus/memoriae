@@ -5,6 +5,7 @@ import { SeedsService } from '../services/seeds'
 import { SeedTransactionsService } from '../services/seed-transactions'
 import { SettingsService } from '../services/settings'
 import { createOpenRouterClient } from '../services/openrouter/client'
+import { TrackedOpenRouterClient } from '../services/openrouter/tracked-client'
 import { IdeaMusingAutomation } from '../services/automation/idea-musing'
 import { authenticate } from '../middleware/auth'
 import db from '../db/connection'
@@ -91,10 +92,16 @@ router.post('/generate', async (req: Request, res: Response, next: NextFunction)
     }
 
     // Create OpenRouter client
-    const openrouterClient = createOpenRouterClient(
+    const baseClient = createOpenRouterClient(
       settings.openrouter_api_key,
       settings.openrouter_model || undefined
     )
+
+    // Wrap with tracking
+    const openrouterClient = new TrackedOpenRouterClient(baseClient, {
+      userId,
+      automationName: 'idea-musings-manual',
+    })
 
     // Create tool executor
     const { ToolExecutor } = await import('../services/automation/tools/executor')
@@ -296,10 +303,16 @@ router.post('/:id/regenerate', async (req: Request, res: Response, next: NextFun
     }
 
     // Create OpenRouter client
-    const openrouterClient = createOpenRouterClient(
+    const baseClient = createOpenRouterClient(
       settings.openrouter_api_key,
       settings.openrouter_model || undefined
     )
+
+    // Wrap with tracking
+    const openrouterClient = new TrackedOpenRouterClient(baseClient, {
+      userId,
+      automationName: 'idea-musings-manual',
+    })
 
     // Create tool executor
     const { ToolExecutor } = await import('../services/automation/tools/executor')
@@ -411,10 +424,16 @@ router.post('/:id/apply-idea', async (req: Request, res: Response, next: NextFun
     }
 
     // Create OpenRouter client
-    const openrouterClient = createOpenRouterClient(
+    const baseClient = createOpenRouterClient(
       settings.openrouter_api_key,
       settings.openrouter_model || undefined
     )
+
+    // Wrap with tracking
+    const openrouterClient = new TrackedOpenRouterClient(baseClient, {
+      userId,
+      automationName: 'idea-musings-manual',
+    })
 
     // Generate combined content
     const systemPrompt = `You are a content editor. Combine the given idea with the existing seed content while preserving the seed's current format and style.
@@ -531,10 +550,16 @@ router.post('/:id/prompt-llm', async (req: Request, res: Response, next: NextFun
     }
 
     // Create OpenRouter client
-    const openrouterClient = createOpenRouterClient(
+    const baseClient = createOpenRouterClient(
       settings.openrouter_api_key,
       settings.openrouter_model || undefined
     )
+
+    // Wrap with tracking
+    const openrouterClient = new TrackedOpenRouterClient(baseClient, {
+      userId,
+      automationName: 'idea-musings-manual',
+    })
 
     // Send prompt to LLM with seed context
     const systemPrompt = `You are a creative assistant. Respond to the user's prompt while considering the seed content provided.

@@ -97,6 +97,10 @@ describe('CategorizeAutomation', () => {
     mockContext = {
       openrouter: mockOpenRouter,
       userId: 'user-123',
+      toolExecutor: {
+        execute: vi.fn(),
+        executeAll: vi.fn(),
+      } as any,
     }
   })
 

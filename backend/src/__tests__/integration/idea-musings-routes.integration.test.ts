@@ -51,8 +51,16 @@ vi.mock('../../services/queue/queue', () => ({
   addAutomationJob: vi.fn(),
 }))
 
-vi.mock('../../services/openrouter/client', () => ({
-  createOpenRouterClient: vi.fn(),
+vi.mock('../../services/openrouter/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../services/openrouter/client')>()
+  return {
+    ...actual,
+    createOpenRouterClient: vi.fn(),
+  }
+})
+
+vi.mock('../../services/openrouter/tracked-client', () => ({
+  TrackedOpenRouterClient: vi.fn().mockImplementation((client: any) => client),
 }))
 
 vi.mock('../../services/seed-transactions', () => ({

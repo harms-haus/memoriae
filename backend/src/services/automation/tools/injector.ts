@@ -74,6 +74,7 @@ export async function processToolCalls(options: {
   tools: ToolDefinition[]
   openrouter: OpenRouterClient
   maxIterations?: number
+  trackingContext?: Record<string, any>
 }): Promise<unknown> {
   const {
     systemPrompt,
@@ -81,6 +82,7 @@ export async function processToolCalls(options: {
     tools,
     openrouter,
     maxIterations = 20,
+    trackingContext,
   } = options
 
   // Automatically include finalResponse() tool if not already present
@@ -125,7 +127,8 @@ export async function processToolCalls(options: {
       {
         temperature: 0.7,
         max_tokens: 4000,
-      }
+      },
+      trackingContext
     )
 
     const assistantMessage = response.choices[0]?.message
@@ -183,7 +186,8 @@ export async function processToolCalls(options: {
           {
             temperature: 0.3, // Lower temperature for more consistent formatting
             max_tokens: 4000,
-          }
+          },
+          trackingContext
         )
 
         const finalContent = finalResponse.choices[0]?.message?.content || ''
@@ -249,6 +253,7 @@ export async function useToolsWithAI(options: {
   tools: ToolDefinition[]
   openrouter: OpenRouterClient
   maxIterations?: number
+  trackingContext?: Record<string, any>
 }): Promise<unknown> {
   return processToolCalls({
     systemPrompt: options.baseSystemPrompt,
@@ -256,6 +261,7 @@ export async function useToolsWithAI(options: {
     tools: options.tools,
     openrouter: options.openrouter,
     ...(options.maxIterations !== undefined && { maxIterations: options.maxIterations }),
+    ...(options.trackingContext !== undefined && { trackingContext: options.trackingContext }),
   })
 }
 

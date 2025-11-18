@@ -32,6 +32,8 @@ export interface OpenRouterUsage {
   prompt_tokens: number
   completion_tokens: number
   total_tokens: number
+  cached_prompt_tokens?: number
+  cached_completion_tokens?: number
 }
 
 export interface OpenRouterChatCompletionResponse {
@@ -113,7 +115,9 @@ export class OpenRouterClient {
       top_p?: number
       frequency_penalty?: number
       presence_penalty?: number
-    } = {}
+    } = {},
+    // Optional tracking context (used by TrackedOpenRouterClient, ignored here)
+    context?: Record<string, any>
   ): Promise<OpenRouterChatCompletionResponse> {
     const model = options.model || this.defaultModel
     if (!model) {

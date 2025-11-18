@@ -44,6 +44,16 @@ export interface AutomationContext {
    * Optional metadata for passing additional context
    */
   metadata?: Record<string, unknown>
+
+  /**
+   * Automation ID (if running within an automation)
+   */
+  automationId?: string
+
+  /**
+   * Automation Name (if running within an automation)
+   */
+  automationName?: string
 }
 
 /**

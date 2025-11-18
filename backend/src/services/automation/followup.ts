@@ -186,6 +186,10 @@ ${seed.currentState.seed}`
         {
           temperature: 0.3, // Lower temperature for more consistent analysis
           max_tokens: 500,
+        },
+        {
+          automationId: this.id,
+          automationName: this.name,
         }
       )
 

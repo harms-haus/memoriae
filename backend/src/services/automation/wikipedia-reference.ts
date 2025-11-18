@@ -274,6 +274,10 @@ Return JSON only.`
         tools: [wgetTool],
         openrouter: context.openrouter,
         maxIterations: 5,
+        trackingContext: {
+          automationId: this.id,
+          automationName: this.name,
+        },
       })
 
       // Parse result

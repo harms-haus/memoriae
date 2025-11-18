@@ -104,6 +104,10 @@ Return ONLY a JSON array of seed IDs (strings), or an empty array if none are id
         {
           temperature: 0.3,
           max_tokens: 2000,
+        },
+        {
+          automationId: this.id,
+          automationName: this.name,
         }
       )
 
@@ -234,6 +238,10 @@ Choose the most appropriate template type and generate engaging content to spark
         {
           temperature: 0.7, // Higher temperature for creativity
           max_tokens: 2000,
+        },
+        {
+          automationId: this.id,
+          automationName: this.name,
         }
       )
 

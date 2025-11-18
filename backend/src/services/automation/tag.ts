@@ -255,6 +255,10 @@ Do not include any reasoning or explanation - only the JSON array.`
         {
           temperature: 0.3, // Lower temperature for more consistent tag extraction
           max_tokens: 8000, // Increased significantly to handle reasoning models that output long reasoning before content
+        },
+        {
+          automationId: this.id,
+          automationName: this.name,
         }
       )
 

@@ -7,6 +7,7 @@ import { AutomationRegistry } from '../automation/registry'
 import { SeedsService } from '../seeds'
 import { SeedTransactionsService } from '../seed-transactions'
 import { createOpenRouterClient } from '../openrouter/client'
+import { TrackedOpenRouterClient } from '../openrouter/tracked-client'
 import { type UserSettings } from '../settings'
 import log from 'loglevel'
 
@@ -107,10 +108,17 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
     }
 
     // 4. Create OpenRouter client
-    const openrouterClient = createOpenRouterClient(
+    const baseClient = createOpenRouterClient(
       settings.openrouter_api_key,
       settings.openrouter_model || undefined
     )
+
+    // Wrap with tracking
+    const openrouterClient = new TrackedOpenRouterClient(baseClient, {
+      userId,
+      automationId,
+      automationName: automation.name,
+    })
 
     // 5. Create tool executor
     const { ToolExecutor } = await import('../automation/tools/executor')
@@ -121,6 +129,8 @@ export async function processAutomationJob(job: Job<AutomationJobData>): Promise
       openrouter: openrouterClient,
       userId,
       toolExecutor,
+      automationId,
+      automationName: automation.name,
     }
 
     // 7. Validate seed (optional validation hook)
