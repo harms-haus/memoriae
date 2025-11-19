@@ -298,8 +298,8 @@ async function initializeServices() {
     
     // Queue worker is already started when imported
     // It will process jobs as they come in
+    // Worker status is tracked via events (ready, error, closing)
     logServer.info('Queue worker initialized')
-    logServer.info(`Worker isRunning: ${automationWorker.isRunning()}`)
     
     // Test queue connection by checking if we can get queue info
     try {

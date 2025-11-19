@@ -225,13 +225,8 @@ automationWorker.on('closing', () => {
   logWorker.info('Worker is closing...')
 })
 
-// Check if worker is actually running after a short delay
-setTimeout(() => {
-  logWorker.debug(`Worker status check - isRunning: ${automationWorker.isRunning()}, isPaused: ${automationWorker.isPaused()}`)
-  if (!automationWorker.isRunning()) {
-    logWorker.warn('⚠️ WARNING: Worker is not running! This may indicate a Redis connection issue.')
-  }
-}, 2000)
+// Worker status is tracked via events (ready, error, closing)
+// The 'ready' event indicates the worker is connected and listening
 
 // Log worker initialization
 logWorker.info('Automation worker created, connecting to Redis...')

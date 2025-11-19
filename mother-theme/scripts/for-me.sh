@@ -98,6 +98,86 @@ get_time() {
   date +%s.%N 2>/dev/null || date +%s
 }
 
+# Coverage summary storage
+declare -A COVERAGE_SUMMARY
+
+# Function to extract coverage summary from vitest output
+extract_coverage_summary() {
+  local output_file=$1
+  
+  if [ ! -f "$output_file" ]; then
+    return 1
+  fi
+  
+  # Look for coverage table in vitest output
+  local coverage_section=$(grep -A 100 "% Coverage report from v8" "$output_file" 2>/dev/null | head -30)
+  
+  # If not found, try looking for "All files" line directly
+  if [ -z "$coverage_section" ]; then
+    local summary_line=$(grep -E "^All files[[:space:]]+\|" "$output_file" 2>/dev/null | head -1)
+    if [ -n "$summary_line" ]; then
+      coverage_section="$summary_line"
+    fi
+  fi
+  
+  if [ -z "$coverage_section" ]; then
+    return 1
+  fi
+  
+  # Extract the "All files" line which has the summary
+  local summary_line=$(echo "$coverage_section" | grep -E "^All files[[:space:]]+\|" | head -1)
+  
+  if [ -z "$summary_line" ]; then
+    return 1
+  fi
+  
+  # Parse the summary line (handle variable spacing)
+  local stmts=$(echo "$summary_line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' | sed 's/%//' | tr -d ' ')
+  local branch=$(echo "$summary_line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' | sed 's/%//' | tr -d ' ')
+  local funcs=$(echo "$summary_line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $4); print $4}' | sed 's/%//' | tr -d ' ')
+  local lines=$(echo "$summary_line" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $5); print $5}' | sed 's/%//' | tr -d ' ')
+  
+  # Validate that we got numeric values
+  if [ -z "$stmts" ] || [ -z "$branch" ] || [ -z "$funcs" ] || [ -z "$lines" ]; then
+    return 1
+  fi
+  
+  # Store in associative array
+  COVERAGE_SUMMARY["stmts"]="$stmts"
+  COVERAGE_SUMMARY["branch"]="$branch"
+  COVERAGE_SUMMARY["funcs"]="$funcs"
+  COVERAGE_SUMMARY["lines"]="$lines"
+  
+  return 0
+}
+
+# Function to display coverage summary
+display_coverage_summary() {
+  if [ ${#COVERAGE_SUMMARY[@]} -eq 0 ]; then
+    return 0
+  fi
+  
+  local stmts="${COVERAGE_SUMMARY[stmts]:-N/A}"
+  local branch="${COVERAGE_SUMMARY[branch]:-N/A}"
+  local funcs="${COVERAGE_SUMMARY[funcs]:-N/A}"
+  local lines="${COVERAGE_SUMMARY[lines]:-N/A}"
+  
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Code Coverage Summary"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  printf "%-15s %10s %10s %10s %10s\n" "Metric" "Statements" "Branches" "Functions" "Lines"
+  echo "──────────────────────────────────────────────────────────────────────────────"
+  
+  if [ "$stmts" != "N/A" ]; then
+    printf "%-15s %9s%% %9s%% %9s%% %9s%%\n" "$PACKAGE_NAME" "$stmts" "$branch" "$funcs" "$lines"
+  else
+    printf "%-15s %10s %10s %10s %10s\n" "$PACKAGE_NAME" "$stmts" "$branch" "$funcs" "$lines"
+  fi
+  
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
 # Function to render all statuses
 render_statuses() {
   # Clear previous lines (move cursor up and clear each line)
@@ -190,6 +270,9 @@ render_statuses() {
   SPINNER_INDEX=$(((SPINNER_INDEX + 1) % ${#SPINNER[@]}))
 }
 
+# Global variable to store coverage file path
+COVERAGE_TEMP_FILE=""
+
 # Function to run command silently with progress indicator
 run_with_progress() {
   local operation=$1
@@ -244,12 +327,18 @@ run_with_progress() {
     echo "Error output for ${operation}:" >&2
     cat "$temp_file" >&2
     echo "" >&2
-    rm -f "$temp_file" "$exit_code_file"
-    return 1
   fi
   
-  rm -f "$temp_file" "$exit_code_file"
-  return 0
+  # Extract coverage if this is a unit-test operation (even if tests failed, coverage may still be available)
+  if [ "$operation" = "unit-test" ]; then
+    extract_coverage_summary "$temp_file" || true
+    COVERAGE_TEMP_FILE="$temp_file"
+  else
+    rm -f "$temp_file"
+  fi
+  
+  rm -f "$exit_code_file"
+  return $exit_code
 }
 
 # Initialize status map for all operations
@@ -292,8 +381,15 @@ fi
 
 # Unit-test phase
 if [ "$DO_UNIT_TEST" = true ]; then
-  if ! run_with_progress "unit-test" "npm test"; then
+  COVERAGE_TEMP_FILE=""
+  if ! run_with_progress "unit-test" "npm run test:coverage"; then
     exit 1
+  fi
+  
+  # Display coverage summary after unit tests complete
+  if [ -n "$COVERAGE_TEMP_FILE" ] && [ -f "$COVERAGE_TEMP_FILE" ]; then
+    display_coverage_summary
+    rm -f "$COVERAGE_TEMP_FILE"
   fi
 fi
 
