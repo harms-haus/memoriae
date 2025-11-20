@@ -1,3 +1,4 @@
+import type { Knex } from 'knex'
 import db from '../db/connection'
 
 /**
@@ -26,9 +27,17 @@ function slugify(text: string, maxLength: number = 50): string {
  * 
  * @param content - Seed content to extract memorable text from
  * @param uuidPrefix - First 7 characters of the seed UUID
+ * @param knexInstance - Optional Knex instance to use (defaults to global db)
  * @returns Full slug in format: {uuidPrefix}/{slug}
  */
-export async function generateSeedSlug(content: string, uuidPrefix: string): Promise<string> {
+export async function generateSeedSlug(
+  content: string,
+  uuidPrefix: string,
+  knexInstance?: Knex
+): Promise<string> {
+  // Use provided knex instance or fall back to global db
+  const dbInstance = knexInstance || db
+
   // Extract first ~50 characters of content for slug
   const textForSlug = content.trim().substring(0, 50)
   const baseSlug = slugify(textForSlug)
@@ -44,7 +53,7 @@ export async function generateSeedSlug(content: string, uuidPrefix: string): Pro
   let counter = 2
   
   while (true) {
-    const existing = await db('seeds')
+    const existing = await dbInstance('seeds')
       .where({ slug: finalSlug })
       .first()
     

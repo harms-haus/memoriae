@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, vi, afterEach } from 'vitest'
 import { v4 as uuidv4 } from 'uuid'
 import type { Job } from 'bullmq'
 import { processAutomationJob } from './processor'
@@ -67,15 +67,28 @@ describe('Queue Processor Integration', () => {
   let mockBaseClient: any
   let mockTrackedClient: any
 
+  beforeAll(async () => {
+    // Run migrations to ensure token_usage table exists
+    await db.migrate.latest()
+  }, 60000)
+
   beforeEach(async () => {
     // Suppress logs
     console.log = vi.fn()
     console.error = vi.fn()
     console.warn = vi.fn()
 
-    // Clean up test data
-    await db('token_usage').del()
-    await db('users').del()
+    // Clean up test data (only if tables exist)
+    try {
+      await db('token_usage').del()
+    } catch (error) {
+      // Table might not exist yet, ignore error
+    }
+    try {
+      await db('users').del()
+    } catch (error) {
+      // Table might not exist yet, ignore error
+    }
 
     // Create test user
     const userId = '00000000-0000-0000-0000-000000000001'

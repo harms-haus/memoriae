@@ -148,7 +148,7 @@ describe('Database Migrations 031-037', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '031_create_sprout_followup_transactions.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'sprout_followup_transactions')
       expect(exists).toBe(false)
@@ -354,26 +354,35 @@ describe('Database Migrations 031-037', () => {
     it('should rollback correctly', async () => {
       const userId = await createTestUser(db)
       const seedId = await createTestSeed(db, userId)
-      const sproutId = uuidv4()
+      const followupId = uuidv4()
 
-      // Create add_sprout transaction
+      // Create add_followup transaction before migration
       const transactionId = uuidv4()
       await db('seed_transactions').insert({
         id: transactionId,
         seed_id: seedId,
-        transaction_type: 'add_sprout',
-        transaction_data: { sprout_id: sproutId },
+        transaction_type: 'add_followup',
+        transaction_data: { followup_id: followupId },
       })
 
+      // Run migration (converts add_followup to add_sprout)
       await runMigrationsUpTo(db, '033_update_seed_transactions_for_sprouts.ts')
-      await db.migrate.down()
+      
+      // Verify it was converted to add_sprout
+      let transaction = await db('seed_transactions')
+        .where({ id: transactionId })
+        .first()
+      expect(transaction?.transaction_type).toBe('add_sprout')
+      
+      // Rollback (should convert add_sprout back to add_followup)
+      await db.migrate.rollback()
 
       // Verify transaction was updated back
-      const transaction = await db('seed_transactions')
+      transaction = await db('seed_transactions')
         .where({ id: transactionId })
         .first()
       expect(transaction?.transaction_type).toBe('add_followup')
-      expect((transaction?.transaction_data as any).followup_id).toBe(sproutId)
+      expect((transaction?.transaction_data as any).followup_id).toBe(followupId)
 
       // Note: 'add_sprout' remains in enum (PostgreSQL limitation)
       // So we can still insert it, but 'add_followup' also works
@@ -543,7 +552,7 @@ describe('Database Migrations 031-037', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '035_create_sprout_wikipedia_transactions.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'sprout_wikipedia_transactions')
       expect(exists).toBe(false)
@@ -691,7 +700,7 @@ describe('Database Migrations 031-037', () => {
       })
 
       await runMigrationsUpTo(db, '036_add_user_id_to_categories.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const columns = await getTableInfo(db, 'categories')
       expect(columns).not.toHaveProperty('user_id')
@@ -883,6 +892,7 @@ describe('Database Migrations 031-037', () => {
       await runMigrationsUpTo(db, '037_create_token_usage.ts')
 
       const userId = await createTestUser(db)
+      const messages = [{ role: 'user', content: 'test' }]
       await expect(
         db('token_usage').insert({
           id: uuidv4(),
@@ -891,14 +901,14 @@ describe('Database Migrations 031-037', () => {
           input_tokens: 100,
           output_tokens: 50,
           total_tokens: 150,
-          messages: [{ role: 'user', content: 'test' }],
+          messages: db.raw('?::jsonb', [JSON.stringify(messages)]),
         })
       ).resolves.not.toThrow()
     }, 30000)
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '037_create_token_usage.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'token_usage')
       expect(exists).toBe(false)

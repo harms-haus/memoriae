@@ -43,8 +43,41 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.alterTable('seeds', (table) => {
-    table.text('seed_content').notNullable()
-  })
+  const hasColumn = await knex.schema.hasColumn('seeds', 'seed_content')
+  if (!hasColumn) {
+    // First add the column as nullable with a default
+    await knex.schema.alterTable('seeds', (table) => {
+      table.text('seed_content').nullable().defaultTo('')
+    })
+
+    // For each seed, try to extract content from create_seed transaction
+    // If no transaction exists, use empty string
+    const seeds = await knex('seeds').select('id')
+    
+    for (const seed of seeds) {
+      const createTransaction = await knex('seed_transactions')
+        .where({ seed_id: seed.id, transaction_type: 'create_seed' })
+        .first()
+      
+      let content = ''
+      if (createTransaction) {
+        const transactionData = createTransaction.transaction_data
+        if (typeof transactionData === 'object' && transactionData !== null && 'content' in transactionData) {
+          content = String(transactionData.content)
+        }
+      }
+      
+      await knex('seeds')
+        .where({ id: seed.id })
+        .update({ seed_content: content })
+    }
+
+    // Remove the default before making it NOT NULL
+    await knex.raw('ALTER TABLE seeds ALTER COLUMN seed_content DROP DEFAULT')
+    
+    // Now make the column NOT NULL using raw SQL
+    // (Knex doesn't support altering nullability directly)
+    await knex.raw('ALTER TABLE seeds ALTER COLUMN seed_content SET NOT NULL')
+  }
 }
 

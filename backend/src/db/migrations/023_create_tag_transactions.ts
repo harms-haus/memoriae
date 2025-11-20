@@ -27,6 +27,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTable('tag_transactions')
+  await knex.schema.dropTableIfExists('tag_transactions')
   await knex.raw('DROP TYPE IF EXISTS tag_transaction_type')
 }

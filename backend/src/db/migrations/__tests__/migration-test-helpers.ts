@@ -51,10 +51,24 @@ export async function rollbackAllMigrations(db: Knex): Promise<void> {
   try {
     await db.migrate.rollback(undefined, true)
   } catch (error) {
+    const errorMessage = (error as Error).message
     // If no migrations exist, that's fine
-    if (!(error as Error).message.includes('Already at the base migration')) {
-      throw error
+    if (errorMessage.includes('Already at the base migration')) {
+      return
     }
+    // If migration table is locked, wait a bit and retry once
+    if (errorMessage.includes('Migration table is already locked') || errorMessage.includes('MigrationLocked')) {
+      // Wait 100ms and retry once
+      await new Promise(resolve => setTimeout(resolve, 100))
+      try {
+        await db.migrate.rollback(undefined, true)
+        return
+      } catch (retryError) {
+        // If retry also fails, throw the original error
+        throw error
+      }
+    }
+    throw error
   }
 }
 
@@ -69,6 +83,7 @@ export async function runMigrationsUpTo(
 ): Promise<void> {
   const migrations = await db.migrate.list()
   const allMigrations = migrations[0] || []
+  const completedMigrations = migrations[1] || []
   
   const targetIndex = allMigrations.findIndex(
     (m: any) => m.name === migrationName
@@ -80,11 +95,19 @@ export async function runMigrationsUpTo(
     return
   }
   
+  // Check which migrations are already completed
+  const completedNames = new Set(completedMigrations.map((m: any) => m.name))
+  
   // Run migrations up to (and including) the target
+  // Only run migrations that haven't been completed yet
   for (let i = 0; i <= targetIndex; i++) {
-    await db.migrate.up()
+    const migration = allMigrations[i]
+    if (migration && !completedNames.has(migration.name)) {
+      await db.migrate.up()
+    }
   }
 }
+
 
 /**
  * Get table schema information
@@ -228,6 +251,7 @@ export async function createTestUser(
 
 /**
  * Create a test seed
+ * Handles both pre-017 (with seed_content) and post-017 (transaction-based) schemas
  */
 export async function createTestSeed(
   db: Knex,
@@ -239,12 +263,39 @@ export async function createTestSeed(
   }
 ): Promise<string> {
   const seedId = overrides?.id || uuidv4()
-  await db('seeds').insert({
-    id: seedId,
-    user_id: userId,
-    seed_content: overrides?.seed_content || 'Test seed content',
-    created_at: overrides?.created_at || new Date(),
-  })
+  const seedContent = overrides?.seed_content || 'Test seed content'
+  const createdAt = overrides?.created_at || new Date()
+  
+  // Check if seed_content column exists (pre-017 schema)
+  const hasSeedContent = await db.schema.hasColumn('seeds', 'seed_content')
+  
+  if (hasSeedContent) {
+    // Pre-017: insert with seed_content
+    await db('seeds').insert({
+      id: seedId,
+      user_id: userId,
+      seed_content: seedContent,
+      created_at: createdAt,
+    })
+  } else {
+    // Post-017: insert seed without content, then create transaction
+    await db('seeds').insert({
+      id: seedId,
+      user_id: userId,
+      created_at: createdAt,
+    })
+    
+    // Create the create_seed transaction
+    await db('seed_transactions').insert({
+      id: uuidv4(),
+      seed_id: seedId,
+      transaction_type: 'create_seed',
+      transaction_data: db.raw('?::jsonb', [JSON.stringify({ content: seedContent })]),
+      created_at: createdAt,
+      automation_id: null,
+    })
+  }
+  
   return seedId
 }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, vi, afterEach } from 'vitest'
 import { v4 as uuidv4 } from 'uuid'
 import db from '../db/connection'
 import { TokenUsageService, type TokenUsageRecord } from './token-usage'
@@ -10,14 +10,23 @@ const originalConsoleError = console.error
 const originalConsoleWarn = console.warn
 
 describe('TokenUsageService', () => {
+  beforeAll(async () => {
+    // Run migrations to ensure token_usage table exists
+    await db.migrate.latest()
+  }, 60000)
+
   beforeEach(async () => {
     // Suppress logs
     console.log = vi.fn()
     console.error = vi.fn()
     console.warn = vi.fn()
 
-    // Clean up test data
-    await db('token_usage').del()
+    // Clean up test data (only if table exists)
+    try {
+      await db('token_usage').del()
+    } catch (error) {
+      // Table might not exist yet, ignore error
+    }
     
     // Create a test user for foreign key constraints
     await db('users').insert({

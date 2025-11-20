@@ -37,19 +37,30 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // Drop index first
-  await knex.schema.alterTable('categories', (table) => {
-    table.dropIndex('user_id')
-  })
+  const hasColumn = await knex.schema.hasColumn('categories', 'user_id')
+  if (hasColumn) {
+    // Drop index first
+    try {
+      await knex.schema.alterTable('categories', (table) => {
+        table.dropIndex('user_id')
+      })
+    } catch (error) {
+      // Index might not exist, ignore
+    }
 
-  // Drop foreign key constraint (Knex generates name as categories_user_id_foreign)
-  await knex.schema.alterTable('categories', (table) => {
-    table.dropForeign('user_id')
-  })
+    // Drop foreign key constraint (Knex generates name as categories_user_id_foreign)
+    try {
+      await knex.schema.alterTable('categories', (table) => {
+        table.dropForeign('user_id')
+      })
+    } catch (error) {
+      // Foreign key might not exist, ignore
+    }
 
-  // Drop the column
-  await knex.schema.alterTable('categories', (table) => {
-    table.dropColumn('user_id')
-  })
+    // Drop the column
+    await knex.schema.alterTable('categories', (table) => {
+      table.dropColumn('user_id')
+    })
+  }
 }
 

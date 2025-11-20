@@ -161,7 +161,8 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '001_create_users.ts')
-      await db.migrate.down()
+      // Rollback the last batch (should be just this migration since runMigrationsUpTo runs them individually)
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'users')
       expect(exists).toBe(false)
@@ -269,7 +270,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '002_create_seeds.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'seeds')
       expect(exists).toBe(false)
@@ -349,7 +350,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '003_create_automations.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'automations')
       expect(exists).toBe(false)
@@ -560,7 +561,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '004_create_events.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'events')
       expect(exists).toBe(false)
@@ -668,7 +669,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '005_create_categories.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'categories')
       expect(exists).toBe(false)
@@ -732,7 +733,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '006_create_tags.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'tags')
       expect(exists).toBe(false)
@@ -909,7 +910,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '007_create_seed_tags.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'seed_tags')
       expect(exists).toBe(false)
@@ -1024,7 +1025,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '008_create_seed_categories.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'seed_categories')
       expect(exists).toBe(false)
@@ -1199,7 +1200,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '009_create_pressure_points.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'pressure_points')
       expect(exists).toBe(false)
@@ -1347,7 +1348,7 @@ describe('Database Migrations 001-010', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '010_create_automation_queue.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'automation_queue')
       expect(exists).toBe(false)

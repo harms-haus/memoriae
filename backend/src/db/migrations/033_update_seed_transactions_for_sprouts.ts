@@ -22,12 +22,25 @@ export async function up(knex: Knex): Promise<void> {
       `),
     })
 
-  // Step 3: Add 'add_sprout' to the enum type
+  // Step 3: Drop the old enum type
   await knex.raw(`
-    ALTER TYPE seed_transaction_type ADD VALUE IF NOT EXISTS 'add_sprout'
+    DROP TYPE seed_transaction_type;
   `)
 
-  // Step 4: Convert the column back to the enum type
+  // Step 4: Create the new enum type with 'add_sprout' instead of 'add_followup'
+  await knex.raw(`
+    CREATE TYPE seed_transaction_type AS ENUM (
+      'create_seed',
+      'edit_content',
+      'add_tag',
+      'remove_tag',
+      'set_category',
+      'remove_category',
+      'add_sprout'
+    )
+  `)
+
+  // Step 5: Convert the column back to the enum type
   await knex.raw(`
     ALTER TABLE seed_transactions
     ALTER COLUMN transaction_type TYPE seed_transaction_type
@@ -55,14 +68,29 @@ export async function down(knex: Knex): Promise<void> {
       `),
     })
 
-  // Step 3: Convert the column back to the enum type
+  // Step 3: Drop the current enum type
+  await knex.raw(`
+    DROP TYPE seed_transaction_type;
+  `)
+
+  // Step 4: Recreate the enum type with 'add_followup' instead of 'add_sprout'
+  await knex.raw(`
+    CREATE TYPE seed_transaction_type AS ENUM (
+      'create_seed',
+      'edit_content',
+      'add_tag',
+      'remove_tag',
+      'set_category',
+      'remove_category',
+      'add_followup'
+    )
+  `)
+
+  // Step 5: Convert the column back to the enum type
   await knex.raw(`
     ALTER TABLE seed_transactions
     ALTER COLUMN transaction_type TYPE seed_transaction_type
     USING transaction_type::seed_transaction_type;
   `)
-
-  // Note: We cannot remove 'add_sprout' from the enum in PostgreSQL
-  // Enum values cannot be removed once added
 }
 

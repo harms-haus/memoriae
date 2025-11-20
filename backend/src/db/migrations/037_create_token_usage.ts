@@ -9,8 +9,8 @@ export async function up(knex: Knex): Promise<void> {
     table.string('model').notNullable()
     table.integer('input_tokens').notNullable()
     table.integer('output_tokens').notNullable()
-    table.integer('cached_input_tokens').defaultTo(0)
-    table.integer('cached_output_tokens').defaultTo(0)
+    table.integer('cached_input_tokens').notNullable().defaultTo(0)
+    table.integer('cached_output_tokens').notNullable().defaultTo(0)
     table.integer('total_tokens').notNullable()
     table.jsonb('messages').nullable()
     table.timestamp('created_at').defaultTo(knex.fn.now()).notNullable()
@@ -23,6 +23,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTable('token_usage')
+  await knex.schema.dropTableIfExists('token_usage')
 }
 

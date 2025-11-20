@@ -27,7 +27,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTable('sprouts')
+  await knex.schema.dropTableIfExists('sprouts')
   await knex.raw('DROP TYPE IF EXISTS sprout_type')
 }
 

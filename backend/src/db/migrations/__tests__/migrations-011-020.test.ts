@@ -165,7 +165,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '011_create_user_settings.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'user_settings')
       expect(exists).toBe(false)
@@ -233,7 +233,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '012_add_openrouter_model_name.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const columns = await getTableInfo(db, 'user_settings')
       expect(columns).not.toHaveProperty('openrouter_model_name')
@@ -323,7 +323,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '013_create_followups.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'followups')
       expect(exists).toBe(false)
@@ -489,7 +489,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '014_create_followup_transactions.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'followup_transactions')
       expect(exists).toBe(false)
@@ -712,7 +712,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '015_create_seed_transactions.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'seed_transactions')
       expect(exists).toBe(false)
@@ -780,7 +780,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '017_remove_seed_content.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const columns = await getTableInfo(db, 'seeds')
       expect(columns).toHaveProperty('seed_content')
@@ -819,7 +819,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '018_drop_seed_tags_table.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'seed_tags')
       expect(exists).toBe(true)
@@ -865,7 +865,7 @@ describe('Database Migrations 011-020', () => {
 
     it('should rollback correctly', async () => {
       await runMigrationsUpTo(db, '019_drop_seed_categories_table.ts')
-      await db.migrate.down()
+      await db.migrate.rollback()
 
       const exists = await tableExists(db, 'seed_categories')
       expect(exists).toBe(true)

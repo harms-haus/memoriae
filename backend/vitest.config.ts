@@ -14,6 +14,12 @@ export default defineConfig({
         isolate: true,
       },
     },
+    // Run migration test files sequentially to avoid database lock conflicts
+    fileParallelism: false,
+    sequence: {
+      shuffle: false,
+      concurrent: false,
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

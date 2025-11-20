@@ -18,6 +18,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTable('idea_musing_shown_history')
+  await knex.schema.dropTableIfExists('idea_musing_shown_history')
 }
 
