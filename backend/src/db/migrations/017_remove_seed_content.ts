@@ -36,10 +36,13 @@ export async function up(knex: Knex): Promise<void> {
     console.log(`Deleted ${seedIds.length} incompatible seeds`)
   }
 
-  // Now remove the seed_content column
-  await knex.schema.alterTable('seeds', (table) => {
-    table.dropColumn('seed_content')
-  })
+  // Now remove the seed_content column (check if it exists first)
+  const hasColumn = await knex.schema.hasColumn('seeds', 'seed_content')
+  if (hasColumn) {
+    await knex.schema.alterTable('seeds', (table) => {
+      table.dropColumn('seed_content')
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

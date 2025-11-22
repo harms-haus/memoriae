@@ -24,12 +24,12 @@ describe('Database Migrations 031-037', () => {
   let db: Knex
 
   beforeEach(async () => {
-    db = setupTestDatabase()
-    await rollbackAllMigrations(db)
+    db = await setupTestDatabase()
+    // No need to rollback migrations - we have a fresh database
   }, 30000)
 
   afterEach(async () => {
-    await rollbackAllMigrations(db)
+    // No need to rollback - we'll drop the entire database
     await teardownTestDatabase(db)
   }, 30000)
 
@@ -285,6 +285,7 @@ describe('Database Migrations 031-037', () => {
       await runMigrationsUpTo(db, '001_create_users.ts')
       await runMigrationsUpTo(db, '002_create_seeds.ts')
       await runMigrationsUpTo(db, '015_create_seed_transactions.ts')
+      await runMigrationsUpTo(db, '022_change_add_category_to_set_category.ts')
     }, 30000)
 
     it('should update add_followup transactions to add_sprout', async () => {
@@ -384,11 +385,10 @@ describe('Database Migrations 031-037', () => {
       expect(transaction?.transaction_type).toBe('add_followup')
       expect((transaction?.transaction_data as any).followup_id).toBe(followupId)
 
-      // Note: 'add_sprout' remains in enum (PostgreSQL limitation)
-      // So we can still insert it, but 'add_followup' also works
+      // Verify enum was restored to add_followup (add_sprout is removed)
       const values = await getEnumValues(db, 'seed_transaction_type')
-      expect(values).toContain('add_sprout')
       expect(values).toContain('add_followup')
+      expect(values).not.toContain('add_sprout')
     }, 30000)
   })
 
@@ -568,6 +568,7 @@ describe('Database Migrations 031-037', () => {
       await runMigrationsUpTo(db, '002_create_seeds.ts')
       await runMigrationsUpTo(db, '005_create_categories.ts')
       await runMigrationsUpTo(db, '015_create_seed_transactions.ts')
+      await runMigrationsUpTo(db, '022_change_add_category_to_set_category.ts')
     }, 30000)
 
     it('should add user_id column and assign from seeds', async () => {

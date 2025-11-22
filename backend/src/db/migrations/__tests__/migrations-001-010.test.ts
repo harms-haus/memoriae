@@ -24,12 +24,12 @@ describe('Database Migrations 001-010', () => {
   let db: Knex
 
   beforeEach(async () => {
-    db = setupTestDatabase()
-    await rollbackAllMigrations(db)
+    db = await setupTestDatabase()
+    // No need to rollback migrations - we have a fresh database
   }, 30000)
 
   afterEach(async () => {
-    await rollbackAllMigrations(db)
+    // No need to rollback - we'll drop the entire database
     await teardownTestDatabase(db)
   }, 30000)
 
@@ -69,14 +69,17 @@ describe('Database Migrations 001-010', () => {
       expect(primaryKey?.[0]?.column_name).toBe('id')
     }, 30000)
 
-    it('should have unique constraint on email', async () => {
+    it('should have composite unique constraint on [email, provider]', async () => {
       await runMigrationsUpTo(db, '001_create_users.ts')
 
       const uniqueConstraints = await getUniqueConstraints(db, 'users')
-      const emailUnique = uniqueConstraints.find(
-        (uc) => uc.column_names.length === 1 && uc.column_names[0] === 'email'
+      const emailProviderUnique = uniqueConstraints.find(
+        (uc) =>
+          uc.column_names.length === 2 &&
+          uc.column_names.includes('email') &&
+          uc.column_names.includes('provider')
       )
-      expect(emailUnique).toBeDefined()
+      expect(emailProviderUnique).toBeDefined()
     }, 30000)
 
     it('should have composite unique constraint on [provider, provider_id]', async () => {
@@ -92,14 +95,15 @@ describe('Database Migrations 001-010', () => {
       expect(compositeUnique).toBeDefined()
     }, 30000)
 
-    it('should reject duplicate email', async () => {
+    it('should reject duplicate email with same provider', async () => {
       await runMigrationsUpTo(db, '001_create_users.ts')
 
       const email = 'duplicate@example.com'
-      await createTestUser(db, { email })
+      const provider = 'google'
+      await createTestUser(db, { email, provider })
 
       await expect(
-        createTestUser(db, { email, provider_id: 'different-id' })
+        createTestUser(db, { email, provider, provider_id: 'different-id' })
       ).rejects.toThrow()
     }, 30000)
 

@@ -2,6 +2,17 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { v4 as uuidv4 } from 'uuid'
 import type { Knex } from 'knex'
+
+// Get original console methods (not suppressed)
+const getOriginalConsole = () => {
+  const globalAny = global as any
+  return {
+    log: globalAny.__originalConsoleLog || console.log,
+    error: globalAny.__originalConsoleError || console.error,
+    warn: globalAny.__originalConsoleWarn || console.warn,
+  }
+}
+const originalConsole = getOriginalConsole()
 import {
   setupTestDatabase,
   teardownTestDatabase,
@@ -25,12 +36,12 @@ describe('Database Migrations 021-030', () => {
   let db: Knex
 
   beforeEach(async () => {
-    db = setupTestDatabase()
-    await rollbackAllMigrations(db)
+    db = await setupTestDatabase()
+    // No need to rollback migrations - we have a fresh database
   }, 30000)
 
   afterEach(async () => {
-    await rollbackAllMigrations(db)
+    // No need to rollback - we'll drop the entire database
     await teardownTestDatabase(db)
   }, 30000)
 
@@ -173,6 +184,9 @@ describe('Database Migrations 021-030', () => {
       await runMigrationsUpTo(db, '001_create_users.ts')
       await runMigrationsUpTo(db, '002_create_seeds.ts')
       await runMigrationsUpTo(db, '015_create_seed_transactions.ts')
+      // Run migration 021 to ensure it's done before we test 022
+      // This prevents 021 from running during 022 and potentially affecting test data
+      await runMigrationsUpTo(db, '021_cleanup_invalid_seeds.ts')
     }, 30000)
 
     it('should update existing add_category transactions to set_category', async () => {
@@ -188,13 +202,25 @@ describe('Database Migrations 021-030', () => {
         transaction_data: { category: { id: uuidv4(), name: 'test' } },
       })
 
-      // Run migration
-      await runMigrationsUpTo(db, '022_change_add_category_to_set_category.ts')
-
-      // Verify transaction was updated
-      const transaction = await db('seed_transactions')
+      // Verify transaction exists before migration
+      let transaction = await db('seed_transactions')
         .where({ id: transactionId })
         .first()
+      expect(transaction).toBeDefined()
+      expect(transaction?.transaction_type).toBe('add_category')
+
+      // Run migration (this will run 021 first, which might affect the seed)
+      await runMigrationsUpTo(db, '022_change_add_category_to_set_category.ts')
+
+      // Verify seed still exists (migration 021 shouldn't delete it since it has create_seed transaction)
+      const seed = await db('seeds').where({ id: seedId }).first()
+      expect(seed).toBeDefined()
+
+      // Verify transaction was updated
+      transaction = await db('seed_transactions')
+        .where({ id: transactionId })
+        .first()
+      expect(transaction).toBeDefined()
       expect(transaction?.transaction_type).toBe('set_category')
     }, 30000)
 
@@ -244,16 +270,39 @@ describe('Database Migrations 021-030', () => {
       const userId = await createTestUser(db)
       const seedId = await createTestSeed(db, userId)
 
-      // Create set_category transaction
+      // First, ensure we're at migration 021 (before 022)
+      // Create add_category transaction (which exists before migration 022)
       const transactionId = uuidv4()
       await db('seed_transactions').insert({
         id: transactionId,
         seed_id: seedId,
-        transaction_type: 'set_category',
+        transaction_type: 'add_category',
         transaction_data: {},
       })
 
+      // Verify transaction exists before migration
+      let transaction = await db('seed_transactions')
+        .where({ id: transactionId })
+        .first()
+      expect(transaction).toBeDefined()
+      expect(transaction?.transaction_type).toBe('add_category')
+
+      // Now run migration 022 (which converts add_category to set_category)
+      // This will run migration 021 first, which might affect the seed
       await runMigrationsUpTo(db, '022_change_add_category_to_set_category.ts')
+      
+      // Verify seed still exists
+      const seed = await db('seeds').where({ id: seedId }).first()
+      expect(seed).toBeDefined()
+      
+      // Verify the transaction was converted
+      transaction = await db('seed_transactions')
+        .where({ id: transactionId })
+        .first()
+      expect(transaction).toBeDefined()
+      expect(transaction?.transaction_type).toBe('set_category')
+
+      // Now rollback
       await db.migrate.rollback()
 
       // Verify enum was restored
@@ -262,7 +311,7 @@ describe('Database Migrations 021-030', () => {
       expect(values).not.toContain('set_category')
 
       // Verify transaction was updated back
-      const transaction = await db('seed_transactions')
+      transaction = await db('seed_transactions')
         .where({ id: transactionId })
         .first()
       expect(transaction?.transaction_type).toBe('add_category')
@@ -552,8 +601,7 @@ describe('Database Migrations 021-030', () => {
 
   describe('Migration 026: create_idea_musing_shown_history', () => {
     beforeEach(async () => {
-      await runMigrationsUpTo(db, '001_create_users.ts')
-      await runMigrationsUpTo(db, '002_create_seeds.ts')
+      await runMigrationsUpTo(db, '025_create_idea_musings.ts')
     }, 30000)
 
     it('should create idea_musing_shown_history table with correct schema', async () => {
@@ -611,7 +659,13 @@ describe('Database Migrations 021-030', () => {
       await runMigrationsUpTo(db, '026_create_idea_musing_shown_history.ts')
 
       const userId = await createTestUser(db)
+      if (!userId) {
+        throw new Error('createTestUser returned undefined')
+      }
       const seedId = await createTestSeed(db, userId)
+      if (!seedId) {
+        throw new Error('createTestSeed returned undefined')
+      }
 
       await db('idea_musing_shown_history').insert({
         id: uuidv4(),
@@ -639,8 +693,6 @@ describe('Database Migrations 021-030', () => {
 
   describe('Migration 027: add_completed_to_idea_musings', () => {
     beforeEach(async () => {
-      await runMigrationsUpTo(db, '001_create_users.ts')
-      await runMigrationsUpTo(db, '002_create_seeds.ts')
       await runMigrationsUpTo(db, '025_create_idea_musings.ts')
     }, 30000)
 
@@ -658,7 +710,13 @@ describe('Database Migrations 021-030', () => {
 
     it('should default completed to false for existing records', async () => {
       const userId = await createTestUser(db)
+      if (!userId) {
+        throw new Error('createTestUser returned undefined')
+      }
       const seedId = await createTestSeed(db, userId)
+      if (!seedId) {
+        throw new Error('createTestSeed returned undefined')
+      }
 
       const musingId = uuidv4()
       await db('idea_musings').insert({
@@ -794,7 +852,17 @@ describe('Database Migrations 021-030', () => {
       await runMigrationsUpTo(db, '001_create_users.ts')
       await runMigrationsUpTo(db, '002_create_seeds.ts')
       await runMigrationsUpTo(db, '015_create_seed_transactions.ts')
+      // Run migration 021 to ensure it's done before we test 029
+      // This prevents 021 from running during 029 and potentially affecting test data
+      await runMigrationsUpTo(db, '021_cleanup_invalid_seeds.ts')
       await runMigrationsUpTo(db, '028_add_seed_slug.ts')
+      
+      // Verify migration 021 is recorded
+      const originalConsole = (global as any).__originalConsoleError || console.error
+      const migrationsAfterSetup = await db('knex_migrations').select('name', 'batch').orderBy('batch', 'asc')
+      const migration021AfterSetup = migrationsAfterSetup.find(m => m.name === '021_cleanup_invalid_seeds.ts')
+      originalConsole(`[beforeEach] Migration 021 after setup:`, migration021AfterSetup ? `found (batch ${migration021AfterSetup.batch})` : 'NOT FOUND')
+      originalConsole(`[beforeEach] All migrations after setup:`, migrationsAfterSetup.map(m => `${m.name} (batch ${m.batch})`))
     }, 30000)
 
     it('should generate slugs for seeds without slugs', async () => {
@@ -823,37 +891,203 @@ describe('Database Migrations 021-030', () => {
     }, 30000)
 
     it('should skip seeds without create_seed transactions', async () => {
+      originalConsole.error('[TEST] Starting test: should skip seeds without create_seed transactions')
+      
+      // beforeEach already ran migrations up to 028
+      originalConsole.error('[TEST] Step 1: Creating test user')
       const userId = await createTestUser(db)
+      originalConsole.error('[TEST] Step 1: userId =', userId)
+      if (!userId) {
+        throw new Error('FAILED AT STEP 1: userId is undefined')
+      }
+      expect(userId).toBeDefined()
+      originalConsole.error('[TEST] Step 1: userId is defined')
+      
+      // Now create a seed with a valid create_seed transaction
+      // This ensures migration 021 won't delete it when it runs
+      originalConsole.error('[TEST] Step 2: Creating test seed')
       const seedId = await createTestSeed(db, userId)
-
-      // Don't create create_seed transaction
-
-      // Run migration
-      await runMigrationsUpTo(db, '029_backfill_seed_slugs.ts')
-
-      // Verify seed still has no slug
-      const seed = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 2: seedId =', seedId)
+      if (!seedId) {
+        throw new Error('FAILED AT STEP 2: seedId is undefined')
+      }
+      expect(seedId).toBeDefined()
+      expect(typeof seedId).toBe('string')
+      originalConsole.error('[TEST] Step 2: seedId is valid')
+      
+      // Verify seed exists with valid create_seed transaction
+      originalConsole.error('[TEST] Step 3: Verifying seed exists')
+      let seed = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 3: seed =', seed ? 'found' : 'NOT FOUND')
+      expect(seed).toBeDefined()
+      originalConsole.error('[TEST] Step 3: Fetching create_seed transaction')
+      const createTx = await db('seed_transactions')
+        .where({ seed_id: seedId, transaction_type: 'create_seed' })
+        .first()
+      originalConsole.error('[TEST] Step 3: createTx =', createTx ? 'found' : 'NOT FOUND')
+      expect(createTx).toBeDefined()
+      originalConsole.error('[TEST] Step 3: createTx is defined, id =', createTx?.id)
+      
+      // Now delete the create_seed transaction
+      // Since migration 021 already ran (as part of running up to 028), it won't run again
+      originalConsole.error('[TEST] Step 4: Deleting create_seed transaction')
+      await db('seed_transactions').where({ id: createTx.id }).delete()
+      originalConsole.error('[TEST] Step 4: Transaction deleted')
+      
+      // Verify seed still exists and has no slug
+      originalConsole.error('[TEST] Step 5: Verifying seed still exists after deleting transaction')
+      seed = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 5: seed =', seed ? 'found' : 'NOT FOUND', 'slug =', seed?.slug)
+      if (!seed) {
+        throw new Error('FAILED AT STEP 5: seed is undefined after deleting transaction')
+      }
+      expect(seed).toBeDefined()
       expect(seed?.slug).toBeNull()
+      originalConsole.error('[TEST] Step 5: Seed exists and has no slug')
+
+      // Run migration 029 (021 should not run again since it's already completed)
+      originalConsole.error('[TEST] Step 6: Checking migration 021 status before running 029')
+      const migrationsBefore = await db('knex_migrations').select('name', 'batch').orderBy('batch', 'asc')
+      const migration021Before = migrationsBefore.find(m => m.name === '021_cleanup_invalid_seeds.ts')
+      originalConsole.error('[TEST] Step 6: migration021Before =', migration021Before)
+      originalConsole.error('[TEST] Step 6: All migrations before:', migrationsBefore.map(m => `${m.name} (batch ${m.batch})`))
+      
+      // Check if seed still exists before running migration 029
+      const seedBefore029 = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 6: seedBefore029 =', seedBefore029 ? 'found' : 'NOT FOUND')
+      
+      originalConsole.error('[TEST] Step 6: Running migration 029')
+      // Check seed exists and count before calling runMigrationsUpTo
+      const seedCheckBefore = await db('seeds').where({ id: seedId }).first()
+      const seedsCountBefore = await db('seeds').count('* as count').first()
+      originalConsole.error('[TEST] Step 6: Before runMigrationsUpTo - seed exists:', seedCheckBefore ? 'YES' : 'NO', 'total seeds:', seedsCountBefore?.count || 0)
+      
+      await runMigrationsUpTo(db, '029_backfill_seed_slugs.ts')
+      
+      // Check immediately after
+      const seedCheckAfter = await db('seeds').where({ id: seedId }).first()
+      const seedsCountAfter = await db('seeds').count('* as count').first()
+      originalConsole.error('[TEST] Step 6: After runMigrationsUpTo - seed exists:', seedCheckAfter ? 'YES' : 'NO', 'total seeds:', seedsCountAfter?.count || 0)
+      
+      // Check migrations after
+      const migrationsAfter = await db('knex_migrations').select('name', 'batch').orderBy('batch', 'asc')
+      originalConsole.error('[TEST] Step 6: All migrations after:', migrationsAfter.map(m => `${m.name} (batch ${m.batch})`))
+      
+      // Check if migration 021 ran again
+      const migration021After = migrationsAfter.find(m => m.name === '021_cleanup_invalid_seeds.ts')
+      originalConsole.error('[TEST] Step 6: migration021After =', migration021After)
+      if (migration021Before && migration021After && migration021Before.batch !== migration021After.batch) {
+        originalConsole.error('[TEST] Step 6: WARNING - Migration 021 batch changed! It may have run again!')
+      }
+      
+      originalConsole.error('[TEST] Step 6: Migration 029 completed')
+
+      // Verify seed still exists and has no slug (migration should skip it)
+      originalConsole.error('[TEST] Step 7: Verifying seed still exists after migration 029')
+      seed = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 7: seed =', seed ? 'found' : 'NOT FOUND', 'slug =', seed?.slug)
+      if (!seed) {
+        throw new Error('FAILED AT STEP 7: seed is undefined after migration 029')
+      }
+      expect(seed).toBeDefined()
+      expect(seed?.slug).toBeNull()
+      originalConsole.error('[TEST] Test completed successfully')
     }, 30000)
 
     it('should skip seeds with empty content', async () => {
+      originalConsole.error('[TEST] Starting test: should skip seeds with empty content')
+      
+      // beforeEach already ran migrations up to 028
+      originalConsole.error('[TEST] Step 1: Creating test user')
       const userId = await createTestUser(db)
+      originalConsole.error('[TEST] Step 1: userId =', userId)
+      expect(userId).toBeDefined()
+      originalConsole.error('[TEST] Step 1: userId is defined')
+      
+      // Now create a seed with a valid create_seed transaction
+      originalConsole.error('[TEST] Step 2: Creating test seed')
       const seedId = await createTestSeed(db, userId)
+      originalConsole.error('[TEST] Step 2: seedId =', seedId)
+      expect(seedId).toBeDefined()
+      expect(typeof seedId).toBe('string')
+      originalConsole.error('[TEST] Step 2: seedId is valid')
+      
+      // Verify seed exists with valid create_seed transaction
+      originalConsole.error('[TEST] Step 3: Verifying seed exists')
+      let seed = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 3: seed =', seed ? 'found' : 'NOT FOUND')
+      expect(seed).toBeDefined()
+      originalConsole.error('[TEST] Step 3: Fetching create_seed transaction')
+      const createTx = await db('seed_transactions')
+        .where({ seed_id: seedId, transaction_type: 'create_seed' })
+        .first()
+      originalConsole.error('[TEST] Step 3: createTx =', createTx ? 'found' : 'NOT FOUND')
+      expect(createTx).toBeDefined()
+      originalConsole.error('[TEST] Step 3: createTx is defined, id =', createTx?.id)
+      
+      // Now update the create_seed transaction to have empty content
+      // This should happen AFTER migration 021 has already run
+      // But migration 021 might run again when we run migration 029
+      // So we need to ensure the seed won't be deleted
+      // Actually, migration 021 deletes seeds with empty content, so we can't test this
+      // unless we ensure migration 021 doesn't run again
+      
+      // Instead, let's test that migration 029 skips seeds with empty content
+      // by ensuring migration 021 has already run and won't run again
+      originalConsole.error('[TEST] Step 4: Updating transaction to have empty content')
+      await db('seed_transactions')
+        .where({ seed_id: seedId, transaction_type: 'create_seed' })
+        .update({ transaction_data: db.raw("'{\"content\":\"\"}'::jsonb") })
+      originalConsole.error('[TEST] Step 4: Transaction updated')
 
-      // Create create_seed transaction with empty content
-      await db('seed_transactions').insert({
-        id: uuidv4(),
-        seed_id: seedId,
-        transaction_type: 'create_seed',
-        transaction_data: { content: '' },
-      })
-
-      // Run migration
-      await runMigrationsUpTo(db, '029_backfill_seed_slugs.ts')
-
-      // Verify seed still has no slug
-      const seed = await db('seeds').where({ id: seedId }).first()
+      // Verify seed exists and has no slug before migration
+      originalConsole.error('[TEST] Step 5: Verifying seed exists before migration')
+      seed = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 5: seed =', seed ? 'found' : 'NOT FOUND', 'slug =', seed?.slug)
+      expect(seed).toBeDefined()
       expect(seed?.slug).toBeNull()
+      originalConsole.error('[TEST] Step 5: Seed exists and has no slug')
+      
+      // Verify create_seed transaction has empty content
+      originalConsole.error('[TEST] Step 6: Verifying transaction has empty content')
+      const createTxBefore = await db('seed_transactions')
+        .where({ seed_id: seedId, transaction_type: 'create_seed' })
+        .first()
+      originalConsole.error('[TEST] Step 6: createTxBefore =', createTxBefore ? 'found' : 'NOT FOUND')
+      expect(createTxBefore).toBeDefined()
+      const contentBefore = (createTxBefore.transaction_data as any)?.content || ''
+      originalConsole.error('[TEST] Step 6: contentBefore =', contentBefore)
+      expect(contentBefore).toBe('')
+      originalConsole.error('[TEST] Step 6: Content is empty')
+
+      // Verify migration 021 is already completed
+      originalConsole.error('[TEST] Step 7: Verifying migration 021 is completed')
+      const completedMigrations = await db('knex_migrations').select('name')
+      const migration021Completed = completedMigrations.some(m => m.name === '021_cleanup_invalid_seeds.ts')
+      originalConsole.error('[TEST] Step 7: migration021Completed =', migration021Completed)
+      expect(migration021Completed).toBe(true)
+      originalConsole.error('[TEST] Step 7: Migration 021 is completed')
+      
+      // Run migration 029 (021 should not run again since it's already completed)
+      originalConsole.error('[TEST] Step 8: Running migration 029')
+      await runMigrationsUpTo(db, '029_backfill_seed_slugs.ts')
+      originalConsole.error('[TEST] Step 8: Migration 029 completed')
+      
+      // Verify migration 021 is still completed (not run again)
+      originalConsole.error('[TEST] Step 9: Verifying migration 021 is still completed')
+      const completedMigrationsAfter = await db('knex_migrations').select('name')
+      const migration021StillCompleted = completedMigrationsAfter.some(m => m.name === '021_cleanup_invalid_seeds.ts')
+      originalConsole.error('[TEST] Step 9: migration021StillCompleted =', migration021StillCompleted)
+      expect(migration021StillCompleted).toBe(true)
+      originalConsole.error('[TEST] Step 9: Migration 021 is still completed')
+
+      // Verify seed still exists and has no slug (migration should skip empty content)
+      originalConsole.error('[TEST] Step 10: Verifying seed still exists after migration 029')
+      seed = await db('seeds').where({ id: seedId }).first()
+      originalConsole.error('[TEST] Step 10: seed =', seed ? 'found' : 'NOT FOUND', 'slug =', seed?.slug)
+      expect(seed).toBeDefined()
+      expect(seed?.slug).toBeNull()
+      originalConsole.error('[TEST] Test completed successfully')
     }, 30000)
 
     it('should use UUID prefix in slug', async () => {

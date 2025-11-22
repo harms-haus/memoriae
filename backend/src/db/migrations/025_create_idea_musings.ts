@@ -1,7 +1,9 @@
 import type { Knex } from 'knex'
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable('idea_musings', (table) => {
+  const exists = await knex.schema.hasTable('idea_musings')
+  if (!exists) {
+    await knex.schema.createTable('idea_musings', (table) => {
     table.uuid('id').primary()
     table.uuid('seed_id').notNullable()
     table.string('template_type').notNullable() // 'numbered_ideas', 'wikipedia_links', 'markdown'
@@ -17,7 +19,8 @@ export async function up(knex: Knex): Promise<void> {
     table.index('seed_id')
     table.index('created_at')
     table.index('dismissed')
-  })
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

@@ -1,12 +1,21 @@
 import type { Knex } from 'knex'
 
 export async function up(knex: Knex): Promise<void> {
-  // Create enum type for sprout_type
-  await knex.raw(`
-    CREATE TYPE sprout_type AS ENUM ('followup', 'musing', 'extra_context', 'fact_check')
+  // Create enum type for sprout_type (check if it exists first)
+  const enumExists = await knex.raw(`
+    SELECT EXISTS (
+      SELECT 1 FROM pg_type WHERE typname = 'sprout_type'
+    )
   `)
+  if (!enumExists.rows[0]?.exists) {
+    await knex.raw(`
+      CREATE TYPE sprout_type AS ENUM ('followup', 'musing', 'extra_context', 'fact_check')
+    `)
+  }
 
-  await knex.schema.createTable('sprouts', (table) => {
+  const exists = await knex.schema.hasTable('sprouts')
+  if (!exists) {
+    await knex.schema.createTable('sprouts', (table) => {
     table.uuid('id').primary()
     table.uuid('seed_id').notNullable()
     table.specificType('sprout_type', 'sprout_type').notNullable()
@@ -23,7 +32,8 @@ export async function up(knex: Knex): Promise<void> {
     table.index('created_at')
     table.index('sprout_type')
     table.index(['seed_id', 'created_at']) // Composite index for timeline queries
-  })
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

@@ -1,22 +1,25 @@
 import type { Knex } from 'knex'
 
 export async function up(knex: Knex): Promise<void> {
-  // Add the column first
-  await knex.schema.alterTable('seeds', (table) => {
-    table.string('slug', 200).nullable()
-  })
-  
-  // Create unique constraint with explicit name (shows up in information_schema.table_constraints)
-  await knex.raw(`
-    ALTER TABLE seeds 
-    ADD CONSTRAINT seeds_slug_unique UNIQUE (slug)
-  `)
-  
-  // Create regular index for lookup performance (separate from unique constraint)
-  // Note: We don't specify a name so Knex will auto-generate one
-  await knex.schema.alterTable('seeds', (table) => {
-    table.index('slug')
-  })
+  // Add the column first (check if it exists)
+  const hasColumn = await knex.schema.hasColumn('seeds', 'slug')
+  if (!hasColumn) {
+    await knex.schema.alterTable('seeds', (table) => {
+      table.string('slug', 200).nullable()
+    })
+    
+    // Create unique constraint with explicit name (shows up in information_schema.table_constraints)
+    await knex.raw(`
+      ALTER TABLE seeds 
+      ADD CONSTRAINT seeds_slug_unique UNIQUE (slug)
+    `)
+    
+    // Create regular index for lookup performance (separate from unique constraint)
+    // Note: We don't specify a name so Knex will auto-generate one
+    await knex.schema.alterTable('seeds', (table) => {
+      table.index('slug')
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

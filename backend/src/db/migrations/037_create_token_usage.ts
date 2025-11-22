@@ -1,7 +1,9 @@
 import type { Knex } from 'knex'
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable('token_usage', (table) => {
+  const exists = await knex.schema.hasTable('token_usage')
+  if (!exists) {
+    await knex.schema.createTable('token_usage', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
     table.uuid('automation_id').nullable().references('id').inTable('automations').onDelete('SET NULL')
@@ -19,7 +21,8 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['automation_id'])
     table.index(['created_at'])
     table.index(['model'])
-  })
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

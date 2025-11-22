@@ -55,22 +55,39 @@ async function generateSeedSlug(
 }
 
 export async function up(knex: Knex): Promise<void> {
+  const originalConsole = (global as any).__originalConsoleError || console.error
+  originalConsole('[MIGRATION 029] Starting backfill_seed_slugs migration')
+  
+  // Check all seeds first
+  const allSeeds = await knex('seeds').select('id', 'slug')
+  originalConsole(`[MIGRATION 029] Total seeds in database: ${allSeeds.length}`)
+  allSeeds.forEach(s => {
+    originalConsole(`[MIGRATION 029] Seed ${s.id} has slug: ${s.slug || 'NULL'}`)
+  })
+  
   // Get all seeds that don't have a slug yet
   const seeds = await knex('seeds')
     .select('id')
     .whereNull('slug')
   
-  console.log(`Backfilling slugs for ${seeds.length} seeds...`)
+  originalConsole(`[MIGRATION 029] Backfilling slugs for ${seeds.length} seeds...`)
+  seeds.forEach(s => {
+    originalConsole(`[MIGRATION 029] Seed to process: ${s.id}`)
+  })
   
   for (const seed of seeds) {
     try {
+      originalConsole(`[MIGRATION 029] Processing seed ${seed.id}`)
       // Get the create_seed transaction to extract content
       const createTransaction = await knex('seed_transactions')
         .where({ seed_id: seed.id, transaction_type: 'create_seed' })
         .first()
       
       if (!createTransaction) {
-        console.warn(`Seed ${seed.id} has no create_seed transaction, skipping`)
+        originalConsole(`[MIGRATION 029] Seed ${seed.id} has no create_seed transaction, skipping`)
+        // Verify seed still exists after skipping
+        const seedStillExists = await knex('seeds').where({ id: seed.id }).first()
+        originalConsole(`[MIGRATION 029] Seed ${seed.id} still exists after skip:`, seedStillExists ? 'YES' : 'NO')
         continue
       }
       
@@ -84,7 +101,10 @@ export async function up(knex: Knex): Promise<void> {
       const content = result.rows?.[0]?.content || ''
       
       if (!content || content.trim().length === 0) {
-        console.warn(`Seed ${seed.id} has empty content, skipping`)
+        originalConsole(`[MIGRATION 029] Seed ${seed.id} has empty content, skipping`)
+        // Verify seed still exists after skipping
+        const seedStillExists = await knex('seeds').where({ id: seed.id }).first()
+        originalConsole(`[MIGRATION 029] Seed ${seed.id} still exists after skip:`, seedStillExists ? 'YES' : 'NO')
         continue
       }
       
@@ -95,17 +115,19 @@ export async function up(knex: Knex): Promise<void> {
       const slug = await generateSeedSlug(content, uuidPrefix, knex)
       
       // Update seed with slug
+      originalConsole(`[MIGRATION 029] Updating seed ${seed.id} with slug ${slug}`)
       await knex('seeds')
         .where({ id: seed.id })
         .update({ slug })
+      originalConsole(`[MIGRATION 029] Updated seed ${seed.id}`)
       
     } catch (error) {
-      console.error(`Error generating slug for seed ${seed.id}:`, error)
+      originalConsole(`[MIGRATION 029] Error generating slug for seed ${seed.id}:`, error)
       // Continue with next seed
     }
   }
   
-  console.log('Slug backfill completed')
+  originalConsole('[MIGRATION 029] Slug backfill completed')
 }
 
 export async function down(knex: Knex): Promise<void> {

@@ -1,12 +1,21 @@
 import type { Knex } from 'knex'
 
 export async function up(knex: Knex): Promise<void> {
-  // Create enum type for transaction_type
-  await knex.raw(`
-    CREATE TYPE tag_transaction_type AS ENUM ('creation', 'edit', 'set_color')
+  // Create enum type for transaction_type (check if it exists first)
+  const enumExists = await knex.raw(`
+    SELECT EXISTS (
+      SELECT 1 FROM pg_type WHERE typname = 'tag_transaction_type'
+    )
   `)
+  if (!enumExists.rows[0]?.exists) {
+    await knex.raw(`
+      CREATE TYPE tag_transaction_type AS ENUM ('creation', 'edit', 'set_color')
+    `)
+  }
 
-  await knex.schema.createTable('tag_transactions', (table) => {
+  const exists = await knex.schema.hasTable('tag_transactions')
+  if (!exists) {
+    await knex.schema.createTable('tag_transactions', (table) => {
     table.uuid('id').primary()
     table.uuid('tag_id').notNullable()
     table.specificType('transaction_type', 'tag_transaction_type').notNullable()
@@ -23,7 +32,8 @@ export async function up(knex: Knex): Promise<void> {
     table.index('created_at')
     table.index('transaction_type')
     table.index(['tag_id', 'created_at']) // Composite index for timeline queries
-  })
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

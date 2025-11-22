@@ -24,12 +24,12 @@ describe('Database Migrations 011-020', () => {
   let db: Knex
 
   beforeEach(async () => {
-    db = setupTestDatabase()
-    await rollbackAllMigrations(db)
+    db = await setupTestDatabase()
+    // No need to rollback migrations - we have a fresh database
   }, 30000)
 
   afterEach(async () => {
-    await rollbackAllMigrations(db)
+    // No need to rollback - we'll drop the entire database
     await teardownTestDatabase(db)
   }, 30000)
 

@@ -1,7 +1,9 @@
 import type { Knex } from 'knex'
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable('user_settings', (table) => {
+  const exists = await knex.schema.hasTable('user_settings')
+  if (!exists) {
+    await knex.schema.createTable('user_settings', (table) => {
     table.uuid('id').primary()
     table.uuid('user_id').notNullable().unique()
     table.string('openrouter_api_key').nullable() // Encrypted or plain text (user's choice)
@@ -14,7 +16,8 @@ export async function up(knex: Knex): Promise<void> {
 
     // Index
     table.index('user_id')
-  })
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

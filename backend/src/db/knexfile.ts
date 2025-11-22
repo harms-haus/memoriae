@@ -67,6 +67,9 @@ const config: { [key: string]: Knex.Config } = {
     migrations: {
       directory: __dirname + '/migrations',
       extension: 'ts',
+      loadExtensions: ['.ts'],
+      // Disable migration list validation to prevent auto-population issues in tests
+      disableMigrationsListValidation: true,
     },
     seeds: {
       directory: __dirname + '/seeds',
@@ -100,6 +103,7 @@ const config: { [key: string]: Knex.Config } = {
     migrations: {
       directory: __dirname + '/migrations',
       extension: 'ts',
+      loadExtensions: ['.ts'],
     },
     seeds: {
       directory: __dirname + '/seeds',
@@ -133,6 +137,7 @@ const config: { [key: string]: Knex.Config } = {
     migrations: {
       directory: __dirname + '/migrations',
       extension: 'ts',
+      loadExtensions: ['.ts'],
     },
     seeds: {
       directory: __dirname + '/seeds',

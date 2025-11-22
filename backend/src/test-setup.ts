@@ -1,5 +1,30 @@
 // Test setup - configure environment variables
 // This runs before any tests are executed
+
+// CRITICAL: Register TypeScript loader FIRST, before anything else
+// Knex needs to be able to require() TypeScript migration files
+// Vitest can run TypeScript, but Knex's internal require() doesn't use Vitest's loader
+// We need to register a loader before Knex tries to load migration files
+try {
+  // Try ts-node first (more reliable for require-based loading)
+  require('ts-node/register')
+} catch (tsNodeError) {
+  // If ts-node fails, try tsx
+  try {
+    // tsx might need to be registered differently
+    const tsx = require('tsx')
+    // tsx might auto-register, or we might need to call a function
+    if (typeof tsx === 'function') {
+      tsx()
+    } else if (tsx.register) {
+      tsx.register()
+    }
+  } catch (tsxError) {
+    // If neither works, that's okay - Vitest might handle it
+    // But migrations might fail in some cases
+  }
+}
+
 process.env.NODE_ENV = process.env.NODE_ENV || 'test'
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-key-for-testing-only'
 process.env.OAUTH_GOOGLE_CLIENT_ID = process.env.OAUTH_GOOGLE_CLIENT_ID || 'test-google-client-id'

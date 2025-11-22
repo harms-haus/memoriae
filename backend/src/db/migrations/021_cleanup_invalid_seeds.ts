@@ -9,6 +9,7 @@ import type { Knex } from 'knex'
  * 4. Have other transaction data issues
  */
 export async function up(knex: Knex): Promise<void> {
+  console.error('[MIGRATION 021] Starting cleanup_invalid_seeds migration')
   // Find seeds without create_seed transactions
   const seedsWithoutCreateSeed = await knex.raw(`
     SELECT s.id
@@ -16,6 +17,7 @@ export async function up(knex: Knex): Promise<void> {
     LEFT JOIN seed_transactions st ON s.id = st.seed_id AND st.transaction_type = 'create_seed'
     WHERE st.id IS NULL
   `)
+  console.error('[MIGRATION 021] Found seeds without create_seed:', seedsWithoutCreateSeed.rows?.length || 0)
 
   // Find seeds with invalid create_seed transaction data
   // (missing content field, invalid JSON structure, or empty content)
@@ -47,8 +49,8 @@ export async function up(knex: Knex): Promise<void> {
   const uniqueProblematicIds = [...new Set(problematicSeedIds)]
 
   if (uniqueProblematicIds.length > 0) {
-    console.log(`Found ${uniqueProblematicIds.length} seeds with invalid state`)
-    console.log(`Seed IDs: ${uniqueProblematicIds.join(', ')}`)
+    console.error(`[MIGRATION 021] Found ${uniqueProblematicIds.length} seeds with invalid state`)
+    console.error(`[MIGRATION 021] Seed IDs: ${uniqueProblematicIds.join(', ')}`)
 
     // Delete related data first
     console.log('Deleting related transactions...')
@@ -92,13 +94,14 @@ export async function up(knex: Knex): Promise<void> {
     }
     
     // Finally delete the seeds
-    console.log('Deleting seeds...')
+    console.error('[MIGRATION 021] Deleting seeds...')
     const deleted = await knex('seeds').whereIn('id', uniqueProblematicIds).delete()
     
-    console.log(`Successfully deleted ${deleted} seeds with invalid state`)
+    console.error(`[MIGRATION 021] Successfully deleted ${deleted} seeds with invalid state`)
   } else {
-    console.log('No seeds with invalid state found')
+    console.error('[MIGRATION 021] No seeds with invalid state found')
   }
+  console.error('[MIGRATION 021] Migration completed')
 }
 
 export async function down(knex: Knex): Promise<void> {

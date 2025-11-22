@@ -1,10 +1,12 @@
 import type { Knex } from 'knex'
 
 export async function up(knex: Knex): Promise<void> {
-  // Add user_id column (nullable initially to handle existing data)
-  await knex.schema.alterTable('categories', (table) => {
-    table.uuid('user_id').nullable()
-  })
+  // Add user_id column (nullable initially to handle existing data) - check if it exists first
+  const hasColumn = await knex.schema.hasColumn('categories', 'user_id')
+  if (!hasColumn) {
+    await knex.schema.alterTable('categories', (table) => {
+      table.uuid('user_id').nullable()
+    })
 
   // Try to assign existing categories to users based on seeds that use them
   // Get the user_id from the first seed that uses each category
@@ -29,11 +31,12 @@ export async function up(knex: Knex): Promise<void> {
     ALTER COLUMN user_id SET NOT NULL
   `)
 
-  // Add foreign key constraint and index
-  await knex.schema.alterTable('categories', (table) => {
-    table.foreign('user_id').references('id').inTable('users').onDelete('CASCADE')
-    table.index('user_id')
-  })
+    // Add foreign key constraint and index
+    await knex.schema.alterTable('categories', (table) => {
+      table.foreign('user_id').references('id').inTable('users').onDelete('CASCADE')
+      table.index('user_id')
+    })
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
