@@ -148,34 +148,52 @@
 .landing-screenshot-card {
   padding: 0;
   overflow: hidden;
-}
-
-.landing-screenshot-placeholder {
-  aspect-ratio: 16 / 9;
-  background: var(--bg-tertiary);
-  border: var(--border-medium) dashed var(--border-secondary);
   display: flex;
   flex-direction: column;
+  transition: transform var(--transition-hover), box-shadow var(--transition-hover);
+}
+
+.landing-screenshot-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.landing-screenshot-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-8);
+}
+
+.landing-screenshot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.landing-screenshot-content {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
   text-align: center;
-  min-height: 300px;
 }
 
 .landing-screenshot-label {
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .landing-screenshot-description {
   font-size: var(--text-sm);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   margin: 0;
-  max-width: 500px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 /* Call-to-Action Section */

@@ -104,41 +104,69 @@ export function LandingPage() {
           <h2 className="landing-section-title">See It In Action</h2>
           <div className="landing-screenshots-grid">
             <Panel variant="elevated" className="landing-screenshot-card">
-              <div className="landing-screenshot-placeholder">
-                <div className="landing-screenshot-label">Main Interface</div>
+              <div className="landing-screenshot-image">
+                <img 
+                  src="/ss/ss_seeds.png" 
+                  alt="Seeds view - main interface showing all seeds with search and filter"
+                  className="landing-screenshot-img"
+                />
+              </div>
+              <div className="landing-screenshot-content">
+                <div className="landing-screenshot-label">Seeds View</div>
                 <p className="landing-screenshot-description">
-                  Screenshot of the main seeds list view showing memory cards with tags, 
-                  categories, and timestamps. Should show the clean dark theme with vibrant accent colors.
+                  Main interface that lists all seeds with search and filter capabilities. 
+                  Browse your memories with powerful filtering and search tools.
                 </p>
               </div>
             </Panel>
 
             <Panel variant="elevated" className="landing-screenshot-card">
-              <div className="landing-screenshot-placeholder">
-                <div className="landing-screenshot-label">Timeline View</div>
+              <div className="landing-screenshot-image">
+                <img 
+                  src="/ss/ss_seed.png" 
+                  alt="Seed details - details for a single seed showing timeline of changes"
+                  className="landing-screenshot-img"
+                />
+              </div>
+              <div className="landing-screenshot-content">
+                <div className="landing-screenshot-label">Seed Details</div>
                 <p className="landing-screenshot-description">
-                  Screenshot of a seed detail view with the timeline showing immutable events. 
-                  Should demonstrate how changes are tracked over time with toggleable events.
+                  Details for a single seed showing the timeline of changes. 
+                  See how your memories evolve over time with immutable event tracking.
                 </p>
               </div>
             </Panel>
 
             <Panel variant="elevated" className="landing-screenshot-card">
-              <div className="landing-screenshot-placeholder">
-                <div className="landing-screenshot-label">Category Tree</div>
+              <div className="landing-screenshot-image">
+                <img 
+                  src="/ss/ss_categories.png" 
+                  alt="Categories - seeds grouped according to shared category"
+                  className="landing-screenshot-img"
+                />
+              </div>
+              <div className="landing-screenshot-content">
+                <div className="landing-screenshot-label">Categories</div>
                 <p className="landing-screenshot-description">
-                  Screenshot of the hierarchical category tree visualization showing nested 
-                  categories with expand/collapse functionality.
+                  Seeds are grouped here according to shared categories. 
+                  Navigate your memories through hierarchical organization.
                 </p>
               </div>
             </Panel>
 
             <Panel variant="elevated" className="landing-screenshot-card">
-              <div className="landing-screenshot-placeholder">
-                <div className="landing-screenshot-label">Tag Cloud</div>
+              <div className="landing-screenshot-image">
+                <img 
+                  src="/ss/ss_musings.png" 
+                  alt="Daily musings - interface that finds older ideas and expands on them"
+                  className="landing-screenshot-img"
+                />
+              </div>
+              <div className="landing-screenshot-content">
+                <div className="landing-screenshot-label">Daily Musings</div>
                 <p className="landing-screenshot-description">
-                  Screenshot of the tag cloud visualization showing color-coded tags 
-                  of varying sizes based on frequency.
+                  Interface that finds older ideas in seeds and tries to expand on them. 
+                  Runs daily with a maximum of 3 ideas to help you rediscover and evolve your thoughts.
                 </p>
               </div>
             </Panel>
