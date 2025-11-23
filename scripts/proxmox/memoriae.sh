@@ -54,9 +54,8 @@ function update_script() {
     set -a
     source /opt/memoriae/.env
     set +a
-    # Set NODE_ENV for migrations
-    export NODE_ENV=production
-    $STD npm run migrate
+    # Run migrations with NODE_ENV set (same pattern as install script)
+    NODE_ENV=production npm run migrate
     msg_ok "Ran database migrations"
     
     msg_info "Restarting ${APP} service"
