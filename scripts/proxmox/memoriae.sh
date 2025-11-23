@@ -29,10 +29,40 @@ function update_script() {
         msg_error "No ${APP} Installation Found!"
         exit
     fi
-    msg_info "Updating ${APP} LXC"
+    msg_info "Updating ${APP} LXC packages"
     $STD apt update
     $STD apt -y upgrade
-    msg_ok "Updated successfully!"
+    msg_ok "Updated container packages"
+    
+    msg_info "Updating ${APP} application"
+    cd /opt/memoriae
+    msg_info "Pulling latest changes from repository"
+    $STD git pull
+    msg_ok "Pulled latest changes"
+    
+    msg_info "Installing/updating dependencies"
+    $STD npm install
+    msg_ok "Updated dependencies"
+    
+    msg_info "Building ${APP}"
+    $STD npm run build
+    msg_ok "Built ${APP}"
+    
+    msg_info "Running database migrations"
+    cd /opt/memoriae/backend
+    # Load environment variables
+    set -a
+    source /opt/memoriae/.env
+    set +a
+    $STD NODE_ENV=production npm run migrate
+    msg_ok "Ran database migrations"
+    
+    msg_info "Restarting ${APP} service"
+    $STD systemctl daemon-reload
+    $STD systemctl restart memoriae
+    msg_ok "Restarted ${APP} service"
+    
+    msg_ok "Updated ${APP} successfully!"
     exit
 }
 
